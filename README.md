@@ -2,7 +2,7 @@
 
 > **Live:** [windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/health) — a real, persistently-running FastAPI service on AWS. A multi-agent AI system for wind farm production forecasting and operations support: classic ML forecasting tracked with self-hosted **MLflow**, a **LangGraph** agent workflow for diagnosis and recommendations, **two independent RAG stacks** (LangChain/FAISS + LlamaIndex) over real turbine data, a **multimodal** vision-LLM blade-inspection pass, and real **DynamoDB** session persistence — exposed via a **FastAPI** service and an **MCP server** so the agent's tools are callable from Claude or any MCP client.
 
-**Status:** end-to-end on **real data**, two farms, running as a real AWS service — real historical weather (Open-Meteo) joined with real turbine production (Kelmarsh + Penmanshiel open SCADA datasets), per-farm models trained and registered in a self-hosted MLflow registry (S3-backed). The full LangGraph agent runs for either farm: ingest → forecast → diagnose (physics-based efficiency + anomaly detection) → RAG (real fault-event corpus, Bedrock Titan embeddings, FAISS) → multimodal (real vision-LLM blade check) → recommend → explain (Amazon Nova Lite), every run persisted to DynamoDB. Dashboard: **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)** (one tab per farm, real charts, and a live "ask the agent" box backed by Bedrock — no viewer-billed sandbox capability involved). Write-up: **[Teaching an Agent to Read Wind Farms](https://education.forwardforecasting.eu/windward-agent/)**.
+**Status:** end-to-end on **real data**, three farms, running as a real AWS service — real historical weather (Open-Meteo) joined with real turbine production (Kelmarsh + Penmanshiel + Hill of Towie open SCADA datasets, two different export formats), per-farm models trained and registered in a self-hosted MLflow registry (S3-backed). The full LangGraph agent runs for any farm: ingest → forecast → diagnose (physics-based efficiency + anomaly detection) → RAG (real fault-event corpus, Bedrock Titan embeddings, FAISS) → multimodal (real vision-LLM blade check) → recommend → explain (Amazon Nova Lite), every run persisted to DynamoDB. Dashboard: **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)** (one tab per farm, real charts, and a live "ask the agent" box backed by Bedrock — no viewer-billed sandbox capability involved). Write-up: **[Teaching an Agent to Read Wind Farms](https://education.forwardforecasting.eu/windward-agent/)**.
 
 **Started as a deliberate skill demonstration** (Azure MLflow, RAG, agentic workflows, MLOps — see §2), then pivoted toward becoming an actual product: migrated off Azure onto AWS (see §12), now deployed as a persistent service, with plans to combine it with an energy-price-prediction model and commercialize both. A separate, simpler project will pick up the Azure MLflow demonstration going forward.
 
@@ -248,7 +248,7 @@ GradientBoostingRegressor(n_estimators=200, max_depth=4, learning_rate=0.05, ran
 |---|---|---|
 | Kelmarsh | 1.06 MW | 0.73 |
 | Penmanshiel | 1.98 MW | 0.81 |
-| Hill of Towie | *not yet trained* | data + loader wired (§5); `python -m forecasting.train hill_of_towie` still needs to run against the self-hosted MLflow server |
+| Hill of Towie | 4.29 MW | 0.74 |
 
 These are meaningfully harder, more honest numbers than an early synthetic-production prototype's R² 0.95 — real SCADA carries wake effects, curtailment, and downtime the model has to learn around, which is the actual point of using real data.
 
@@ -291,12 +291,11 @@ Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `ht
 ## 11. Roadmap
 
 - [x] Data source clients (meteo, price) + Pydantic schemas
-- [x] Real production data — Kelmarsh + Penmanshiel open SCADA datasets
+- [x] Real production data — Kelmarsh + Penmanshiel + Hill of Towie open SCADA datasets
 - [x] Baseline forecasting model, MLflow experiment tracking, per-farm registered models (§8)
 - [x] Batch inference + FastAPI `/forecast` endpoint
 - [x] LangGraph agent, all 7 nodes real (§4)
-- [x] Multi-farm support — farm registry + per-farm loader dispatch (`data_sources.farms.loader_for`), now spanning two different SCADA export formats (Greenbyte, RES historian)
-- [ ] Train + register the Hill of Towie model, add it to the live dashboard export (currently registered in `FARMS` with real data wired end-to-end, but not yet trained — see §8)
+- [x] Multi-farm support — farm registry + per-farm loader dispatch (`data_sources.farms.loader_for`), now spanning two different SCADA export formats (Greenbyte, RES historian); three farms live (Kelmarsh, Penmanshiel, Hill of Towie), each trained, registered, and served through the full agent
 - [x] RAG corpus — real turbine fault/status events + reference notes, Bedrock Titan embeddings, FAISS per farm
 - [x] Semantic search — same FAISS index, direct similarity search
 - [x] MCP server — `get_forecast`, `get_recommendation`, `query_maintenance_docs` all implemented
