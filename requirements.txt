@@ -1,0 +1,31 @@
+# MLflow — self-hosted on AWS (see infra/aws/README.md), S3 artifact store
+mlflow<3
+
+# Agent orchestration
+langchain
+langgraph
+langchain-community
+liteLLM
+
+# RAG / retrieval
+llama-index
+faiss-cpu
+
+# Observability
+langfuse
+
+# Serving
+fastapi
+uvicorn[standard]
+mcp
+
+# Data / validation
+pydantic
+pandas
+httpx
+python-dotenv
+scikit-learn
+entsoe-py
+
+# AWS (Bedrock LLM calls + DynamoDB session store — existing account)
+boto3

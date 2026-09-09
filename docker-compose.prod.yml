@@ -1,0 +1,10 @@
+services:
+  api:
+    image: windward-api:latest
+    container_name: windward_api_prod
+    env_file: .env
+    environment:
+      AWS_DEFAULT_REGION: eu-west-1
+    network_mode: host
+    restart: unless-stopped
+    mem_limit: 700m

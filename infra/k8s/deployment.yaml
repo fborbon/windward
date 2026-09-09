@@ -1,0 +1,35 @@
+# AKS deployment — demo-then-teardown (see README §12), not a persistent host.
+# /health needs no cloud credentials; /forecast would need AWS/Azure identity wired into the
+# cluster (workload identity federation), deliberately out of scope for this demo.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: windward-api
+  labels:
+    app: windward-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: windward-api
+  template:
+    metadata:
+      labels:
+        app: windward-api
+    spec:
+      containers:
+        - name: windward-api
+          image: windwardacr32467.azurecr.io/windward-api:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: windward-env
+                optional: true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

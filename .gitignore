@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+mlruns/
+.pytest_cache/
+*.egg-info/
+.DS_Store
+data/kelmarsh/*.zip
+data/penmanshiel/*.zip
+data/rag_index/
+data/llamaindex/

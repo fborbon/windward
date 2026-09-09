@@ -1,0 +1,3 @@
+type,count,pct_of_hours,turbine_id,detail
+farm_forecast_deviation,2798.0,0.34230486909713725,,
+anemometer_calibration_suspect,,,Kelmarsh_5,"peak Cp exceeds the Betz limit — likely nacelle anemometer bias, not real over-unity extraction"
