@@ -2,11 +2,11 @@
 
 > **Live:** [windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/health) — a real, persistently-running FastAPI service on AWS. A multi-agent AI system for wind farm production forecasting and operations support: classic ML forecasting tracked with self-hosted **MLflow**, a **LangGraph** agent workflow for diagnosis and recommendations, **two independent RAG stacks** (LangChain/FAISS + LlamaIndex) over real turbine data, a **multimodal** vision-LLM blade-inspection pass, and real **DynamoDB** session persistence — exposed via a **FastAPI** service and an **MCP server** so the agent's tools are callable from Claude or any MCP client.
 
-**Status:** end-to-end on **real data**, two farms, running as a real AWS service — real historical weather (Open-Meteo) joined with real turbine production (Kelmarsh + Penmanshiel open SCADA datasets), per-farm models trained and registered in a self-hosted MLflow registry (S3-backed). The full LangGraph agent runs for either farm: ingest → forecast → diagnose (physics-based efficiency + anomaly detection) → RAG (real fault-event corpus, Bedrock Titan embeddings, FAISS) → multimodal (real vision-LLM blade check) → recommend → explain (Amazon Nova Lite), every run persisted to DynamoDB. Dashboard: **[Windward Fleet](https://claude.ai/code/artifact/915d26c2-336b-4c5c-ab1e-9c63731c50f0)** (one tab per farm, plus a live chat panel grounded in the data). Write-up: **[Teaching an Agent to Read Wind Farms](https://education.forwardforecasting.eu/windward-agent/)**.
+**Status:** end-to-end on **real data**, two farms, running as a real AWS service — real historical weather (Open-Meteo) joined with real turbine production (Kelmarsh + Penmanshiel open SCADA datasets), per-farm models trained and registered in a self-hosted MLflow registry (S3-backed). The full LangGraph agent runs for either farm: ingest → forecast → diagnose (physics-based efficiency + anomaly detection) → RAG (real fault-event corpus, Bedrock Titan embeddings, FAISS) → multimodal (real vision-LLM blade check) → recommend → explain (Amazon Nova Lite), every run persisted to DynamoDB. Dashboard: **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)** (one tab per farm, real charts, and a live "ask the agent" box backed by Bedrock — no viewer-billed sandbox capability involved). Write-up: **[Teaching an Agent to Read Wind Farms](https://education.forwardforecasting.eu/windward-agent/)**.
 
-**Started as a deliberate skill demonstration** (Azure MLflow, Kubernetes, RAG, agentic workflows, MLOps — see §2), then pivoted toward becoming an actual product: migrated off Azure onto AWS (see §12), now deployed as a persistent service, with plans to combine it with an energy-price-prediction model and commercialize both. A separate, simpler project will pick up the Azure MLflow demonstration going forward.
+**Started as a deliberate skill demonstration** (Azure MLflow, RAG, agentic workflows, MLOps — see §2), then pivoted toward becoming an actual product: migrated off Azure onto AWS (see §12), now deployed as a persistent service, with plans to combine it with an energy-price-prediction model and commercialize both. A separate, simpler project will pick up the Azure MLflow demonstration going forward.
 
-**Exercises:** LangChain · LangGraph · RAG · LlamaIndex · Semantic Search · MCP servers · REST APIs (FastAPI) · Pydantic · LiteLLM · Langfuse/LangSmith · Multimodal LLMs · DynamoDB · MLflow · Kubernetes (historical, see §12) · generative AI workflow architecture.
+**Exercises:** LangChain · LangGraph · RAG · LlamaIndex · Semantic Search · MCP servers · REST APIs (FastAPI) · Pydantic · LiteLLM · Langfuse/LangSmith · Multimodal LLMs · DynamoDB · MLflow · generative AI workflow architecture.
 
 ---
 
@@ -37,7 +37,6 @@ The split is deliberate: forecasting is a numerical ML problem (best solved with
 
 | Skill | Where it lives |
 |---|---|
-| Kubernetes | `infra/k8s` — real AKS deployment, verified then torn down (see §12, Azure history): built the image, pushed to ACR, deployed, confirmed `/health` responding through the live cluster (`kubectl get pods` → `Running`, `curl /health` → `{"status":"ok"}`), then deleted both the cluster and the registry |
 | Architect generative AI workflows | `agents/graph.py` — the LangGraph state machine |
 | Build RAG systems | `rag/langchain_retriever.py`, `rag/incident_corpus.py` — retrieval over a real turbine fault-event corpus |
 | Integrate LLM APIs | `agents/llm_router.py`, routed through LiteLLM (AWS Bedrock Nova) |
@@ -263,9 +262,9 @@ windward/
 ├── storage/                       # DynamoDB session store
 ├── dashboard/                      # exports agent output -> published Artifact
 ├── Dockerfile / docker-compose.prod.yml  # the persistent deployment (§12)
+├── web/                               # static dashboard served by the FastAPI app at windward.forwardforecasting.eu
 ├── infra/
 │   ├── aws/                            # the live deployment — what's actually running, and how to reproduce it
-│   ├── k8s/                          # AKS manifests — deployed and verified once, then torn down (historical, §12)
 │   └── azure/                          # Azure ML setup notes (historical — the account has been decommissioned)
 ├── tests/
 └── docs/
@@ -293,20 +292,19 @@ Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `ht
 - [x] RAG corpus — real turbine fault/status events + reference notes, Bedrock Titan embeddings, FAISS per farm
 - [x] Semantic search — same FAISS index, direct similarity search
 - [x] MCP server — `get_forecast`, `get_recommendation`, `query_maintenance_docs` all implemented
-- [x] Dashboard — **[Windward Fleet](https://claude.ai/code/artifact/915d26c2-336b-4c5c-ab1e-9c63731c50f0)**, left-panel farm tabs, plus a right-side chat panel (Artifact `sample` capability — grounded in the live per-farm data; costs the *viewer's* own Claude usage, not this project's AWS/Azure bill, so it's free to run)
+- [x] Dashboard — **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)**, served directly by the FastAPI app (`web/`): per-farm tabs, real charts, Betz-limit efficiency table, vision-LLM blade inspection, and a live "ask the agent" box hitting Bedrock directly. Started as a Claude Artifact (the only way to get an interactive AI feature inside a sandboxed page that can't call external APIs), moved to a real self-hosted frontend once the project stopped being a portfolio piece and started being a service
 - [x] LlamaIndex — second, independent RAG stack (`rag/llamaindex_index.py`) over real turbine spec metadata (manufacturer, hub height, exact coordinates), a different framework and a different corpus shape from the LangChain/FAISS incident-log stack. Verified: correctly answers "what is the hub height of Kelmarsh 3?" (68.5m, matches the source CSV) and cross-farm elevation comparisons
 - [x] Langfuse tracing — `observability/tracing.py` (updated for the current Langfuse v4 API — `langfuse.langchain.CallbackHandler`, not the old `langfuse.callback` path) wired into every graph run via `agents.graph.run()`. Auto-activates when `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` are set; currently a no-op since that needs the user's own free Langfuse signup (same category of blocker as Power BI)
 - [x] Multimodal blade-inspection node — real vision-LLM call (Amazon Nova Lite via the Bedrock Converse API) against a real, openly-licensed inspection photo ([Wikimedia Commons, CC BY-SA 3.0](https://commons.wikimedia.org/wiki/File:Begutachtung_eines_Rotorblattes.JPG)), wired into `multimodal_node` and folded into the field-report narrative
 - [x] DynamoDB session store — every dashboard export run now writes a real session record (farm, timestamp, mean capacity factor, recommendation, model metrics) via `storage/dynamo_session_store.py`; verified with a live `aws dynamodb scan`
 - [x] Explanatory write-up — **[Teaching an Agent to Read Wind Farms](https://education.forwardforecasting.eu/windward-agent/)**, self-hosted (not just a Claude Artifact), listed on the **[Field Notes](https://education.forwardforecasting.eu/)** blog index
-- [x] Containerize + AKS deployment — real, verified, then torn down. Built via `Dockerfile`, pushed to a temporary Azure Container Registry, deployed to a real AKS cluster, confirmed `/health` responding through `kubectl port-forward`, then deleted the cluster and registry — total cost ≈ $0.01–0.02 for the ~30 minutes it existed. Real gotcha: `Standard_B2s` isn't an allowed AKS node size on that subscription in `swedencentral` — only the newer `_v2` generation is. Fully documented in the write-up above and in [infra/azure/README.md](infra/azure/README.md).
 - [x] **Migrated off Azure onto AWS** (§12) — self-hosted MLflow (systemd + SQLite + S3) and the FastAPI+agent service (Docker, host networking) now run persistently on `forwardforecasting-dev`, an existing EC2 instance (its idle-shutdown automation was disabled so this stays up). Live at **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/health)**, real HTTPS via Let's Encrypt. Verified: both `/health` and `/forecast` respond correctly through the public domain. Auth is the EC2 instance's IAM role — no static AWS keys anywhere.
 - [x] Azure account cleanup — `rg-windward` (the Azure ML workspace and everything it backed) deleted once the AWS replacement was verified working.
+- [x] Spain day-ahead price forecasting (`spain_price/`) — real OMIE market data, its own registered MLflow model, served at `/price-forecast/spain`
 - [ ] Power BI version of the dashboard — moot now the project isn't Azure-hosted; not pursuing further
 - [ ] Wire FastAPI to the LangGraph agent's recommend/explain output, not just the raw forecast
 - [ ] Combine with an energy-price-prediction model and commercialize both
 - [ ] A separate, simpler project to pick up the Azure MLflow skill demonstration
-- [ ] A proper owned frontend, eventually replacing the Claude Artifact dashboard for the commercial product
 
 ## 12. Cost & Resource Consumption
 
@@ -327,12 +325,12 @@ Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `ht
 
 ### Why AWS, not Azure — the decision that drove the migration
 
-The project's original Azure ML + AKS phase was a real, verified skill demonstration (see [infra/azure/README.md](infra/azure/README.md) for exactly what was built and torn down there). Once the goal shifted from "demonstrate Azure MLflow" to "run this as an actual product," the two hosting paths stopped being close on cost:
+The project's original Azure ML phase was a real, verified skill demonstration (see [infra/azure/README.md](infra/azure/README.md) for exactly what was built and torn down there). Once the goal shifted from "demonstrate Azure MLflow" to "run this as an actual product," splitting a commercial service across two cloud accounts because one half happened to be near-free stopped making sense — it needs one home, on infrastructure already operated day to day.
 
-| Cost category | **Azure (AKS, persistent)** | **AWS (existing EC2)** |
+| Cost category | **Azure ML workspace** | **AWS (existing EC2)** |
 |---|---|---|
-| Compute | `Standard_B1s` free-tier node: fragile (1 GiB RAM, AKS's own system pods eat 300–600MB before the app starts) — or `Standard_B2s` for reliability: **~$32–37/mo, indefinitely** | **$0 marginal** — one more container on a box already running |
-| Experiment tracking | Azure ML workspace: ~$0.05–0.15/mo flat | Self-hosted MLflow + S3: **~$0/mo** |
-| Year 1 / Year 2+ total | $0–37/mo depending on node choice, both years | **~$0–0.10/mo, both years** |
+| Experiment tracking | ~$0.05–0.15/mo flat | Self-hosted MLflow + S3: **~$0/mo** |
+| Compute for the API service | Would need a new resource (App Service / container instance) — not already running anywhere on Azure | **$0 marginal** — one more container on a box already running |
+| Year 1 / Year 2+ total | Small but nonzero, on infrastructure not otherwise used | **~$0–0.10/mo, both years** |
 
-AWS won decisively — not a close call. What justified building the Azure/AKS path *at all* was that Kubernetes was explicitly one of the 16 skills this project set out to demonstrate (`otros/skills/improve_skills.txt`); once that was proven and verified, there was no reason to keep paying an ongoing Azure bill for infrastructure this account doesn't otherwise use. **The Azure resource group has been deleted** — the account no longer runs anything for this project.
+**The Azure resource group has been deleted** — the account no longer runs anything for this project.
