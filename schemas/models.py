@@ -51,17 +51,6 @@ class BladeInspectionResult(BaseModel):
     description: str = ""
 
 
-class SpainPricePeriod(BaseModel):
-    timestamp: datetime
-    predicted_price_eur_mwh: float
-
-
-class SpainPriceForecastResult(BaseModel):
-    target_day: str
-    generated_at: datetime
-    periods: list[SpainPricePeriod]
-
-
 class Recommendation(BaseModel):
     farm_id: str
     action: str

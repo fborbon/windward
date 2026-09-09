@@ -149,12 +149,6 @@
   <div id="farm-panel">
     <div class="skeleton"><span class="spinner"></span> Loading farms…</div>
   </div>
-
-  <div class="card" id="spain-card">
-    <h2>Spain day-ahead price forecast</h2>
-    <div class="desc">Trained on real OMIE marginal-price data (15-minute periods), calendar + autoregressive lag features. Not a demo dataset — the same feed a Spanish market participant would see.</div>
-    <div id="spain-body"><div class="skeleton"><span class="spinner"></span> Loading forecast…</div></div>
-  </div>
 </main>
 
 <footer>
@@ -407,34 +401,7 @@ function renderAnalysis(panel, farmId, a){
   askInput.addEventListener("keydown", e => { if(e.key==="Enter") submitAsk(); });
 }
 
-// ---------- Spain price ----------
-async function loadSpainPrice(){
-  const body = document.getElementById("spain-body");
-  try{
-    const res = await fetch(`${API}/price-forecast/spain`);
-    const data = await res.json();
-    if(!res.ok){ body.innerHTML = `<div class="desc">Forecast unavailable right now.</div>`; return; }
-    const vals = data.periods.map(p=>p.predicted_price_eur_mwh);
-    const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
-    const peak = Math.max(...vals), trough = Math.min(...vals);
-    body.innerHTML = `
-      <div class="kpis">
-        <div class="kpi"><div class="v">${data.target_day}</div><div class="l">Target day</div></div>
-        <div class="kpi"><div class="v">${fmt(mean,1)}</div><div class="l">Mean €/MWh</div></div>
-        <div class="kpi"><div class="v">${fmt(peak,1)}</div><div class="l">Peak €/MWh</div></div>
-        <div class="kpi"><div class="v">${fmt(trough,1)}</div><div class="l">Trough €/MWh</div></div>
-      </div>
-      <div class="chart-wrap"><canvas id="chart-spain"></canvas></div>`;
-    drawBarChart(document.getElementById("chart-spain"),
-      data.periods.filter((_,i)=>i%2===0).map(p=>({x:p.timestamp.slice(11,16), y:p.predicted_price_eur_mwh})),
-      {yFmt:v=>v.toFixed(0)});
-  }catch(e){
-    body.innerHTML = `<div class="desc">Forecast unavailable right now.</div>`;
-  }
-}
-
 loadFarms();
-loadSpainPrice();
 window.addEventListener("resize", () => { if(ACTIVE_FARM) selectFarm.__redraw && selectFarm.__redraw(); });
 </script>
 

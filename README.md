@@ -307,10 +307,9 @@ Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `ht
 - [x] Explanatory write-up — **[Teaching an Agent to Read Wind Farms](https://education.forwardforecasting.eu/windward-agent/)**, self-hosted (not just a Claude Artifact), listed on the **[Field Notes](https://education.forwardforecasting.eu/)** blog index
 - [x] **Migrated off Azure onto AWS** (§12) — self-hosted MLflow (systemd + SQLite + S3) and the FastAPI+agent service (Docker, host networking) now run persistently on `forwardforecasting-dev`, an existing EC2 instance (its idle-shutdown automation was disabled so this stays up). Live at **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/health)**, real HTTPS via Let's Encrypt. Verified: both `/health` and `/forecast` respond correctly through the public domain. Auth is the EC2 instance's IAM role — no static AWS keys anywhere.
 - [x] Azure account cleanup — `rg-windward` (the Azure ML workspace and everything it backed) deleted once the AWS replacement was verified working.
-- [x] Spain day-ahead price forecasting (`spain_price/`) — real OMIE market data, its own registered MLflow model, served at `/price-forecast/spain`
+- [x] ~~Spain day-ahead price forecasting (`spain_price/`)~~ — added, then removed 2026-09-09: national day-ahead price prediction doesn't belong bundled into a wind-farm-production project whose farms are all in the UK, and it's now its own project, `energy-trader` (real OMIE ingestion, forecasting, backtesting) — see that repo instead.
 - [ ] Power BI version of the dashboard — moot now the project isn't Azure-hosted; not pursuing further
 - [ ] Wire FastAPI to the LangGraph agent's recommend/explain output, not just the raw forecast
-- [ ] Combine with an energy-price-prediction model and commercialize both
 - [ ] A separate, simpler project to pick up the Azure MLflow skill demonstration
 
 ## 12. Cost & Resource Consumption

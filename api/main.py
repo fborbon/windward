@@ -5,7 +5,6 @@ box, not a sandboxed viewer-billed environment.
 """
 import math
 import time
-from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -16,8 +15,7 @@ from pydantic import BaseModel
 
 from data_sources.farms import FARMS
 from forecasting.predict import predict_production
-from schemas.models import ForecastRequest, ForecastResult, SpainPriceForecastResult
-from spain_price.predict import predict_day
+from schemas.models import ForecastRequest, ForecastResult
 
 app = FastAPI(title="Windward")
 
@@ -54,11 +52,6 @@ def list_farms():
 @app.post("/forecast", response_model=ForecastResult)
 def forecast(request: ForecastRequest):
     return predict_production(farm_id=request.farm_id, horizon_hours=request.horizon_hours)
-
-
-@app.get("/price-forecast/spain", response_model=SpainPriceForecastResult)
-def price_forecast_spain(target_day: date | None = None):
-    return predict_day(target_day)
 
 
 def _clean(v):
