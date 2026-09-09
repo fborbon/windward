@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Windward — Wind Farm Power Prediction</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💨</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c0c12; --surface:#15151f; --surface2:#1c1c28; --surface3:#23232f;
+    --border:#2a2a38; --gold:#e1c340; --gold-dim:#8a7a2a;
+    --text:#f0f0f0; --text-dim:#9a9aa8; --text-faint:#5c5c6c;
+    --good:#4caf82; --bad:#e2574c; --warn:#e0a340;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);}
+  body{
+    font-family:'IBM Plex Sans',system-ui,sans-serif;
+    line-height:1.5;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(225,195,64,0.06), transparent 60%),
+      var(--bg);
+  }
+  h1,h2,h3{font-family:'Big Shoulders Display',system-ui,sans-serif; font-weight:800; letter-spacing:0.01em; text-wrap:balance; margin:0;}
+  .mono{font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums;}
+  a{color:var(--gold);}
+  ::selection{background:var(--gold); color:#141414;}
+
+  header{
+    padding:28px clamp(16px,4vw,48px) 20px;
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;}
+  .brand h1{font-size:clamp(28px,4vw,40px); color:var(--gold);}
+  .brand .sub{color:var(--text-dim); font-size:14px;}
+  .badge-live{
+    display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
+    color:var(--good); border:1px solid var(--good); border-radius:99px; padding:3px 10px;
+    text-transform:uppercase; letter-spacing:0.06em;
+  }
+  .badge-live::before{content:""; width:6px; height:6px; border-radius:50%; background:var(--good); box-shadow:0 0 6px var(--good);}
+  header nav{display:flex; gap:18px; font-size:14px;}
+  header nav a{color:var(--text-dim); text-decoration:none;}
+  header nav a:hover{color:var(--gold);}
+
+  main{max-width:1240px; margin:0 auto; padding:28px clamp(16px,4vw,48px) 80px;}
+
+  .tabs{display:flex; gap:8px; margin-bottom:24px; flex-wrap:wrap;}
+  .tab{
+    background:var(--surface); border:1px solid var(--border); color:var(--text-dim);
+    padding:10px 18px; border-radius:10px; cursor:pointer; font-size:14px; font-weight:500;
+    display:flex; flex-direction:column; gap:2px; min-width:150px;
+  }
+  .tab .name{color:var(--text); font-weight:600;}
+  .tab .meta{font-size:12px; color:var(--text-faint);}
+  .tab.active{border-color:var(--gold); background:var(--surface2);}
+  .tab.active .name{color:var(--gold);}
+  .tab:hover{border-color:var(--gold-dim);}
+
+  .grid{display:grid; grid-template-columns:1.5fr 1fr; gap:20px;}
+  @media (max-width:900px){.grid{grid-template-columns:1fr;}}
+
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:20px 22px; margin-bottom:20px;
+  }
+  .card h2{font-size:20px; color:var(--text); margin-bottom:4px;}
+  .card .desc{color:var(--text-dim); font-size:13px; margin-bottom:14px;}
+  .card-row{display:flex; gap:20px; flex-wrap:wrap;}
+
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:12px; margin-bottom:16px;}
+  .kpi{background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px 14px;}
+  .kpi .v{font-family:'IBM Plex Mono',monospace; font-size:22px; color:var(--gold); font-variant-numeric:tabular-nums;}
+  .kpi .l{font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.05em; margin-top:2px;}
+
+  .chart-wrap{overflow-x:auto;}
+  canvas{display:block;}
+
+  .legend{display:flex; gap:16px; font-size:12px; color:var(--text-dim); margin-top:8px;}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .swatch{width:10px; height:10px; border-radius:2px; display:inline-block;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{text-align:left; padding:7px 8px; border-bottom:1px solid var(--border);}
+  th{color:var(--text-faint); font-weight:500; text-transform:uppercase; font-size:10px; letter-spacing:0.05em;}
+  td.num{font-family:'IBM Plex Mono',monospace; text-align:right; font-variant-numeric:tabular-nums;}
+  th.num{text-align:right;}
+  .pill{display:inline-block; padding:2px 8px; border-radius:99px; font-size:11px; font-weight:600;}
+  .pill.ok{background:rgba(76,175,130,0.15); color:var(--good);}
+  .pill.flag{background:rgba(226,87,76,0.15); color:var(--bad);}
+
+  .anomaly{display:flex; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:13px;}
+  .anomaly:last-child{border-bottom:none;}
+  .anomaly .dot{width:8px; height:8px; border-radius:50%; background:var(--warn); margin-top:5px; flex-shrink:0;}
+
+  .recommend{border-left:3px solid var(--gold); padding-left:14px;}
+  .recommend .action{font-weight:600; color:var(--text); margin-bottom:4px;}
+  .recommend .rationale{color:var(--text-dim); font-size:14px;}
+  .sources{margin-top:10px; font-size:12px; color:var(--text-faint);}
+
+  .explanation{white-space:pre-wrap; font-size:14px; color:var(--text-dim); line-height:1.65;}
+
+  .inspection{display:flex; gap:16px; flex-wrap:wrap;}
+  .inspection img{width:220px; height:160px; object-fit:cover; border-radius:10px; border:1px solid var(--border);}
+  .inspection .result{flex:1; min-width:200px;}
+
+  .ask{display:flex; gap:8px; margin-top:14px;}
+  .ask input{
+    flex:1; background:var(--surface2); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:10px 12px; font-size:14px; font-family:inherit;
+  }
+  .ask input:focus{outline:none; border-color:var(--gold);}
+  .ask button{
+    background:var(--gold); color:#141414; border:none; border-radius:8px; padding:10px 18px;
+    font-weight:600; cursor:pointer; font-size:14px;
+  }
+  .ask button:disabled{opacity:0.5; cursor:default;}
+  .ask-answer{margin-top:12px; font-size:14px; color:var(--text); background:var(--surface2); border-radius:8px; padding:12px 14px; display:none;}
+
+  .skeleton{color:var(--text-faint); font-size:13px; padding:20px 0; display:flex; align-items:center; gap:10px;}
+  .spinner{width:14px; height:14px; border:2px solid var(--border); border-top-color:var(--gold); border-radius:50%; animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  footer{border-top:1px solid var(--border); padding:24px clamp(16px,4vw,48px); color:var(--text-faint); font-size:12px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;}
+  footer a{color:var(--text-dim);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Windward</h1>
+    <span class="sub">Wind farm power prediction, live</span>
+    <span class="badge-live">live</span>
+  </div>
+  <nav>
+    <a href="https://education.forwardforecasting.eu/windward-agent/" target="_blank" rel="noopener">Read the write-up →</a>
+    <a href="https://github.com/fborbon/windward" target="_blank" rel="noopener">GitHub</a>
+  </nav>
+</header>
+
+<main>
+  <div class="tabs" id="farm-tabs"></div>
+
+  <div id="farm-panel">
+    <div class="skeleton"><span class="spinner"></span> Loading farms…</div>
+  </div>
+
+  <div class="card" id="spain-card">
+    <h2>Spain day-ahead price forecast</h2>
+    <div class="desc">Trained on real OMIE marginal-price data (15-minute periods), calendar + autoregressive lag features. Not a demo dataset — the same feed a Spanish market participant would see.</div>
+    <div id="spain-body"><div class="skeleton"><span class="spinner"></span> Loading forecast…</div></div>
+  </div>
+</main>
+
+<footer>
+  <span>Windward runs on a self-hosted MLflow registry + AWS Bedrock (Amazon Nova), serving from a single EC2 instance.</span>
+  <span><a href="https://forwardforecasting.eu" target="_blank" rel="noopener">Forward Forecasting</a></span>
+</footer>
+
+<script>
+const API = "";
+let FARMS = [];
+let ACTIVE_FARM = null;
+
+const GOLD = "#e1c340", GOOD = "#4caf82", DIM = "#5c5c6c", GRID = "#2a2a38", TEXT="#9a9aa8";
+
+function fmt(n, d=1){ return (n===null||n===undefined||Number.isNaN(n)) ? "—" : Number(n).toFixed(d); }
+function pct(n, d=1){ return (n===null||n===undefined||Number.isNaN(n)) ? "—" : (Number(n)*100).toFixed(d)+"%"; }
+
+// ---------- canvas line chart (dual series) ----------
+function drawLineChart(canvas, series, {height=220, colors, yLabel="", labelFmt=(v)=>v.toFixed(0)}={}){
+  const dpr = window.devicePixelRatio || 1;
+  const width = Math.max(560, canvas.parentElement.clientWidth);
+  canvas.width = width*dpr; canvas.height = height*dpr;
+  canvas.style.width = width+"px"; canvas.style.height = height+"px";
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,width,height);
+
+  const padL=48, padR=12, padT=14, padB=26;
+  const plotW = width-padL-padR, plotH = height-padT-padB;
+
+  const allVals = series.flatMap(s=>s.data.filter(v=>v!==null));
+  if(allVals.length===0) return;
+  let min = Math.min(...allVals), max = Math.max(...allVals);
+  if(min===max){ min-=1; max+=1; }
+  const pad = (max-min)*0.08; min-=pad; max+=pad;
+
+  const n = series[0].data.length;
+  const x = i => padL + (i/(n-1))*plotW;
+  const y = v => padT + plotH - ((v-min)/(max-min))*plotH;
+
+  // gridlines
+  ctx.strokeStyle = GRID; ctx.lineWidth=1; ctx.font="11px 'IBM Plex Mono',monospace"; ctx.fillStyle=TEXT;
+  const ticks=4;
+  for(let t=0;t<=ticks;t++){
+    const v = min + (max-min)*t/ticks;
+    const yy = y(v);
+    ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(width-padR,yy); ctx.stroke();
+    ctx.fillText(labelFmt(v), 4, yy+4);
+  }
+
+  series.forEach((s,si)=>{
+    ctx.strokeStyle = s.color; ctx.lineWidth=2; ctx.beginPath();
+    let started=false;
+    s.data.forEach((v,i)=>{
+      if(v===null){started=false; return;}
+      const xx=x(i), yy=y(v);
+      if(!started){ctx.moveTo(xx,yy); started=true;} else {ctx.lineTo(xx,yy);}
+    });
+    ctx.stroke();
+  });
+}
+
+function drawBarChart(canvas, points, {height=200, color=GOLD, xFmt=(v)=>v, yFmt=(v)=>v.toFixed(0)}={}){
+  const dpr = window.devicePixelRatio || 1;
+  const width = Math.max(560, canvas.parentElement.clientWidth);
+  canvas.width = width*dpr; canvas.height = height*dpr;
+  canvas.style.width = width+"px"; canvas.style.height = height+"px";
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,width,height);
+  if(points.length===0) return;
+
+  const padL=48, padR=12, padT=14, padB=28;
+  const plotW=width-padL-padR, plotH=height-padT-padB;
+  const max = Math.max(...points.map(p=>p.y));
+  const barW = plotW/points.length;
+
+  ctx.strokeStyle=GRID; ctx.font="11px 'IBM Plex Mono',monospace"; ctx.fillStyle=TEXT;
+  for(let t=0;t<=3;t++){
+    const v = max*t/3, yy = padT+plotH-(v/max)*plotH;
+    ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(width-padR,yy); ctx.stroke();
+    ctx.fillText(yFmt(v), 4, yy+4);
+  }
+  ctx.fillStyle=color;
+  points.forEach((p,i)=>{
+    const h = (p.y/max)*plotH;
+    ctx.fillRect(padL+i*barW+1, padT+plotH-h, Math.max(1,barW-2), h);
+  });
+  ctx.fillStyle=TEXT;
+  const step = Math.ceil(points.length/8);
+  points.forEach((p,i)=>{
+    if(i%step===0){
+      ctx.fillText(xFmt(p.x), padL+i*barW, height-8);
+    }
+  });
+}
+
+// ---------- farm tabs + analysis ----------
+async function loadFarms(){
+  const res = await fetch(`${API}/farms`);
+  FARMS = await res.json();
+  const tabs = document.getElementById("farm-tabs");
+  tabs.innerHTML = FARMS.map(f => `
+    <div class="tab" data-farm="${f.farm_id}">
+      <span class="name">${f.name}</span>
+      <span class="meta">${f.turbine_count} turbines · ${f.total_capacity_mw} MW</span>
+    </div>`).join("");
+  tabs.querySelectorAll(".tab").forEach(el => el.addEventListener("click", () => selectFarm(el.dataset.farm)));
+  if(FARMS.length) selectFarm(FARMS[0].farm_id);
+}
+
+function setActiveTab(farmId){
+  document.querySelectorAll(".tab").forEach(el => el.classList.toggle("active", el.dataset.farm===farmId));
+}
+
+async function selectFarm(farmId){
+  ACTIVE_FARM = farmId;
+  setActiveTab(farmId);
+  const panel = document.getElementById("farm-panel");
+  panel.innerHTML = `<div class="skeleton"><span class="spinner"></span> Running the agent — forecast, Betz-limit diagnostics, RAG, and a vision-LLM blade check. First load per farm takes ~10-20s (cached after).</div>`;
+  const res = await fetch(`${API}/analysis/${farmId}`);
+  if(!res.ok){ panel.innerHTML = `<div class="card">Analysis failed: ${res.status}</div>`; return; }
+  const a = await res.json();
+  if(ACTIVE_FARM !== farmId) return; // a later click won
+  renderAnalysis(panel, farmId, a);
+}
+
+function renderAnalysis(panel, farmId, a){
+  const farm = FARMS.find(f=>f.farm_id===farmId);
+  const worstOverBetz = a.efficiency_summary.filter(e=>e.over_betz).map(e=>e.turbine_id);
+
+  panel.innerHTML = `
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Actual vs. predicted production</h2>
+        <div class="desc">Farm-level output over the last 14 days of the real SCADA period · ${farm.name}, ${farm.total_capacity_mw} MW rated.</div>
+        <div class="kpis">
+          <div class="kpi"><div class="v">${fmt(a.comparison_summary.mean_actual_mw,2)} MW</div><div class="l">Mean actual</div></div>
+          <div class="kpi"><div class="v">${fmt(a.comparison_summary.mean_predicted_mw,2)} MW</div><div class="l">Mean predicted</div></div>
+          <div class="kpi"><div class="v">${pct(a.comparison_summary.mean_abs_pct_error)}</div><div class="l">Mean abs. error</div></div>
+          <div class="kpi"><div class="v">${a.comparison_summary.hours_analyzed}</div><div class="l">Hours analyzed</div></div>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-comparison"></canvas></div>
+        <div class="legend">
+          <span><span class="swatch" style="background:${GOLD}"></span>Actual</span>
+          <span><span class="swatch" style="background:${GOOD}"></span>Predicted</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Turbine efficiency vs. the Betz limit</h2>
+        <div class="desc">Peak power coefficient (Cₚ) per turbine — the theoretical ceiling on wind-energy extraction is 16/27 ≈ 0.593 (Betz's law). A peak above that line means the anemometer, not the turbine, is lying.</div>
+        <table>
+          <thead><tr><th>Turbine</th><th class="num">Capacity factor</th><th class="num">Peak Cₚ</th><th>Status</th></tr></thead>
+          <tbody>
+            ${a.efficiency_summary.map(e=>`
+              <tr>
+                <td>${e.turbine_id}</td>
+                <td class="num">${pct(e.capacity_factor)}</td>
+                <td class="num">${fmt(e.peak_cp,3)}</td>
+                <td>${e.over_betz ? '<span class="pill flag">above Betz limit</span>' : '<span class="pill ok">normal</span>'}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Anomalies detected</h2>
+        <div id="anomaly-list">
+          ${a.anomalies.length ? a.anomalies.map(an=>`
+            <div class="anomaly"><span class="dot"></span><span>
+              ${an.type==="farm_forecast_deviation"
+                ? `Farm-level output deviated &gt;50% from model prediction in ${an.count} of ${a.comparison_summary.hours_analyzed} hours (${pct(an.pct_of_hours)}).`
+                : `<b>${an.turbine_id}</b>: ${an.detail}`}
+            </span></div>`).join("")
+            : '<div class="anomaly"><span class="dot" style="background:'+GOOD+'"></span>No anomalies flagged.</div>'}
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Recommendation</h2>
+        <div class="recommend">
+          <div class="action">${a.recommendation.action}</div>
+          <div class="rationale">${a.recommendation.rationale}</div>
+        </div>
+        ${a.recommendation.supporting_sources && a.recommendation.supporting_sources.length ? `<div class="sources">Sources: ${a.recommendation.supporting_sources.join(", ")}</div>` : ""}
+      </div>
+
+      <div class="card">
+        <h2>Agent narration</h2>
+        <div class="desc">Written live by Amazon Nova Lite from the numbers above — not a canned summary.</div>
+        <div class="explanation">${a.explanation}</div>
+      </div>
+
+      <div class="card">
+        <h2>Blade inspection (vision-LLM)</h2>
+        <div class="desc">Real Nova Lite vision pass on the fleet's lowest-capacity-factor turbine using a sample inspection photo.</div>
+        <div class="inspection">
+          <img src="${API}/analysis/${farmId}/inspection-photo" alt="Blade inspection sample">
+          ${a.inspection_results.map(r=>`
+            <div class="result">
+              <div style="margin-bottom:6px;"><b>${r.turbine_id}</b> — ${r.damage_detected ? '<span class="pill flag">damage flagged</span>' : '<span class="pill ok">no damage</span>'}</div>
+              <div style="color:var(--text-dim); font-size:13px;">${r.description}</div>
+              <div style="color:var(--text-faint); font-size:12px; margin-top:4px;">Confidence ${pct(r.confidence,0)}${r.damage_types.length ? " · "+r.damage_types.join(", ") : ""}</div>
+            </div>`).join("")}
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Ask the agent</h2>
+        <div class="desc">Grounded in this farm's real analysis above — answered live, on this box.</div>
+        <div class="ask">
+          <input id="ask-input" type="text" maxlength="500" placeholder="e.g. why is the recommendation about ${a.recommendation.action.replace('Prioritize inspection of ','')}?">
+          <button id="ask-btn">Ask</button>
+        </div>
+        <div class="ask-answer" id="ask-answer"></div>
+      </div>
+    </div>
+  </div>`;
+
+  drawLineChart(document.getElementById("chart-comparison"), [
+    {data:a.comparison_series.map(p=>p.actual_mw), color:GOLD},
+    {data:a.comparison_series.map(p=>p.predicted_mw), color:GOOD},
+  ], {labelFmt:v=>v.toFixed(1)});
+
+  const askBtn = document.getElementById("ask-btn");
+  const askInput = document.getElementById("ask-input");
+  const askAnswer = document.getElementById("ask-answer");
+  async function submitAsk(){
+    const q = askInput.value.trim();
+    if(!q) return;
+    askBtn.disabled = true; askBtn.textContent = "…";
+    askAnswer.style.display = "block";
+    askAnswer.textContent = "Thinking…";
+    try{
+      const res = await fetch(`${API}/analysis/${farmId}/ask`, {
+        method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({question:q})
+      });
+      const data = await res.json();
+      askAnswer.textContent = res.ok ? data.answer : (data.detail || "Something went wrong.");
+    }catch(e){
+      askAnswer.textContent = "Request failed — try again.";
+    }
+    askBtn.disabled = false; askBtn.textContent = "Ask";
+  }
+  askBtn.addEventListener("click", submitAsk);
+  askInput.addEventListener("keydown", e => { if(e.key==="Enter") submitAsk(); });
+}
+
+// ---------- Spain price ----------
+async function loadSpainPrice(){
+  const body = document.getElementById("spain-body");
+  try{
+    const res = await fetch(`${API}/price-forecast/spain`);
+    const data = await res.json();
+    if(!res.ok){ body.innerHTML = `<div class="desc">Forecast unavailable right now.</div>`; return; }
+    const vals = data.periods.map(p=>p.predicted_price_eur_mwh);
+    const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
+    const peak = Math.max(...vals), trough = Math.min(...vals);
+    body.innerHTML = `
+      <div class="kpis">
+        <div class="kpi"><div class="v">${data.target_day}</div><div class="l">Target day</div></div>
+        <div class="kpi"><div class="v">${fmt(mean,1)}</div><div class="l">Mean €/MWh</div></div>
+        <div class="kpi"><div class="v">${fmt(peak,1)}</div><div class="l">Peak €/MWh</div></div>
+        <div class="kpi"><div class="v">${fmt(trough,1)}</div><div class="l">Trough €/MWh</div></div>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-spain"></canvas></div>`;
+    drawBarChart(document.getElementById("chart-spain"),
+      data.periods.filter((_,i)=>i%2===0).map(p=>({x:p.timestamp.slice(11,16), y:p.predicted_price_eur_mwh})),
+      {yFmt:v=>v.toFixed(0)});
+  }catch(e){
+    body.innerHTML = `<div class="desc">Forecast unavailable right now.</div>`;
+  }
+}
+
+loadFarms();
+loadSpainPrice();
+window.addEventListener("resize", () => { if(ACTIVE_FARM) selectFarm.__redraw && selectFarm.__redraw(); });
+</script>
+
+</body>
+</html>

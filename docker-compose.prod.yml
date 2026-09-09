@@ -5,6 +5,8 @@ services:
     env_file: .env
     environment:
       AWS_DEFAULT_REGION: eu-west-1
+    volumes:
+      - ./data:/app/data
     network_mode: host
     restart: unless-stopped
     mem_limit: 700m
