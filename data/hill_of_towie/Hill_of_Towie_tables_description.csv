@@ -1,0 +1,14 @@
+Name,Description
+tblAlarmLog,Log of stopping and non-stopping events/alarms
+tblSCTurGrid,Turbine grid-related measurements [10min]
+tblSCTurIntern,Turbine internal signals [10min]
+tblSCTurPress,Turbine pressure measurements [10min]
+tblSCTurTemp,Turbine temperature measurements [10min]
+tblSCTurDigiIn,Turbine digital input signals [10min]
+tblSCTurDigiOut,Turbine digital output signals [10min]
+tblSCTurCount,"Turbine counter signals (hours, events, etc.) [10min]"
+tblSCTurbine,Turbine signals not categorised in other tables [10min]
+tblSCTurFlag,Turbine status information [10min]
+tblDailySummary,"Daily aggregations of turbine signals, either averages or last value of each signal"
+tblGrid,Signals from grid monitoring stations [10min]
+tblGridScientific,"Signals from grid monitoring stations, including calculated signals [10min]"

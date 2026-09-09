@@ -1,0 +1,56 @@
+Field Description,Manufacturer Name,Table,Unit
+Active power,wtc_ActPower_mean,tblSCTurGrid,kW
+Current Phase R,wtc_AmpPhR_mean,tblSCTurGrid,A
+Current Phase S,wtc_AmpPhS_mean,tblSCTurGrid,A
+Current Phase T,wtc_AmpPhT_mean,tblSCTurGrid,A
+Grid frequency,wtc_GridFreq_mean,tblSCTurGrid,Hz
+Power Factor,wtc_CosPhi_mean,tblSCTurGrid,
+Reactive Power,wtc_ReactPwr_mean,tblSCTurGrid,kVar
+Voltage Phase R,wtc_VoltPhR_mean,tblSCTurGrid,V
+Voltage Phase S,wtc_VoltPhS_mean,tblSCTurGrid,V
+Voltage Phase T,wtc_VoltPhT_mean,tblSCTurGrid,V
+Brake accumulator pressure,wtc_BrAccPrs_mean,tblSCTurPress,bar
+Brake oil pressure,wtc_BrakPres_mean,tblSCTurPress,bar
+Gear oil pressure,wtc_GearPres_mean,tblSCTurPress,bar
+Inverter coolant pressure,wtc_InvPress_mean,tblSCTurPress,bar
+Yaw brake hydraulic pressure,wtc_YawPress_mean,tblSCTurPress,bar
+Actual wind direction,wtc_ActualWindDirection_mean,tblSCTurbine,deg
+Wind speed from active wind sensor,wtc_AcWindSp_mean,tblSCTurbine,m/s
+Wind speed from primary wind sensor,wtc_PrWindSp_mean,tblSCTurbine,m/s
+Wind speed from secondary wind sensor,wtc_SeWindSp_mean,tblSCTurbine,m/s
+Generator RPM,wtc_GenRpm_mean,tblSCTurbine,rpm
+Main shaft RPM,wtc_MainSRpm_mean,tblSCTurbine,rpm
+Nacelle yaw angle relative to North,wtc_NacelPos_mean,tblSCTurbine,deg
+"Pitch angle, blade A",wtc_PitcPosA_mean,tblSCTurbine,deg
+"Pitch angle, blade B",wtc_PitcPosB_mean,tblSCTurbine,deg
+"Pitch angle, blade C",wtc_PitcPosC_mean,tblSCTurbine,deg
+Ambient temperature,wtc_AmbieTmp_mean,tblSCTurTemp,°C
+Generator winding temperature 1U1,wtc_Gen1U1Tm_mean,tblSCTurTemp,°C
+Generator winding temperature 1V1,wtc_Gen1V1Tm_mean,tblSCTurTemp,°C
+Generator winding temperature 1W1,wtc_Gen1W1Tm_mean,tblSCTurTemp,°C
+Generator winding temperature 2U1,wtc_Gen2U1Tm_mean,tblSCTurTemp,°C
+Generator winding temperature 2V1,wtc_Gen2V1Tm_mean,tblSCTurTemp,°C
+Generator winding temperature 2W1,wtc_Gen2W1Tm_mean,tblSCTurTemp,°C
+Generator NDE bearing temperature,wtc_GenBeGTm_mean,tblSCTurTemp,°C
+Generator DE bearing temperature,wtc_GenBeRTm_mean,tblSCTurTemp,°C
+Generator bearing inner ring temperature,wtc_GenBeITm_mean,tblSCTurTemp,°C
+Generator bearing outer ring temperature,wtc_GenBeOTm_mean,tblSCTurTemp,°C
+Generator cooling water temperature A,wtc_GenCoTmA_mean,tblSCTurTemp,°C
+Generator cooling water temperature B,wtc_GenCoTmB_mean,tblSCTurTemp,°C
+Gear oil temperature,wtc_GeOilTmp_mean,tblSCTurTemp,°C
+"Gearbox bearing temperature, HS generator side",wtc_HSGenTmp_mean,tblSCTurTemp,°C
+"Gearbox bearing temperature, HS rotor side",wtc_HSRotTmp_mean,tblSCTurTemp,°C
+"Gearbox bearing temperature, IMS generator side",wtc_IMSGenTm_mean,tblSCTurTemp,°C
+"Gearbox bearing temperature, IMS rotor side",wtc_IMSRotTm_mean,tblSCTurTemp,°C
+Hub temperature,wtc_HubTemp_mean,tblSCTurTemp,°C
+Pitch hydraulic oil temperature,wtc_HydOilTm_mean,tblSCTurTemp,°C
+Main bearing temperature,wtc_MainBTmp_mean,tblSCTurTemp,°C
+Nacelle temperature,wtc_NacelTmp_mean,tblSCTurTemp,°C
+"Transformer temperature, L1",wtc_TrafL1Tm_mean,tblSCTurTemp,°C
+"Transformer temperature, L2",wtc_TrafL2Tm_mean,tblSCTurTemp,°C
+"Transformer temperature, L3",wtc_TrafL3Tm_mean,tblSCTurTemp,°C
+Transformer oil temperature,wtc_TrafOilT_mean,tblSCTurTemp,°C
+Transformer room temperature,wtc_TraRoomT_mean,tblSCTurTemp,°C
+Time running in period,wtc_ScInOper_timeon,tblSCTurFlag,seconds
+Time ready to operate in period,wtc_ScReToOp_timeon,tblSCTurFlag,seconds
+Time turbine error active in period,wtc_ScTurSto_timeon,tblSCTurFlag,seconds

@@ -16,7 +16,7 @@ from pydantic import PrivateAttr
 
 import config
 from agents.llm_router import complete as bedrock_complete
-from data_sources.farms import FARMS, Farm
+from data_sources.farms import FARMS, Farm, loader_for
 
 INDEX_DIR = Path(__file__).resolve().parent.parent / "data" / "llamaindex" / "turbine_specs"
 MODEL_ID = "amazon.titan-embed-text-v2:0"
@@ -74,9 +74,7 @@ class BedrockTitanLlamaEmbedding(BaseEmbedding):
 
 
 def _turbine_spec_documents(farm: Farm) -> list[Document]:
-    from data_sources.greenbyte_scada import load_turbine_static
-
-    rows = load_turbine_static(farm.farm_id)
+    rows = loader_for(farm).load_turbine_static(farm.farm_id)
 
     docs = []
     for turbine_id, row in rows.iterrows():

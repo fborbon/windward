@@ -8,5 +8,6 @@ mlruns/
 .DS_Store
 data/kelmarsh/*.zip
 data/penmanshiel/*.zip
+data/hill_of_towie/*.zip
 data/rag_index/
 data/llamaindex/

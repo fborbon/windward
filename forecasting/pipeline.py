@@ -12,8 +12,7 @@ forecasting pipeline — swap in a real GB price feed (Elexon BMRS) if that beco
 import pandas as pd
 
 from data_sources.energy_price_client import synthetic_prices
-from data_sources.farms import Farm
-from data_sources.greenbyte_scada import load_farm_hourly_production
+from data_sources.farms import Farm, loader_for
 from data_sources.meteo_client import fetch_historical
 from forecasting.features import FEATURE_COLUMNS, TARGET_COLUMN
 
@@ -25,7 +24,7 @@ def build_training_frame(farm: Farm) -> pd.DataFrame:
             f"missing SCADA file(s) for {farm.farm_id}: {missing} — see README §4 Data Sources for the download command"
         )
 
-    production = load_farm_hourly_production(farm.scada_zips)  # hourly, indexed, output_mw
+    production = loader_for(farm).load_farm_hourly_production(farm.scada_zips)  # hourly, indexed, output_mw
 
     start = production.index.min().date().isoformat()
     end = production.index.max().date().isoformat()

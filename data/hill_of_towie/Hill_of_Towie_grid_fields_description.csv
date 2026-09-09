@@ -1,0 +1,13 @@
+Field Description,Manufacturer Name,Table,Unit
+Active Energy,ActiveEnergy,tblGridScientific,MWh
+Reactive Energy,ReActiveEnergy,tblGridScientific,MWh
+Active Power,ActivePowerMean,tblGridScientific,MW
+Reactive Power,ReActivePowerMean,tblGridScientific,MVar
+3-phase Mean Voltage,VoltageMean,tblGridScientific,kV
+3-phase Mean Current,CurrentMean,tblGridScientific,A
+Exported Active Power,ActivePowerExport,tblGrid,kWh
+Imported Active Power,ActivePowerImport,tblGrid,kWh
+Exported Reactive Power,ReActivePowerExport,tblGrid,kVarh
+Imported Reactive Power,ReActivePowerImport,tblGrid,kVarh
+Frequency,Frequency,tblGrid,Hz
+Power Factor (cos phi),PowerFactor,tblGrid,

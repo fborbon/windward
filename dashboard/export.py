@@ -9,8 +9,7 @@ from mlflow.tracking import MlflowClient
 
 import config
 from agents.graph import build_graph, run as run_graph
-from data_sources.farms import FARMS
-from data_sources.greenbyte_scada import load_status_events
+from data_sources.farms import FARMS, loader_for
 from forecasting.train import model_name
 from storage.dynamo_session_store import save_session
 
@@ -45,7 +44,7 @@ def _farm_payload(farm_id: str, result: dict) -> dict:
     anomalies = result["anomalies"]
     anomalies_out = [{k: (None if pd.isna(v) else v) for k, v in a.items()} for a in anomalies]
 
-    events = load_status_events(farm.scada_zips)
+    events = loader_for(farm).load_status_events(farm.scada_zips)
     interventions = events[events["status"].isin(["Stop", "Warning"])].groupby("turbine_id").size()
     maintenance_out = [{"turbine_id": t, "interventions": int(n)} for t, n in interventions.items()]
 

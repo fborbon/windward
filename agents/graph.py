@@ -19,8 +19,7 @@ from langgraph.graph import END, StateGraph
 
 from agents.llm_router import complete
 from analysis.efficiency import actual_vs_predicted, binned_power_curve, turbine_efficiency_summary
-from data_sources.farms import FARMS
-from data_sources.greenbyte_scada import load_turbine_hourly_series
+from data_sources.farms import FARMS, loader_for
 from forecasting.features import FEATURE_COLUMNS, TARGET_COLUMN
 from forecasting.pipeline import build_training_frame
 from forecasting.registry import load_latest_model
@@ -45,7 +44,7 @@ def ingest_node(state: WindwardState) -> dict:
     farm = FARMS[state["farm_id"]]
     return {
         "feature_frame": build_training_frame(farm),
-        "turbine_hourly": load_turbine_hourly_series(farm.scada_zips),
+        "turbine_hourly": loader_for(farm).load_turbine_hourly_series(farm.scada_zips),
     }
 
 

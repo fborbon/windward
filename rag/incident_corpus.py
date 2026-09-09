@@ -5,8 +5,7 @@ structured event records vs. prose reference — to exercise realistic retrieval
 """
 from langchain_core.documents import Document
 
-from data_sources.farms import Farm
-from data_sources.greenbyte_scada import load_status_events
+from data_sources.farms import Farm, loader_for
 
 MIN_DURATION_HOURS = 1.0
 MAX_EVENTS = 60  # keep the embedding call count small — longest-duration events are the ones worth retrieving
@@ -21,7 +20,7 @@ def _duration_hours(duration: str) -> float:
 
 
 def _event_documents(farm: Farm) -> list[Document]:
-    events = load_status_events(farm.scada_zips)
+    events = loader_for(farm).load_status_events(farm.scada_zips)
     events["duration_hours"] = events["duration"].apply(_duration_hours)
     significant = events[
         (events["status"].isin(["Stop", "Warning"])) & (events["duration_hours"] >= MIN_DURATION_HOURS)
@@ -39,10 +38,9 @@ def _event_documents(farm: Farm) -> list[Document]:
 
 
 def _reference_documents(farm: Farm) -> list[Document]:
-    turbine_model = "Senvion MM92" if farm.rotor_diameter_m == 92.0 else "Senvion MM82"
     specs = Document(
         page_content=(
-            f"{farm.name} turbine reference. {len(farm.turbine_ids)}x {turbine_model}, rated "
+            f"{farm.name} turbine reference. {len(farm.turbine_ids)}x {farm.manufacturer_model}, rated "
             f"{farm.rated_power_kw / 1000:.2f} MW each, rotor diameter {farm.rotor_diameter_m} m. "
             "Typical cut-in wind speed ~3 m/s, rated wind speed ~12-13 m/s, cut-out ~25 m/s. "
             "Power curve shape follows the standard cubic ramp between cut-in and rated speed "
