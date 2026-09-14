@@ -169,25 +169,10 @@ def ask(farm_id: str, request: AskRequest):
     if not request.question.strip() or len(request.question) > 500:
         raise HTTPException(400, "question must be 1-500 characters")
 
-    from agents.llm_router import complete
+    from agents.qa_agent import answer_question
 
-    a = _run_analysis(farm_id)
-    farm = FARMS[farm_id]
-    context = f"""You are the Windward analysis agent for {farm.name}. Answer the visitor's question using ONLY
-the data below — this is the same real SCADA-derived analysis shown on the dashboard, not general knowledge.
-Keep the answer under 120 words, plain English, technical but non-specialist.
-
-Comparison (actual vs model-predicted production): {a['comparison_summary']}
-Per-turbine efficiency (capacity factor, peak Cp vs Betz limit {a['efficiency_summary'][0]['betz_limit']:.3f}):
-{a['efficiency_summary']}
-Anomalies detected: {a['anomalies']}
-Existing recommendation: {a['recommendation']}
-Blade inspection (vision-LLM pass): {a['inspection_results']}
-
-Visitor question: {request.question.strip()}"""
-
-    response = complete([{"role": "user", "content": context}])
-    return {"answer": response.choices[0].message.content}
+    analysis = _run_analysis(farm_id)
+    return answer_question(farm_id, request.question.strip(), analysis)
 
 
 # Mounted last: exact-path routes above always win; everything else (including "/") falls

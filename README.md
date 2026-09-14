@@ -2,11 +2,11 @@
 
 > **Live:** [windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/) — a real, persistently-running FastAPI service on AWS. A multi-agent AI system for wind farm production forecasting and operations support: classic ML forecasting tracked with self-hosted **MLflow**, a **LangGraph** agent workflow for diagnosis and recommendations, **two independent RAG stacks** (LangChain/FAISS + LlamaIndex) over real turbine data, a **multimodal** vision-LLM blade-inspection pass, and real **DynamoDB** session persistence — exposed via a **FastAPI** service and an **MCP server** so the agent's tools are callable from Claude or any MCP client.
 
-**Status:** end-to-end on **real data**, three farms, running as a real AWS service — real historical weather (Open-Meteo) joined with real turbine production (Kelmarsh + Penmanshiel + Hill of Towie open SCADA datasets, two different export formats), per-farm models trained and registered in a self-hosted MLflow registry (S3-backed). The full LangGraph agent runs for any farm: ingest → forecast → diagnose (physics-based efficiency + anomaly detection) → RAG (real fault-event corpus, Bedrock Titan embeddings, FAISS) → multimodal (real vision-LLM blade check) → recommend → explain (Amazon Nova Lite), every run persisted to DynamoDB. Dashboard: **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)** (one tab per farm, real charts, and a live "ask the agent" box backed by Bedrock — no viewer-billed sandbox capability involved). Write-up: **[Teaching an Agent to Read Wind Farms](https://education.forwardforecasting.eu/windward-agent/)**.
+**Status:** end-to-end on **real data**, three farms, running as a real AWS service — real historical weather (Open-Meteo) joined with real turbine production (Kelmarsh + Penmanshiel + Hill of Towie open SCADA datasets, two different export formats), per-farm models trained and registered in a self-hosted MLflow registry (S3-backed). The full LangGraph agent runs for any farm: ingest → forecast → diagnose (physics-based efficiency + anomaly detection) → RAG (real fault-event corpus, Bedrock Titan embeddings, FAISS) → multimodal (real vision-LLM blade check) → investigate (real forecast-error-trend + model-age check, conditionally routing to a retrain recommendation) → recommend/recommend_retrain → explain (Amazon Nova Lite), every run persisted to DynamoDB. Dashboard: **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)** (one tab per farm, real charts, and a live "ask the agent" box — a real tool-calling agent (`agents/qa_agent.py`) that decides per question whether it needs the RAG-grounded maintenance corpus, the farm's current analysis, both, or neither, instead of one stuffed prompt). Write-up: **[Teaching an Agent to Read Wind Farms](https://education.forwardforecasting.eu/windward-agent/)**.
 
 **Started as a deliberate skill demonstration** (Azure MLflow, RAG, agentic workflows, MLOps — see §2), then pivoted toward becoming an actual product: migrated off Azure onto AWS (see §12), now deployed as a persistent service, with plans to combine it with an energy-price-prediction model and commercialize both. A separate, simpler project will pick up the Azure MLflow demonstration going forward.
 
-**Exercises:** LangChain · LangGraph · RAG · LlamaIndex · Semantic Search · MCP servers · REST APIs (FastAPI) · Pydantic · LiteLLM · Langfuse/LangSmith · Multimodal LLMs · DynamoDB · MLflow · generative AI workflow architecture.
+**Exercises:** LangChain · LangGraph (including conditional routing) · RAG · LlamaIndex · Semantic Search · MCP servers · REST APIs (FastAPI) · Pydantic · LiteLLM · Langfuse · Multimodal LLMs · DynamoDB · MLflow · generative AI workflow architecture. (Not LangSmith — Langfuse already covers the observability role; adding a second tracing stack would be a second external account for no functional gain.)
 
 ---
 
@@ -44,8 +44,8 @@ The split is deliberate: forecasting is a numerical ML problem (best solved with
 | Build REST APIs | `api/` — FastAPI service |
 | DynamoDB | `storage/dynamo_session_store.py` — every agent run persisted as a real session record |
 | LangChain | `rag/langchain_retriever.py`, `rag/embeddings.py` — retriever + custom embeddings wrapper |
-| LangGraph | `agents/graph.py` — ingest → forecast → diagnose → rag/multimodal → recommend → explain |
-| Langfuse / LangSmith | `observability/tracing.py`, wired into every graph run via `agents.graph.run()` — no-ops until `LANGFUSE_*` keys are set (blocked on the user's own free signup, see §12) |
+| LangGraph | `agents/graph.py` — ingest → forecast → diagnose → rag/multimodal → investigate → (conditional) recommend / recommend_retrain → explain |
+| Langfuse | `observability/tracing.py`, wired into every graph run via `agents.graph.run()` and into the `/ask` tool-calling agent — no-ops until `LANGFUSE_*` keys are set (blocked on the user's own free signup, see §12) |
 | LiteLLM | `agents/llm_router.py` — provider-agnostic model calls |
 | Pydantic | `schemas/models.py` — every tool/agent I/O contract |
 | LlamaIndex | `rag/llamaindex_index.py` — second, independent RAG stack over turbine spec metadata |
@@ -76,7 +76,9 @@ flowchart TD
         A3[diagnose]
         A4[rag]
         A5[multimodal]
+        A6i[investigate]
         A6[recommend]
+        A6r[recommend_retrain]
         A7[explain]
     end
 
@@ -102,8 +104,12 @@ flowchart TD
     C --> A1
     C --> R1 --> R2 --> R3
     R3 --> A4
-    A1 --> A2 --> A3 --> A4 --> A6
-    A3 --> A5 --> A6 --> A7
+    A1 --> A2 --> A3 --> A4 --> A6i
+    A3 --> A5 --> A6i
+    A6i -.->|"error trend + stale model"| A6r
+    A6i -.->|"otherwise"| A6
+    A6 --> A7
+    A6r --> A7
     A7 --> MCP
     A7 --> DASH
     API --> SESS
@@ -112,17 +118,20 @@ flowchart TD
 
 ## 4. Agent Workflow
 
-The LangGraph agent (`agents/graph.py`) runs once per farm, in analysis mode over that farm's real SCADA period — this is the only period with real production data to diagnose against. Each node returns only the state keys it changes (a LangGraph fan-out/fan-in requirement, since `rag` and `multimodal` run as parallel branches before `recommend`):
+The LangGraph agent (`agents/graph.py`) runs once per farm, in analysis mode over that farm's real SCADA period — this is the only period with real production data to diagnose against. Each node returns only the state keys it changes. `rag` and `multimodal` run as parallel branches after `diagnose`; `investigate` is their fan-in point (it needs both already in state, the same guarantee `recommend` used to rely on directly) and is the only node with conditional outgoing routing — a real `add_conditional_edges` call, not a fixed linear/parallel run every time. Mixing static predecessor edges into a conditional-routing *target* makes both branches fire regardless of the condition (verified empirically while building this), so `recommend`/`recommend_retrain` deliberately have no incoming edges except the conditional one from `investigate`:
 
 ```mermaid
 flowchart LR
     ingest["ingest\n(real weather + production)"] --> forecast["forecast\n(registered model)"]
     forecast --> diagnose["diagnose\n(power curves, Cp, anomalies)"]
     diagnose --> rag["rag\n(FAISS retrieval)"]
-    diagnose --> multimodal["multimodal\n(pass-through — no photos yet)"]
-    rag --> recommend["recommend\n(worst-turbine rule)"]
-    multimodal --> recommend
+    diagnose --> multimodal["multimodal\n(vision-LLM blade check)"]
+    rag --> investigate["investigate\n(error trend + model age)"]
+    multimodal --> investigate
+    investigate -.->|error trend + stale model| recommend_retrain["recommend_retrain"]
+    investigate -.->|otherwise| recommend["recommend\n(worst-turbine rule)"]
     recommend --> explain["explain\n(Amazon Nova Lite)"]
+    recommend_retrain --> explain
 ```
 
 | Node | What it does |
@@ -131,9 +140,11 @@ flowchart LR
 | `forecast` | Loads the farm's registered MLflow model, predicts across the whole period, builds an actual-vs-predicted comparison |
 | `diagnose` | Computes per-turbine power curves + efficiency (Cp vs the Betz limit, `analysis/efficiency.py`), flags farm-level forecast deviation and physically-implausible Cp readings |
 | `rag` | Retrieves the most relevant real fault events + reference notes for this farm from its FAISS index |
-| `multimodal` | Pass-through today — no inspection photos sourced yet (roadmap) |
+| `multimodal` | Real vision-LLM inspection pass (Amazon Nova Lite, Bedrock Converse API) on the worst-performing turbine's sample photo |
+| `investigate` | Computes the real recent-vs-overall forecast error trend and the registered model's real age (`forecasting.registry.latest_model_info`); decides whether to route to `recommend_retrain` or `recommend` |
 | `recommend` | Rule-based: flags the lowest-capacity-factor turbine, cites the RAG sources used |
-| `explain` | Calls Amazon Nova Lite with the diagnosis + recommendation + retrieved context, returns a grounded natural-language field report |
+| `recommend_retrain` | Taken when the last week's forecast error has run meaningfully hotter than the full period's average *and* the registered model is older than a demo-scale staleness threshold — recommends retraining instead, citing the real numbers |
+| `explain` | Calls Amazon Nova Lite with the diagnosis + recommendation + investigation + retrieved context, returns a grounded natural-language field report |
 
 ## 5. Data Sources
 
@@ -294,14 +305,16 @@ Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `ht
 - [x] Real production data — Kelmarsh + Penmanshiel + Hill of Towie open SCADA datasets
 - [x] Baseline forecasting model, MLflow experiment tracking, per-farm registered models (§8)
 - [x] Batch inference + FastAPI `/forecast` endpoint
-- [x] LangGraph agent, all 7 nodes real (§4)
+- [x] LangGraph agent, all 9 nodes real (§4), including a real conditional-routing node (`investigate` → `recommend` or `recommend_retrain`)
 - [x] Multi-farm support — farm registry + per-farm loader dispatch (`data_sources.farms.loader_for`), now spanning two different SCADA export formats (Greenbyte, RES historian); three farms live (Kelmarsh, Penmanshiel, Hill of Towie), each trained, registered, and served through the full agent
 - [x] RAG corpus — real turbine fault/status events + reference notes, Bedrock Titan embeddings, FAISS per farm
 - [x] Semantic search — same FAISS index, direct similarity search
 - [x] MCP server — `get_forecast`, `get_recommendation`, `query_maintenance_docs` all implemented
-- [x] Dashboard — **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)**, served directly by the FastAPI app (`web/`): per-farm tabs, real charts, Betz-limit efficiency table, vision-LLM blade inspection, and a live "ask the agent" box hitting Bedrock directly. Started as a Claude Artifact (the only way to get an interactive AI feature inside a sandboxed page that can't call external APIs), moved to a real self-hosted frontend once the project stopped being a portfolio piece and started being a service
+- [x] Dashboard — **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)**, served directly by the FastAPI app (`web/`): per-farm tabs, real charts, Betz-limit efficiency table, vision-LLM blade inspection, and a live "ask the agent" box backed by a real tool-calling agent. Started as a Claude Artifact (the only way to get an interactive AI feature inside a sandboxed page that can't call external APIs), moved to a real self-hosted frontend once the project stopped being a portfolio piece and started being a service
+- [x] `/ask` wired to a real tool-calling agent (`agents/qa_agent.py`) instead of one stuffed prompt — the LLM decides per question whether it needs `search_maintenance_docs` (the same LangChain/FAISS RAG retriever the MCP server already used, now also reachable from the public dashboard), `get_current_analysis` (the farm's precomputed numeric analysis), both, or neither; falls back to the old stuffed-prompt behavior if tool-calling ever errors. The dashboard shows which source(s) grounded each answer. Traced to Langfuse via litellm's native callback (`observability.tracing.enable_litellm_tracing`) once keys are set, same no-op-until-configured pattern as the graph's own tracing
+- [x] `investigate` node + conditional retrain routing — real recent-vs-overall forecast-error trend (from the same `comparison` DataFrame `diagnose` already produces) and the registered model's real age (`forecasting.registry.latest_model_info`, via `MlflowClient.search_model_versions`) decide whether the graph routes to `recommend_retrain` (cites the real MAPE numbers and model age) or the existing `recommend`. Verified against the real compiled graph with both a fresh-model and a stale-model+degraded-error case
 - [x] LlamaIndex — second, independent RAG stack (`rag/llamaindex_index.py`) over real turbine spec metadata (manufacturer, hub height, exact coordinates), a different framework and a different corpus shape from the LangChain/FAISS incident-log stack. Verified: correctly answers "what is the hub height of Kelmarsh 3?" (68.5m, matches the source CSV) and cross-farm elevation comparisons
-- [x] Langfuse tracing — `observability/tracing.py` (updated for the current Langfuse v4 API — `langfuse.langchain.CallbackHandler`, not the old `langfuse.callback` path) wired into every graph run via `agents.graph.run()`. Auto-activates when `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` are set; currently a no-op since that needs the user's own free Langfuse signup (same category of blocker as Power BI)
+- [x] Langfuse tracing — `observability/tracing.py` (updated for the current Langfuse v4 API — `langfuse.langchain.CallbackHandler`, not the old `langfuse.callback` path) wired into every graph run via `agents.graph.run()`, plus `enable_litellm_tracing()` for the `/ask` tool-calling agent's raw `litellm.completion()` calls, which don't go through a LangChain Runnable so the callback-handler approach doesn't reach them. Both auto-activate when `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` are set; currently a no-op since that needs the user's own free Langfuse signup (same category of blocker as Power BI)
 - [x] Multimodal blade-inspection node — real vision-LLM call (Amazon Nova Lite via the Bedrock Converse API) against a real, openly-licensed inspection photo ([Wikimedia Commons, CC BY-SA 3.0](https://commons.wikimedia.org/wiki/File:Begutachtung_eines_Rotorblattes.JPG)), wired into `multimodal_node` and folded into the field-report narrative
 - [x] DynamoDB session store — every dashboard export run now writes a real session record (farm, timestamp, mean capacity factor, recommendation, model metrics) via `storage/dynamo_session_store.py`; verified with a live `aws dynamodb scan`
 - [x] Explanatory write-up — **[Teaching an Agent to Read Wind Farms](https://education.forwardforecasting.eu/windward-agent/)**, self-hosted (not just a Claude Artifact), listed on the **[Field Notes](https://education.forwardforecasting.eu/)** blog index
@@ -309,7 +322,6 @@ Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `ht
 - [x] Azure account cleanup — `rg-windward` (the Azure ML workspace and everything it backed) deleted once the AWS replacement was verified working.
 - [x] ~~Spain day-ahead price forecasting (`spain_price/`)~~ — added, then removed 2026-09-09: national day-ahead price prediction doesn't belong bundled into a wind-farm-production project whose farms are all in the UK, and it's now its own project, `energy-trader` (real OMIE ingestion, forecasting, backtesting) — see that repo instead.
 - [ ] Power BI version of the dashboard — moot now the project isn't Azure-hosted; not pursuing further
-- [ ] Wire FastAPI to the LangGraph agent's recommend/explain output, not just the raw forecast
 - [ ] A separate, simpler project to pick up the Azure MLflow skill demonstration
 
 ## 12. Cost & Resource Consumption

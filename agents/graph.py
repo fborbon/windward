@@ -1,14 +1,17 @@
-"""LangGraph workflow: ingest -> forecast -> diagnose -> rag -> multimodal -> recommend -> explain.
+"""LangGraph workflow: ingest -> forecast -> diagnose -> {rag, multimodal} -> investigate
+-> (conditional) recommend | recommend_retrain -> explain.
 
 This is the "architect generative AI workflows" piece — a declarative, checkpointable state
 machine rather than hand-rolled orchestration (contrast with global-news-agent's custom
-orchestrator).
+orchestrator). `investigate` is a real LangGraph conditional-routing node: it decides, from
+the farm's actual recent-vs-overall forecast error trend and the registered model's real age
+(forecasting.registry.latest_model_info), whether to recommend retraining or fall through to
+the normal worst-turbine recommendation — not a fixed linear/parallel run every time.
 
 Runs in analysis/backtest mode over each farm's real SCADA period (the only period we have
 real production data for): ingest real weather+production, forecast with the farm's
 registered model, diagnose actual-vs-predicted + per-turbine wind-extraction efficiency,
-then have the LLM narrate it. rag/multimodal are wired as pass-throughs until a document
-corpus / inspection photos exist (see roadmap) — the graph still runs end-to-end today.
+then have the LLM narrate it.
 
 Invoke with an initial state containing farm_id, e.g. graph.invoke({"farm_id": "kelmarsh"}).
 """
@@ -25,6 +28,13 @@ from forecasting.pipeline import build_training_frame
 from forecasting.registry import load_latest_model
 from forecasting.train import model_name
 
+# Demo-scale thresholds for the retrain decision: the last week's mean absolute pct error
+# would need to run at least 25% hotter than the full analysis period's average, AND the
+# registered model would need to be older than this, before investigate_node recommends
+# retraining rather than the normal worst-turbine action.
+RECENT_ERROR_INCREASE_RATIO = 1.25
+RETRAIN_AGE_DAYS_THRESHOLD = 90
+
 
 class WindwardState(TypedDict, total=False):
     farm_id: str
@@ -36,6 +46,7 @@ class WindwardState(TypedDict, total=False):
     anomalies: list
     rag_context: list
     inspection_results: list
+    investigation: dict
     recommendation: dict
     explanation: str
 
@@ -101,6 +112,38 @@ def multimodal_node(state: WindwardState) -> dict:
     return {"inspection_results": [result.model_dump()]}
 
 
+def investigate_node(state: WindwardState) -> dict:
+    """Runs after rag+multimodal (both already in state by the time this fires — same
+    fan-in guarantee the old rag/multimodal -> recommend edges gave recommend_node). Computes
+    whether the forecast has gotten measurably worse recently and whether the registered model
+    is old enough that retraining is worth flagging — real signals, not a fixed check."""
+    from forecasting.registry import latest_model_info
+
+    comparison = state["comparison"]
+    abs_pct_err = (comparison["actual_mw"] - comparison["predicted_mw"]).abs() / comparison["predicted_mw"].replace(0, float("nan"))
+    overall_mape = float(abs_pct_err.mean())
+    recent_mape = float(abs_pct_err.tail(24 * 7).mean())  # last week of the SCADA period
+    error_increased = recent_mape > overall_mape * RECENT_ERROR_INCREASE_RATIO
+
+    model_info = latest_model_info(model_name(state["farm_id"]))
+    stale = (model_info["age_days"] or 0) > RETRAIN_AGE_DAYS_THRESHOLD
+
+    return {
+        "investigation": {
+            "overall_mape": overall_mape,
+            "recent_mape": recent_mape,
+            "error_increased": error_increased,
+            "model_version": model_info["version"],
+            "model_age_days": model_info["age_days"],
+            "recommend_retrain": bool(error_increased and stale),
+        }
+    }
+
+
+def _route_after_investigation(state: WindwardState) -> str:
+    return "recommend_retrain" if state["investigation"]["recommend_retrain"] else "recommend"
+
+
 def recommend_node(state: WindwardState) -> dict:
     eff = state["efficiency_summary"]
     worst = eff["capacity_factor"].idxmin()
@@ -117,11 +160,36 @@ def recommend_node(state: WindwardState) -> dict:
     }
 
 
+def recommend_retrain_node(state: WindwardState) -> dict:
+    inv = state["investigation"]
+    return {
+        "recommendation": {
+            "farm_id": state["farm_id"],
+            "action": f"Retrain the {state['farm_id']} forecasting model",
+            "rationale": (
+                f"Forecast error over the last 7 days (MAPE {inv['recent_mape']:.1%}) is running "
+                f"more than {int((RECENT_ERROR_INCREASE_RATIO - 1) * 100)}% above the full analysis "
+                f"period's average ({inv['overall_mape']:.1%}), and the currently registered model "
+                f"(v{inv['model_version']}) is {inv['model_age_days']} days old — past the "
+                f"{RETRAIN_AGE_DAYS_THRESHOLD}-day point where retraining on more recent data is worth checking."
+            ),
+            "supporting_sources": [c["source"] for c in state.get("rag_context", [])],
+        }
+    }
+
+
 def explain_node(state: WindwardState) -> dict:
     farm = FARMS[state["farm_id"]]
     eff = state["efficiency_summary"]
     comparison = state["comparison"]
     rag_block = "\n".join(f"- ({c['source']}) {c['text'][:300]}" for c in state.get("rag_context", [])) or "(none retrieved)"
+    inv = state.get("investigation") or {}
+    investigation_block = (
+        f"recent-week MAPE {inv['recent_mape']:.1%} vs full-period MAPE {inv['overall_mape']:.1%} "
+        f"(error {'has' if inv['error_increased'] else 'has not'} increased meaningfully); "
+        f"registered model v{inv['model_version']}, {inv['model_age_days']} days old"
+        if inv else "(not computed)"
+    )
     prompt = f"""You are a wind farm performance analyst. Write a concise (under 170 words) plain-English
 summary of this farm's performance for a technical but non-specialist stakeholder.
 
@@ -131,12 +199,13 @@ Farm-level actual vs model-predicted production, over {len(comparison)} hours:
 Per-turbine capacity factor and peak power coefficient (Cp, Betz limit {eff['betz_limit'].iloc[0]:.3f}):
 {eff[['capacity_factor', 'peak_cp']].round(3).to_string()}
 Anomalies detected: {state['anomalies']}
+Model-health investigation: {investigation_block}
 Blade inspection (vision-LLM pass on the worst-performing turbine's most recent available photo): {state.get('inspection_results')}
 Recommendation already decided: {state['recommendation']['action']} — {state['recommendation']['rationale']}
 Retrieved reference context (cite it by name if you use it, otherwise ignore):
 {rag_block}
 
-Explain what these numbers mean for wind-resource-extraction efficiency, and back the recommendation with the data."""
+Explain what these numbers mean for wind-resource-extraction efficiency, and back the recommendation with the data. If the recommendation is about retraining, say so plainly; otherwise briefly note that the model-health check came back clean."""
 
     response = complete([{"role": "user", "content": prompt}])
     return {"explanation": response.choices[0].message.content}
@@ -149,7 +218,9 @@ def build_graph():
     graph.add_node("diagnose", diagnose_node)
     graph.add_node("rag", rag_node)
     graph.add_node("multimodal", multimodal_node)
+    graph.add_node("investigate", investigate_node)
     graph.add_node("recommend", recommend_node)
+    graph.add_node("recommend_retrain", recommend_retrain_node)
     graph.add_node("explain", explain_node)
 
     graph.set_entry_point("ingest")
@@ -157,9 +228,20 @@ def build_graph():
     graph.add_edge("forecast", "diagnose")
     graph.add_edge("diagnose", "rag")
     graph.add_edge("diagnose", "multimodal")
-    graph.add_edge("rag", "recommend")
-    graph.add_edge("multimodal", "recommend")
+    # investigate is the fan-in point (needs rag_context + inspection_results already in
+    # state, same guarantee recommend used to get directly) and its only outgoing routing
+    # is conditional — mixing static predecessor edges into a conditional-routing target
+    # makes both branches fire regardless of the condition, so recommend/recommend_retrain
+    # must not also receive static edges from rag/multimodal.
+    graph.add_edge("rag", "investigate")
+    graph.add_edge("multimodal", "investigate")
+    graph.add_conditional_edges(
+        "investigate",
+        _route_after_investigation,
+        {"recommend": "recommend", "recommend_retrain": "recommend_retrain"},
+    )
     graph.add_edge("recommend", "explain")
+    graph.add_edge("recommend_retrain", "explain")
     graph.add_edge("explain", END)
 
     return graph.compile()
