@@ -175,6 +175,84 @@ def ask(farm_id: str, request: AskRequest):
     return answer_question(farm_id, request.question.strip(), analysis)
 
 
+# --- EDP Wind Farm A: real labeled fault case studies, diagnosis/RAG only, no forecasting ---
+# (no disclosed coordinates or rated power to forecast against — see data_sources/edp_scada.py).
+# Deliberately not part of data_sources.farms.FARMS or the /farms, /forecast, /analysis routes
+# above, which all assume a Farm with real lat/lon/rated_power.
+
+
+@app.get("/edp/events")
+def edp_events():
+    from data_sources.edp_scada import load_events
+
+    events = load_events()
+    return [
+        {
+            "event_id": int(event_id),
+            "turbine_id": str(row["asset"]),
+            "label": row["event_label"],
+            "description": row["event_description"] if pd.notna(row["event_description"]) else None,
+            "duration_hours": round(row["duration_hours"], 1),
+        }
+        for event_id, row in events.iterrows()
+    ]
+
+
+@app.get("/edp/events/{event_id}")
+def edp_event_detail(event_id: int):
+    from analysis.efficiency import binned_power_curve
+    from data_sources.edp_scada import STATUS_LABELS, load_event_series, load_events
+
+    events = load_events()
+    if event_id not in events.index:
+        raise HTTPException(404, f"unknown event_id {event_id}")
+    event = events.loc[event_id]
+    series = load_event_series(event_id)
+    curve = binned_power_curve(series, power_col="power_frac")
+    status_counts = series["status_type_id"].value_counts().sort_index()
+
+    return {
+        "event_id": event_id,
+        "turbine_id": str(event["asset"]),
+        "label": event["event_label"],
+        "description": event["event_description"] if pd.notna(event["event_description"]) else None,
+        "duration_hours": round(event["duration_hours"], 1),
+        "rows_observed": len(series),
+        "power_curve": [
+            {"wind_speed_bin": _clean(idx), "mean_power_frac": _clean(row["mean_power_kw"]), "sample_count": int(row["sample_count"])}
+            for idx, row in curve.iterrows()
+            if not pd.isna(row["mean_power_kw"])
+        ],
+        "status_breakdown": {STATUS_LABELS.get(int(sid), str(sid)): int(count) for sid, count in status_counts.items()},
+    }
+
+
+class EdpAskRequest(BaseModel):
+    question: str
+
+
+@app.post("/edp/ask")
+def edp_ask(request: EdpAskRequest):
+    if not request.question.strip() or len(request.question) > 500:
+        raise HTTPException(400, "question must be 1-500 characters")
+
+    from agents.llm_router import complete
+    from rag.edp_retriever import get_retriever
+
+    docs = get_retriever().invoke(request.question.strip())
+    context = "\n".join(f"- {d.page_content}" for d in docs) or "(no matching case studies found)"
+    prompt = (
+        "You are the Windward analysis agent for EDP Wind Farm A, a real, anonymized wind "
+        "turbine fault-detection benchmark (22 labeled real case studies, diagnosis/RAG only — "
+        "no forecasting, since the source farm's location and rated power are undisclosed). "
+        "Answer the visitor's question using ONLY the case studies below; if none are relevant, "
+        "say so plainly rather than guessing. Keep the answer under 120 words, plain English.\n\n"
+        f"Case studies:\n{context}\n\nQuestion: {request.question.strip()}"
+    )
+    response = complete([{"role": "user", "content": prompt}])
+    return {"answer": response.choices[0].message.content, "sources": [d.metadata.get("source", "?") for d in docs]}
+
+
 # Mounted last: exact-path routes above always win; everything else (including "/") falls
 # through to the dashboard's static files.
 app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="dashboard")

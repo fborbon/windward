@@ -43,3 +43,19 @@ def query_maintenance_docs(farm_id: str, question: str) -> str:
     )
     response = complete([{"role": "user", "content": prompt}])
     return response.choices[0].message.content
+
+
+def query_edp_incidents(question: str) -> str:
+    """RAG over EDP Wind Farm A's real labeled fault case studies (22 anonymized turbine
+    windows, 11 with a real root-cause description) — see rag/edp_incident_corpus.py. Separate
+    from query_maintenance_docs because this corpus isn't keyed to a Farm dataclass entry."""
+    from rag.edp_retriever import get_retriever as get_edp_retriever
+
+    docs = get_edp_retriever().invoke(question)
+    context = "\n".join(f"- ({d.metadata.get('source', '?')}) {d.page_content}" for d in docs)
+    prompt = (
+        f"Answer the question using only the context below, citing sources by name. "
+        f"If the context doesn't cover it, say so.\n\nContext:\n{context}\n\nQuestion: {question}"
+    )
+    response = complete([{"role": "user", "content": prompt}])
+    return response.choices[0].message.content

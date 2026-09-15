@@ -9,5 +9,6 @@ mlruns/
 data/kelmarsh/*.zip
 data/penmanshiel/*.zip
 data/hill_of_towie/*.zip
+data/edp_wind_farm_a/datasets/
 data/rag_index/
 data/llamaindex/

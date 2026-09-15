@@ -30,6 +30,12 @@ Session/conversation state for the agent is kept in DynamoDB — a natural fit n
 
 `multimodal/blade_inspection.py` takes turbine blade inspection photos and runs a vision-capable LLM pass (Amazon Nova, Bedrock Converse API) to flag visible damage as a structured (Pydantic) result, which feeds into the diagnosis node alongside the numerical anomaly signal.
 
+## Why EDP Wind Farm A isn't in `data_sources.farms.FARMS`
+
+`Farm` (see `data_sources/farms.py`) requires real coordinates (for the Open-Meteo weather join `forecasting/pipeline.py` needs) and real rated power/rotor diameter (for the Cp/Betz-limit and capacity-factor math in `analysis/efficiency.py`). EDP Wind Farm A — real turbine SCADA from the CARE-to-Compare benchmark — discloses none of those; it's anonymized (no coordinates, no rated power, no real calendar timestamps, power channels rescaled to a fraction rather than kW) specifically to protect the source farm's identity. Forcing it into `FARMS` would mean either fabricating a location/capacity (which the whole "real data, no invented numbers" premise of this project rules out) or silently breaking `agents/graph.py`'s forecast-coupled nodes for it.
+
+Instead it's a parallel, standalone feature — `data_sources/edp_scada.py`, `rag/edp_incident_corpus.py` + `rag/edp_retriever.py`, and `/edp/*` API routes — that plays to what the dataset actually has: 22 real, independently labeled fault/normal case studies, genuinely better ground-truth anomaly labels than the other three farms carry. It reuses `analysis.efficiency.binned_power_curve` (which only needs wind speed + power columns, no farm metadata) and the same LangChain/FAISS/Bedrock-Titan RAG pipeline shape as the other farms' corpus, just with its own corpus builder and its own FAISS index, decoupled from `FARMS` and `agents/graph.py` entirely.
+
 ## Open questions / decisions deferred
 
 - Real drone/inspection photo feed — currently one real, openly-licensed sample photo, not a live feed.

@@ -27,5 +27,12 @@ def query_maintenance_docs(farm_id: str, question: str) -> str:
     return tools.query_maintenance_docs(farm_id, question)
 
 
+@mcp.tool()
+def query_edp_incidents(question: str) -> str:
+    """Ask a question against EDP Wind Farm A's real labeled fault case studies (22
+    anonymized turbine windows, diagnosis/RAG only, no forecasting for this farm)."""
+    return tools.query_edp_incidents(question)
+
+
 if __name__ == "__main__":
     mcp.run()

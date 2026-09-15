@@ -159,7 +159,7 @@
 </main>
 
 <footer>
-  <span>Data: Kelmarsh, Penmanshiel &amp; Hill of Towie wind farm SCADA, CC BY 4.0.</span>
+  <span>Data: Kelmarsh, Penmanshiel &amp; Hill of Towie wind farm SCADA, CC BY 4.0. EDP Wind Farm A via CARE-to-Compare, CC BY-SA 4.0.</span>
   <span><a href="https://forwardforecasting.eu" target="_blank" rel="noopener">Forward Forecasting</a></span>
 </footer>
 
@@ -254,6 +254,8 @@ function drawBarChart(canvas, points, {height=200, color=GOLD, xFmt=(v)=>v, yFmt
 }
 
 // ---------- farm tabs + analysis ----------
+const EDP_FARM_ID = "edp_wind_farm_a";
+
 async function loadFarms(){
   const res = await fetch(`${API}/farms`);
   FARMS = await res.json();
@@ -262,7 +264,11 @@ async function loadFarms(){
     <div class="tab" data-farm="${f.farm_id}">
       <span class="name">${f.name}</span>
       <span class="meta">${f.turbine_count} turbines · ${f.total_capacity_mw} MW</span>
-    </div>`).join("");
+    </div>`).join("") + `
+    <div class="tab" data-farm="${EDP_FARM_ID}">
+      <span class="name">EDP Wind Farm A</span>
+      <span class="meta">5 turbines · fault case studies</span>
+    </div>`;
   tabs.querySelectorAll(".tab").forEach(el => el.addEventListener("click", () => selectFarm(el.dataset.farm)));
   if(FARMS.length) selectFarm(FARMS[0].farm_id);
 }
@@ -275,12 +281,127 @@ async function selectFarm(farmId){
   ACTIVE_FARM = farmId;
   setActiveTab(farmId);
   const panel = document.getElementById("farm-panel");
+  if(farmId === EDP_FARM_ID){ selectEdp(panel); return; }
   panel.innerHTML = `<div class="skeleton"><span class="spinner"></span> Running the agent — forecast, Betz-limit diagnostics, RAG, and a vision-LLM blade check. First load per farm takes ~10-20s (cached after).</div>`;
   const res = await fetch(`${API}/analysis/${farmId}`);
   if(!res.ok){ panel.innerHTML = `<div class="card">Analysis failed: ${res.status}</div>`; return; }
   const a = await res.json();
   if(ACTIVE_FARM !== farmId) return; // a later click won
   renderAnalysis(panel, farmId, a);
+}
+
+// ---------- EDP Wind Farm A: real labeled fault case studies, diagnosis/RAG only ----------
+async function selectEdp(panel){
+  panel.innerHTML = `<div class="skeleton"><span class="spinner"></span> Loading real fault case studies…</div>`;
+  const res = await fetch(`${API}/edp/events`);
+  if(!res.ok){ panel.innerHTML = `<div class="card">Failed to load: ${res.status}</div>`; return; }
+  const events = await res.json();
+  if(ACTIVE_FARM !== EDP_FARM_ID) return;
+  renderEdp(panel, events);
+}
+
+function renderEdp(panel, events){
+  panel.innerHTML = `
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Real labeled fault case studies</h2>
+        <div class="desc">
+          EDP's own onshore wind farm in Portugal, from the CARE-to-Compare benchmark
+          (<a href="https://doi.org/10.5281/zenodo.15846963" target="_blank" rel="noopener">Zenodo</a>,
+          CC BY-SA 4.0) — 22 real, independent 10-minute SCADA windows, each ending in one real
+          labeled event. Anonymized: turbine identity, exact coordinates, rated power/rotor
+          diameter, and calendar timestamps are all stripped, and power readings are rescaled
+          to a normalized fraction rather than real kW — so this farm backs diagnosis and RAG
+          only, no forecasting (there's no real location to fetch matching weather for).
+        </div>
+        <table>
+          <thead><tr><th>Case</th><th>Turbine</th><th>Label</th><th>Cause</th><th class="num">Duration</th></tr></thead>
+          <tbody id="edp-event-rows">
+            ${events.map(e => `
+              <tr class="edp-event-row" data-event="${e.event_id}" style="cursor:pointer;">
+                <td class="mono">#${e.event_id}</td>
+                <td>${e.turbine_id}</td>
+                <td>${e.label==="anomaly" ? '<span class="pill flag">anomaly</span>' : '<span class="pill ok">normal</span>'}</td>
+                <td>${e.description || "—"}</td>
+                <td class="num">${fmt(e.duration_hours,0)}h</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card" id="edp-detail-card" style="display:none;">
+        <h2 id="edp-detail-title">Case study</h2>
+        <div class="desc" id="edp-detail-desc"></div>
+        <div class="kpis" id="edp-status-kpis"></div>
+        <div class="chart-wrap"><canvas id="chart-edp-curve"></canvas></div>
+        <div class="desc" style="margin-top:8px;">Power (y-axis) is a normalized fraction of rated capacity, not real kW — see above.</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Ask the agent</h2>
+        <div class="desc">Grounded in these 22 real case studies' fault descriptions — answered live, on this box.</div>
+        <div class="ask">
+          <input id="edp-ask-input" type="text" maxlength="500" placeholder="e.g. which turbines had a gearbox failure?">
+          <button id="edp-ask-btn">Ask</button>
+        </div>
+        <div class="ask-answer" id="edp-ask-answer"></div>
+        <div class="ask-sources" id="edp-ask-sources"></div>
+      </div>
+    </div>
+  </div>`;
+
+  panel.querySelectorAll(".edp-event-row").forEach(row => {
+    row.addEventListener("click", () => loadEdpEvent(parseInt(row.dataset.event, 10)));
+  });
+
+  const askBtn = document.getElementById("edp-ask-btn");
+  const askInput = document.getElementById("edp-ask-input");
+  const askAnswer = document.getElementById("edp-ask-answer");
+  const askSources = document.getElementById("edp-ask-sources");
+  async function submitAsk(){
+    const q = askInput.value.trim();
+    if(!q) return;
+    askBtn.disabled = true; askBtn.textContent = "…";
+    askAnswer.style.display = "block";
+    askAnswer.textContent = "Thinking…";
+    askSources.textContent = "";
+    try{
+      const res = await fetch(`${API}/edp/ask`, {
+        method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({question:q})
+      });
+      const data = await res.json();
+      askAnswer.textContent = res.ok ? data.answer : (data.detail || "Something went wrong.");
+      askSources.textContent = (res.ok && data.sources && data.sources.length) ? `Sources: ${data.sources.join(", ")}` : "";
+    }catch(e){
+      askAnswer.textContent = "Request failed — try again.";
+    }
+    askBtn.disabled = false; askBtn.textContent = "Ask";
+  }
+  askBtn.addEventListener("click", submitAsk);
+  askInput.addEventListener("keydown", e => { if(e.key==="Enter") submitAsk(); });
+}
+
+async function loadEdpEvent(eventId){
+  const card = document.getElementById("edp-detail-card");
+  card.style.display = "block";
+  document.getElementById("edp-detail-title").textContent = `Case study #${eventId}`;
+  document.getElementById("edp-detail-desc").textContent = "Loading…";
+  const res = await fetch(`${API}/edp/events/${eventId}`);
+  if(!res.ok) return;
+  const d = await res.json();
+  document.getElementById("edp-detail-title").textContent = `Case study #${d.event_id} — turbine ${d.turbine_id}`;
+  document.getElementById("edp-detail-desc").textContent =
+    `${d.label==="anomaly" ? "Anomaly" : "Normal"} event${d.description ? " — "+d.description : ""}, ` +
+    `${d.rows_observed.toLocaleString()} real 10-minute readings over ${fmt(d.duration_hours,0)} hours.`;
+  const statusKpis = document.getElementById("edp-status-kpis");
+  statusKpis.innerHTML = Object.entries(d.status_breakdown).map(([label,count]) => `
+    <div class="kpi"><div class="v">${count.toLocaleString()}</div><div class="l">${label}</div></div>`).join("");
+  drawLineChart(document.getElementById("chart-edp-curve"), [
+    {data: d.power_curve.map(p=>p.mean_power_frac), color: GOLD},
+  ], {labelFmt:v=>v.toFixed(2)});
 }
 
 function renderAnalysis(panel, farmId, a){
