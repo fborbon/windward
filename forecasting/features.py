@@ -1,24 +1,21 @@
-"""Join weather + price + production into a per-hour feature frame for training/inference."""
+"""Derived feature columns shared by training (forecasting/pipeline.py) and inference
+(forecasting/predict.py) — one place so the two paths can't silently drift apart."""
 import pandas as pd
 
-from schemas.models import EnergyPricePoint, ProductionPoint, WeatherPoint
+from analysis.efficiency import air_density_kg_m3
 
 
-def build_feature_frame(
-    weather: list[WeatherPoint],
-    prices: list[EnergyPricePoint],
-    production: list[ProductionPoint],
-) -> pd.DataFrame:
-    w = pd.DataFrame([p.model_dump() for p in weather]).set_index("timestamp")
-    pr = pd.DataFrame([p.model_dump() for p in prices]).set_index("timestamp")
-
-    prod = pd.DataFrame([p.model_dump() for p in production])
-    prod_agg = prod.groupby("timestamp")["output_mw"].sum().to_frame("output_mw")
-
-    df = w.join(pr, how="inner").join(prod_agg, how="inner")
+def add_derived_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Adds hour_of_day, wind_speed_cubed, and air_density_kg_m3 to a weather-indexed frame
+    (needs wind_speed_ms, temperature_c, pressure_hpa columns already present). Mutates and
+    returns df."""
     df["hour_of_day"] = df.index.hour
     df["wind_speed_cubed"] = df["wind_speed_ms"] ** 3  # power ~ v^3, physically motivated feature
-    return df.dropna()
+    # Real per-hour air density (ideal gas law) instead of assuming sea-level-standard air —
+    # actual wind power available scales with rho, and a farm's real conditions (e.g. a cold
+    # front) can diverge from the 1.225 kg/m3 constant enough to matter (see analysis/efficiency.py).
+    df["air_density_kg_m3"] = air_density_kg_m3(df["temperature_c"], df["pressure_hpa"])
+    return df
 
 
 FEATURE_COLUMNS = [
@@ -27,6 +24,7 @@ FEATURE_COLUMNS = [
     "wind_direction_deg",
     "temperature_c",
     "pressure_hpa",
+    "air_density_kg_m3",
     "price_eur_mwh",
     "hour_of_day",
 ]

@@ -21,7 +21,15 @@ import pandas as pd
 from langgraph.graph import END, StateGraph
 
 from agents.llm_router import complete
-from analysis.efficiency import actual_vs_predicted, binned_power_curve, turbine_efficiency_summary
+from analysis.efficiency import (
+    actual_vs_predicted,
+    air_density_kg_m3,
+    binned_power_curve,
+    fit_power_curve_displacement,
+    neighbor_underperformance,
+    scada_reanalysis_wind_check,
+    turbine_efficiency_summary,
+)
 from data_sources.farms import FARMS, loader_for
 from forecasting.features import FEATURE_COLUMNS, TARGET_COLUMN
 from forecasting.pipeline import build_training_frame
@@ -35,6 +43,11 @@ from forecasting.train import model_name
 RECENT_ERROR_INCREASE_RATIO = 1.25
 RETRAIN_AGE_DAYS_THRESHOLD = 90
 
+# Demo-scale thresholds for the two per-turbine/per-hour anomaly checks added alongside the
+# original farm-forecast-deviation and over-Betz checks — see analysis/efficiency.py.
+NEIGHBOR_UNDERPERFORMANCE_PCT_THRESHOLD = 0.05  # flag a turbine if >5% of its hours are low vs neighbors
+REANALYSIS_MISMATCH_PCT_THRESHOLD = 0.02  # flag if >2% of hours diverge >5 m/s from Open-Meteo
+
 
 class WindwardState(TypedDict, total=False):
     farm_id: str
@@ -44,6 +57,7 @@ class WindwardState(TypedDict, total=False):
     power_curves: dict
     efficiency_summary: pd.DataFrame
     anomalies: list
+    data_quality: dict
     rag_context: list
     inspection_results: list
     investigation: dict
@@ -69,25 +83,71 @@ def forecast_node(state: WindwardState) -> dict:
 def diagnose_node(state: WindwardState) -> dict:
     farm = FARMS[state["farm_id"]]
     turbine_hourly = state["turbine_hourly"]
+    feature_frame = state["feature_frame"]
 
     power_curves = {
         turbine_id: binned_power_curve(g)
         for turbine_id, g in turbine_hourly.groupby("turbine_id")
     }
-    efficiency_summary = turbine_efficiency_summary(turbine_hourly, farm.rated_power_kw, farm.rotor_diameter_m)
+    farm_mean_curve = binned_power_curve(turbine_hourly)  # pooled across all turbines — the displacement-fit reference
+
+    # Real per-hour air density (ideal gas law on the farm's actual weather) rather than the
+    # sea-level constant — a real UK-winter farm can genuinely diverge from 1.225 kg/m3
+    # enough to matter for Cp/Betz-limit readings.
+    air_density = air_density_kg_m3(feature_frame["temperature_c"], feature_frame["pressure_hpa"])
+    efficiency_summary = turbine_efficiency_summary(
+        turbine_hourly, farm.rated_power_kw, farm.rotor_diameter_m, air_density_by_timestamp=air_density
+    )
 
     comparison = state["comparison"]
     bad_hours = comparison[(comparison["pct_of_predicted"] < 0.5) | (comparison["pct_of_predicted"] > 1.5)]
     anomalies = [
         {"type": "farm_forecast_deviation", "count": len(bad_hours), "pct_of_hours": len(bad_hours) / len(comparison)}
     ]
+
     over_betz = efficiency_summary[efficiency_summary["peak_cp"] > efficiency_summary["betz_limit"]]
     for turbine_id in over_betz.index:
-        anomalies.append(
-            {"type": "anemometer_calibration_suspect", "turbine_id": turbine_id,
-             "detail": "peak Cp exceeds the Betz limit — likely nacelle anemometer bias, not real over-unity extraction"}
-        )
-    return {"power_curves": power_curves, "efficiency_summary": efficiency_summary, "anomalies": anomalies}
+        t = turbine_hourly[turbine_hourly["turbine_id"] == turbine_id]
+        displacement_ms = fit_power_curve_displacement(farm_mean_curve, t["wind_speed_ms"], t["power_kw"])
+        anomalies.append({
+            "type": "anemometer_calibration_suspect", "turbine_id": turbine_id,
+            "displacement_ms": round(displacement_ms, 3),
+            "detail": (
+                f"peak Cp exceeds the Betz limit even after correcting for real air density — the turbine's power "
+                f"curve is displaced {displacement_ms:+.2f} m/s from the farm-mean curve, consistent with a real "
+                f"nacelle anemometer bias (it sits downstream of the spinning rotor), not over-unity extraction"
+            ),
+        })
+
+    # Per-turbine, per-hour spatial anomaly: compare each turbine against its k nearest
+    # neighbors' concurrent production, not just the farm-level aggregate deviation above.
+    static = loader_for(farm).load_turbine_static(farm.farm_id)
+    neighbor_flags = neighbor_underperformance(turbine_hourly, static)
+    total_hours = turbine_hourly["timestamp"].nunique()
+    for turbine_id, flagged_hours in neighbor_flags.items():
+        pct = flagged_hours / total_hours if total_hours else 0
+        if pct > NEIGHBOR_UNDERPERFORMANCE_PCT_THRESHOLD:
+            anomalies.append({
+                "type": "underperforms_neighbors", "turbine_id": turbine_id,
+                "flagged_hours": flagged_hours, "pct_of_hours": round(pct, 4),
+                "detail": f"produced meaningfully less than its nearest neighbor turbines in {flagged_hours} hours ({pct:.1%}) while those neighbors were themselves producing",
+            })
+
+    # Cross-reference the turbine SCADA anemometers against an independent source (Open-Meteo
+    # reanalysis) — a real QC pattern (compare on-site sensor vs. an independent reference),
+    # adapted since there's no second on-site mast here.
+    data_quality = scada_reanalysis_wind_check(turbine_hourly, feature_frame)
+    if data_quality.get("pct_hours_diverging_gt_5ms", 0) > REANALYSIS_MISMATCH_PCT_THRESHOLD:
+        anomalies.append({
+            "type": "reanalysis_mismatch",
+            "pct_of_hours": data_quality["pct_hours_diverging_gt_5ms"],
+            "detail": "farm-mean SCADA wind speed diverges >5 m/s from the independent Open-Meteo reanalysis in a meaningful fraction of hours — possible data alignment or sensor issue",
+        })
+
+    return {
+        "power_curves": power_curves, "efficiency_summary": efficiency_summary,
+        "anomalies": anomalies, "data_quality": data_quality,
+    }
 
 
 def rag_node(state: WindwardState) -> dict:
@@ -196,9 +256,10 @@ summary of this farm's performance for a technical but non-specialist stakeholde
 Farm: {farm.name} ({len(farm.turbine_ids)}x turbines, {farm.rated_power_kw * len(farm.turbine_ids) / 1000:.1f} MW total)
 Farm-level actual vs model-predicted production, over {len(comparison)} hours:
   mean actual: {comparison['actual_mw'].mean():.2f} MW, mean predicted: {comparison['predicted_mw'].mean():.2f} MW
-Per-turbine capacity factor and peak power coefficient (Cp, Betz limit {eff['betz_limit'].iloc[0]:.3f}):
+Per-turbine capacity factor and peak power coefficient (Cp, real per-hour air density used, Betz limit {eff['betz_limit'].iloc[0]:.3f}):
 {eff[['capacity_factor', 'peak_cp']].round(3).to_string()}
 Anomalies detected: {state['anomalies']}
+Data quality — farm SCADA wind speed vs. independent Open-Meteo reanalysis: {state.get('data_quality')}
 Model-health investigation: {investigation_block}
 Blade inspection (vision-LLM pass on the worst-performing turbine's most recent available photo): {state.get('inspection_results')}
 Recommendation already decided: {state['recommendation']['action']} — {state['recommendation']['rationale']}

@@ -4,7 +4,7 @@ import pandas as pd
 from data_sources.energy_price_client import synthetic_prices
 from data_sources.farms import FARMS, Farm
 from data_sources.meteo_client import fetch_forecast
-from forecasting.features import FEATURE_COLUMNS
+from forecasting.features import FEATURE_COLUMNS, add_derived_features
 from forecasting.registry import load_latest_model
 from forecasting.train import model_name
 from schemas.models import ForecastResult
@@ -20,11 +20,10 @@ def predict_production(farm_id: str = "kelmarsh", horizon_hours: int = 48) -> Fo
     w_df = pd.DataFrame([p.model_dump() for p in weather]).set_index("timestamp")
     p_df = pd.DataFrame([p.model_dump() for p in prices]).set_index("timestamp")
     df = w_df.join(p_df, how="inner")
-    df["hour_of_day"] = df.index.hour
-    df["wind_speed_cubed"] = df["wind_speed_ms"] ** 3
+    df = add_derived_features(df)
 
     model = load_latest_model(model_name(farm_id))
-    # trained on farm-level totals (features.build_feature_frame sums production across turbines)
+    # trained on farm-level totals (forecasting.pipeline.build_training_frame sums production across turbines)
     farm_mw = model.predict(df[FEATURE_COLUMNS])
 
     return ForecastResult(

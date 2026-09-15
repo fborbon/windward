@@ -14,7 +14,7 @@ import pandas as pd
 from data_sources.energy_price_client import synthetic_prices
 from data_sources.farms import Farm, loader_for
 from data_sources.meteo_client import fetch_historical
-from forecasting.features import FEATURE_COLUMNS, TARGET_COLUMN
+from forecasting.features import FEATURE_COLUMNS, TARGET_COLUMN, add_derived_features
 
 
 def build_training_frame(farm: Farm) -> pd.DataFrame:
@@ -37,6 +37,5 @@ def build_training_frame(farm: Farm) -> pd.DataFrame:
     p_df = pd.DataFrame([p.model_dump() for p in prices]).set_index("timestamp")
 
     df = w_df.join(p_df, how="inner").join(production, how="inner")
-    df["hour_of_day"] = df.index.hour
-    df["wind_speed_cubed"] = df["wind_speed_ms"] ** 3
+    df = add_derived_features(df)
     return df.dropna(subset=FEATURE_COLUMNS + [TARGET_COLUMN])
