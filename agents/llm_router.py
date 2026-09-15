@@ -14,8 +14,16 @@ MODEL_MAP = {
 }
 
 
-def complete(messages: list[dict], **kwargs):
+def _complete(messages: list[dict], **kwargs):
     model = MODEL_MAP.get(config.LLM_PROVIDER)
     if not model:
         raise RuntimeError(f"No model configured for LLM_PROVIDER={config.LLM_PROVIDER}")
     return litellm.completion(model=model, messages=messages, aws_region_name=config.BEDROCK_REGION, **kwargs)
+
+
+if config.LANGFUSE_PUBLIC_KEY and config.LANGFUSE_SECRET_KEY:
+    from observability.tracing import wrap_completion
+
+    complete = wrap_completion(_complete)
+else:
+    complete = _complete

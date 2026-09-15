@@ -15,9 +15,6 @@ import json
 
 from agents.llm_router import complete
 from mcp_server.tools import query_maintenance_docs
-from observability.tracing import enable_litellm_tracing
-
-enable_litellm_tracing()  # no-op until LANGFUSE_* keys are set — see observability/tracing.py
 
 MAX_TOOL_ROUNDS = 3
 
