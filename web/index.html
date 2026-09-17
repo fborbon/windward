@@ -119,6 +119,11 @@
     font-weight:600; cursor:pointer; font-size:14px;
   }
   .ask button:disabled{opacity:0.5; cursor:default;}
+  .btn-gold{
+    background:var(--gold); color:#141414; border:none; border-radius:8px; padding:8px 16px;
+    font-weight:600; cursor:pointer; font-size:13px; font-family:inherit;
+  }
+  .btn-gold:disabled{opacity:0.5; cursor:default;}
   .ask-answer{margin-top:12px; font-size:14px; color:var(--text); background:var(--surface2); border-radius:8px; padding:12px 14px; display:none;}
   .ask-sources{margin-top:8px; font-size:11.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.04em;}
 
@@ -255,6 +260,7 @@ function drawBarChart(canvas, points, {height=200, color=GOLD, xFmt=(v)=>v, yFmt
 
 // ---------- farm tabs + analysis ----------
 const EDP_FARM_ID = "edp_wind_farm_a";
+const WIND_PREDICTION_TAB_ID = "wind_prediction";
 
 async function loadFarms(){
   const res = await fetch(`${API}/farms`);
@@ -268,6 +274,10 @@ async function loadFarms(){
     <div class="tab" data-farm="${EDP_FARM_ID}">
       <span class="name">EDP Wind Farm A</span>
       <span class="meta">5 turbines · fault case studies</span>
+    </div>` + `
+    <div class="tab" data-farm="${WIND_PREDICTION_TAB_ID}">
+      <span class="name">Wind Prediction</span>
+      <span class="meta">naive → foundation models</span>
     </div>`;
   tabs.querySelectorAll(".tab").forEach(el => el.addEventListener("click", () => selectFarm(el.dataset.farm)));
   if(FARMS.length) selectFarm(FARMS[0].farm_id);
@@ -282,6 +292,7 @@ async function selectFarm(farmId){
   setActiveTab(farmId);
   const panel = document.getElementById("farm-panel");
   if(farmId === EDP_FARM_ID){ selectEdp(panel); return; }
+  if(farmId === WIND_PREDICTION_TAB_ID){ selectWindPrediction(panel); return; }
   panel.innerHTML = `<div class="skeleton"><span class="spinner"></span> Running the agent — forecast, Betz-limit diagnostics, RAG, and a vision-LLM blade check. First load per farm takes ~10-20s (cached after).</div>`;
   const res = await fetch(`${API}/analysis/${farmId}`);
   if(!res.ok){ panel.innerHTML = `<div class="card">Analysis failed: ${res.status}</div>`; return; }
@@ -402,6 +413,137 @@ async function loadEdpEvent(eventId){
   drawLineChart(document.getElementById("chart-edp-curve"), [
     {data: d.power_curve.map(p=>p.mean_power_frac), color: GOLD},
   ], {labelFmt:v=>v.toFixed(2)});
+}
+
+// ---------- Wind Prediction: naive -> foundation-model technique showcase ----------
+const WP_COLORS = [GOLD, GOOD, "#5c8ce0", "#e0725c", "#a05ce0", "#5ce0c8"];
+
+async function selectWindPrediction(panel){
+  panel.innerHTML = `<div class="skeleton"><span class="spinner"></span> Loading technique comparison…</div>`;
+  const res = await fetch(`${API}/wind-prediction`);
+  if(!res.ok){ panel.innerHTML = `<div class="card">Not available yet: ${res.status}. Run <code>python -m wind_prediction.export</code>.</div>`; return; }
+  const data = await res.json();
+  if(ACTIVE_FARM !== WIND_PREDICTION_TAB_ID) return;
+  renderWindPrediction(panel, data);
+}
+
+function renderWindPrediction(panel, data){
+  const results = data.results; // already sorted by mae_mw
+  const best = data.best_technique;
+
+  panel.innerHTML = `
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Time-series forecasting: naive &rarr; foundation models</h2>
+        <div class="desc">
+          The forecasting model on the other tabs predicts production from weather (a regression
+          problem). This tab is a separate, deliberately broad showcase: the same 24-hours-ahead
+          production forecast, attempted with one representative technique from every major
+          family in the field - from a last-value baseline up to a genuine zero-shot
+          time-series foundation model - scored on an identical, no-leakage sliding-window
+          backtest (${data.meta.n_windows} non-overlapping 24h windows, ${data.meta.hours_evaluated}
+          hours total, on ${data.farm_id}'s real 2016 SCADA period).
+        </div>
+        <table>
+          <thead><tr><th>Family</th><th>Techniques (field)</th><th>Typical use</th><th>Implemented &amp; run here</th></tr></thead>
+          <tbody>
+            ${data.taxonomy.map(f => `
+              <tr>
+                <td><b>${f.family}</b></td>
+                <td style="color:var(--text-dim);">${f.techniques}</td>
+                <td style="color:var(--text-dim);">${f.typical_use}</td>
+                <td>${f.implemented}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Technique comparison - 24h-ahead forecast accuracy</h2>
+        <div class="desc">Mean absolute error (MW) across all ${results.length} techniques, lower is better. Best: <b>${best}</b>.</div>
+        <div class="chart-wrap"><canvas id="chart-wp-mae"></canvas></div>
+        <table style="margin-top:14px;">
+          <thead><tr><th>Technique</th><th>Family</th><th class="num">MAE (MW)</th><th class="num">RMSE (MW)</th><th class="num">R&sup2;</th><th class="num">MAPE</th></tr></thead>
+          <tbody>
+            ${results.map(r => `
+              <tr>
+                <td>${r.name}${r.name===best ? ' <span class="pill ok">best</span>' : ''}</td>
+                <td style="color:var(--text-dim);">${r.family}</td>
+                <td class="num">${fmt(r.mae_mw,3)}</td>
+                <td class="num">${fmt(r.rmse_mw,3)}</td>
+                <td class="num">${fmt(r.r2,3)}</td>
+                <td class="num">${pct(r.mape)}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Actual vs. predicted</h2>
+        <div class="desc">Last ${data.chart_days} days of the test period - one representative line per "shape" of result (the table above carries the full comparison).</div>
+        <div class="chart-wrap"><canvas id="chart-wp-series"></canvas></div>
+        <div class="legend" id="wp-legend"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Live meteorological data <span class="badge-live" style="margin-left:6px;">live</span></h2>
+        <div class="desc">
+          The SCADA production data above is a frozen historical donation (2016/2024, see
+          footer) - there's no live production feed to refresh. Weather is different:
+          Open-Meteo's forecast API is real and genuinely live, so this panel fetches a fresh
+          48h wind forecast for ${data.farm_id} on every load, not from any precomputed file.
+        </div>
+        <div class="desc mono" id="wp-live-meta">Loading…</div>
+        <div class="chart-wrap"><canvas id="chart-wp-live"></canvas></div>
+        <div class="legend"><span><span class="swatch" style="background:${GOLD}"></span>Wind speed (m/s), next 48h</span></div>
+        <button class="btn-gold" id="wp-live-refresh" style="margin-top:12px;">Refresh live forecast</button>
+      </div>
+    </div>
+  </div>`;
+
+  drawBarChart(
+    document.getElementById("chart-wp-mae"),
+    results.map(r => ({x: r.name, y: r.mae_mw})),
+    {yFmt: v => v.toFixed(1), xFmt: v => v.length > 14 ? v.slice(0,13)+"…" : v},
+  );
+
+  const seriesNames = ["actual", ...data.chart_techniques];
+  const legend = document.getElementById("wp-legend");
+  legend.innerHTML = seriesNames.map((n,i) => `<span><span class="swatch" style="background:${WP_COLORS[i%WP_COLORS.length]}"></span>${n==="actual"?"Actual":n}</span>`).join("");
+  drawLineChart(
+    document.getElementById("chart-wp-series"),
+    seriesNames.map((n,i) => ({data: data.chart_series[n], color: WP_COLORS[i%WP_COLORS.length]})),
+    {height: 260, labelFmt: v => v.toFixed(1)},
+  );
+
+  loadWindPredictionLiveWeather(data.farm_id);
+  document.getElementById("wp-live-refresh").addEventListener("click", () => loadWindPredictionLiveWeather(data.farm_id));
+}
+
+async function loadWindPredictionLiveWeather(farmId){
+  const meta = document.getElementById("wp-live-meta");
+  const btn = document.getElementById("wp-live-refresh");
+  if(!meta) return;
+  meta.textContent = "Fetching live forecast from Open-Meteo…";
+  if(btn) btn.disabled = true;
+  try{
+    const res = await fetch(`${API}/wind-prediction/live-weather?farm_id=${farmId}`);
+    const d = await res.json();
+    if(ACTIVE_FARM !== WIND_PREDICTION_TAB_ID) return;
+    if(!res.ok){ meta.textContent = "Live fetch failed."; return; }
+    const fetchedAt = new Date(d.fetched_at);
+    meta.textContent = `Fetched live at ${fetchedAt.toLocaleTimeString()} · source: ${d.source} · ${d.points.length}h forecast`;
+    const canvas = document.getElementById("chart-wp-live");
+    if(canvas){
+      drawLineChart(canvas, [{data: d.points.map(p=>p.wind_speed_ms), color: GOLD}], {height:180, labelFmt:v=>v.toFixed(0)});
+    }
+  }catch(e){
+    meta.textContent = "Live fetch failed - try again.";
+  }
+  if(btn) btn.disabled = false;
 }
 
 function renderAnalysis(panel, farmId, a){

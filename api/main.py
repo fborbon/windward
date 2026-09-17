@@ -3,6 +3,7 @@ Claude Artifact demo — this now serves real forecasts, real Betz-limit diagnos
 real LLM narration/Q&A over the agent's own findings, all against production models on this
 box, not a sandboxed viewer-billed environment.
 """
+import json
 import math
 import time
 from pathlib import Path
@@ -21,6 +22,7 @@ app = FastAPI(title="Windward")
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 INSPECTION_PHOTO = Path(__file__).resolve().parent.parent / "data" / "sample_inspection_photos" / "rotorblatt_inspection.jpg"
+WIND_PREDICTION_PAYLOAD = Path(__file__).resolve().parent.parent / "dashboard" / "data" / "wind_prediction_payload.json"
 
 _analysis_cache: dict[str, dict] = {}
 _ANALYSIS_TTL_S = 3600  # SCADA history is static 2016 data; just avoids re-running Bedrock calls on every viewer
@@ -52,6 +54,42 @@ def list_farms():
 @app.post("/forecast", response_model=ForecastResult)
 def forecast(request: ForecastRequest):
     return predict_production(farm_id=request.farm_id, horizon_hours=request.horizon_hours)
+
+
+@app.get("/wind-prediction")
+def wind_prediction():
+    """Precomputed naive-to-foundation-model technique comparison (wind_prediction/), served
+    static - see wind_prediction/export.py for why this doesn't need to run per-request."""
+    if not WIND_PREDICTION_PAYLOAD.exists():
+        raise HTTPException(404, "wind-prediction payload not exported yet - run `python -m wind_prediction.export`")
+    return json.loads(WIND_PREDICTION_PAYLOAD.read_text())
+
+
+@app.get("/wind-prediction/live-weather")
+def wind_prediction_live_weather(farm_id: str = "kelmarsh"):
+    """The one genuinely live-refreshing piece of this project: a real Open-Meteo forecast call,
+    made fresh on every request (not cached/precomputed like the SCADA-bound analysis above) -
+    see README.md §13 for why the SCADA production data can't be live the same way."""
+    if farm_id not in FARMS:
+        raise HTTPException(404, f"unknown farm_id '{farm_id}'")
+    from data_sources.meteo_client import fetch_forecast
+
+    farm = FARMS[farm_id]
+    points = fetch_forecast(farm.lat, farm.lon, hours=48)
+    return {
+        "farm_id": farm_id,
+        "fetched_at": pd.Timestamp.utcnow().isoformat(),
+        "source": "Open-Meteo forecast API (live)",
+        "points": [
+            {
+                "timestamp": p.timestamp.isoformat(),
+                "wind_speed_ms": p.wind_speed_ms,
+                "wind_direction_deg": p.wind_direction_deg,
+                "temperature_c": p.temperature_c,
+            }
+            for p in points
+        ],
+    }
 
 
 def _clean(v):

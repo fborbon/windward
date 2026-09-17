@@ -1,10 +1,10 @@
-# Wind Farm Production Forecasting — Demo Notebook
+# Wind Farm Production Forecasting - Demo Notebook
 
 `wind_farm_production_forecasting.ipynb` is a self-contained end-to-end case study (problem
 framing, EDA, feature engineering, baseline-vs-model comparison, results, production pipeline
 notes, drift monitoring, insights) built for a technical interview presentation. It reuses the
 real Windward codebase (`forecasting/`, `analysis/`, `data_sources/`) rather than reimplementing
-the logic — see the notebook's own §7 for the module map.
+the logic - see the notebook's own §7 for the module map.
 
 The notebook already ships with real, baked-in outputs (plots, tables), so it can be opened and
 read without re-running anything. It can also be re-run live (needs internet access, for the
