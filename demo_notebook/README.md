@@ -10,6 +10,12 @@ The notebook already ships with real, baked-in outputs (plots, tables), so it ca
 read without re-running anything. It can also be re-run live (needs internet access, for the
 Open-Meteo weather API).
 
+`wind_farm_production_forecasting_ES.ipynb` is the same notebook fully translated to Spanish
+(narrative, plot labels, print/display output, code comments) - code itself (variable/function
+names) is left in English, standard practice. Both notebooks are built from independent scripts
+and executed separately, so their exact numbers can differ slightly between runs (the synthetic
+day-ahead price series isn't seeded), but the story is identical.
+
 ## Running it
 
 A Jupyter kernel for Windward's virtualenv is already registered on this machine as **"Windward
