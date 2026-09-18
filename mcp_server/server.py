@@ -34,5 +34,13 @@ def query_edp_incidents(question: str) -> str:
     return tools.query_edp_incidents(question)
 
 
+@mcp.tool()
+def query_dswe_reference(question: str) -> str:
+    """Ask a question against the DSWE Inland-Offshore dataset's real turbine/met-mast
+    facts and the Measure-Correlate-Predict methodology used to work around its undisclosed
+    location."""
+    return tools.query_dswe_reference(question)
+
+
 if __name__ == "__main__":
     mcp.run()

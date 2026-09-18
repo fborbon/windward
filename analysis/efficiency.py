@@ -203,6 +203,27 @@ def turbine_efficiency_summary(
     return pd.DataFrame(rows).set_index("turbine_id")
 
 
+def measure_correlate_predict(mast_mean_ms: float, era5_mean_ms: float, era5_series_ms: pd.Series) -> dict:
+    """Measure-Correlate-Predict (MCP) — standard wind-resource-assessment practice for
+    estimating a site's wind resource from a real but short/incomplete on-site measurement
+    campaign: Measure (a real on-site mast reading), Correlate (a ratio against a real
+    long-term reference over the SAME period), Predict (scale the reference's other values —
+    here, a live forecast — by that ratio to estimate local conditions).
+
+    This is the ratio-of-means variant, not full regression-based MCP (which needs concurrent
+    timestamp-paired mast/reference samples). data_sources/dswe_scada.py's turbines have no
+    per-row timestamps, only a real documented overall date range per mast — see that module's
+    docstring — so a ratio over that real period, not a per-timestamp regression, is what the
+    data actually supports. Returns the ratio, both real input means, and the scaled series."""
+    ratio = mast_mean_ms / era5_mean_ms
+    return {
+        "ratio": ratio,
+        "mast_mean_ms": mast_mean_ms,
+        "era5_mean_ms": era5_mean_ms,
+        "predicted_local_ms": (era5_series_ms * ratio).tolist(),
+    }
+
+
 def actual_vs_predicted(actual: pd.Series, predicted: pd.Series) -> pd.DataFrame:
     """Aligned actual/predicted farm production with residual, for diagnosis/dashboard."""
     df = pd.concat([actual.rename("actual_mw"), predicted.rename("predicted_mw")], axis=1).dropna()

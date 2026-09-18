@@ -164,7 +164,7 @@
 </main>
 
 <footer>
-  <span>Data: Kelmarsh, Penmanshiel &amp; Hill of Towie wind farm SCADA, CC BY 4.0. EDP Wind Farm A via CARE-to-Compare, CC BY-SA 4.0.</span>
+  <span>Data: Kelmarsh, Penmanshiel &amp; Hill of Towie wind farm SCADA, CC BY 4.0. EDP Wind Farm A via CARE-to-Compare, CC BY-SA 4.0. DSWE Inland-Offshore dataset (Yu Ding, "Data Science for Wind Energy"), CC BY 4.0.</span>
   <span><a href="https://forwardforecasting.eu" target="_blank" rel="noopener">Forward Forecasting</a></span>
 </footer>
 
@@ -354,6 +354,7 @@ function drawWindRose(canvas, sectors, {size=300, color=GOLD}={}){
 
 // ---------- farm tabs + analysis ----------
 const EDP_FARM_ID = "edp_wind_farm_a";
+const DSWE_FARM_ID = "dswe_inland_offshore";
 const WIND_PREDICTION_TAB_ID = "wind_prediction";
 
 async function loadFarms(){
@@ -368,6 +369,10 @@ async function loadFarms(){
     <div class="tab" data-farm="${EDP_FARM_ID}">
       <span class="name">EDP Wind Farm A</span>
       <span class="meta">5 turbines · fault case studies</span>
+    </div>` + `
+    <div class="tab" data-farm="${DSWE_FARM_ID}">
+      <span class="name">DSWE Inland-Offshore</span>
+      <span class="meta">6 turbines · met-mast MCP</span>
     </div>` + `
     <div class="tab" data-farm="${WIND_PREDICTION_TAB_ID}">
       <span class="name">Wind Prediction</span>
@@ -386,6 +391,7 @@ async function selectFarm(farmId){
   setActiveTab(farmId);
   const panel = document.getElementById("farm-panel");
   if(farmId === EDP_FARM_ID){ selectEdp(panel); return; }
+  if(farmId === DSWE_FARM_ID){ selectDswe(panel); return; }
   if(farmId === WIND_PREDICTION_TAB_ID){ selectWindPrediction(panel); return; }
   panel.innerHTML = `<div class="skeleton"><span class="spinner"></span> Running the agent — forecast, Betz-limit diagnostics, RAG, and a vision-LLM blade check. First load per farm takes ~10-20s (cached after).</div>`;
   const res = await fetch(`${API}/analysis/${farmId}`);
@@ -512,6 +518,164 @@ async function loadEdpEvent(eventId){
     {data: d.power_curve.map(p=>p.mean_power_frac), color: GOLD},
     {data: d.power_curve_smooth.map(p=>p.mean_power_frac), color: GOOD},
   ], {labelFmt:v=>v.toFixed(2)});
+}
+
+// ---------- DSWE Inland-Offshore: real turbine+met-mast data, Measure-Correlate-Predict ----------
+async function selectDswe(panel){
+  panel.innerHTML = `<div class="skeleton"><span class="spinner"></span> Loading real turbine + met-mast data…</div>`;
+  const res = await fetch(`${API}/dswe/turbines`);
+  if(!res.ok){ panel.innerHTML = `<div class="card">Failed to load: ${res.status}</div>`; return; }
+  const turbines = await res.json();
+  if(ACTIVE_FARM !== DSWE_FARM_ID) return;
+  renderDswe(panel, turbines);
+}
+
+function renderDswe(panel, turbines){
+  panel.innerHTML = `
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Real turbines + on-site met masts</h2>
+        <div class="desc">
+          From "Data Science for Wind Energy" (Yu Ding, Chapter 5) — six real turbines, three real
+          on-site met masts, from the book's real open dataset
+          (<a href="https://doi.org/10.5281/zenodo.5516552" target="_blank" rel="noopener">Zenodo</a>,
+          CC BY 4.0). No coordinates disclosed and no per-row timestamps (only a real documented
+          date range per mast), so this backs diagnosis/RAG, not forecasting — except that the real
+          mast reading enables a genuine <b>Measure-Correlate-Predict (MCP)</b> ratio against
+          Open-Meteo ERA5 at a reference location you can change below.
+        </div>
+        <table>
+          <thead><tr><th>Turbine</th><th>Mast</th><th>Site</th><th>Period</th><th class="num">Mean V</th><th class="num">Mean power</th></tr></thead>
+          <tbody id="dswe-turbine-rows">
+            ${turbines.map(t => `
+              <tr class="dswe-turbine-row" data-turbine="${t.turbine_id}" style="cursor:pointer;">
+                <td>${t.turbine_id}</td>
+                <td>${t.mast}</td>
+                <td>${t.site}</td>
+                <td class="mono">${t.period_start} → ${t.period_end}</td>
+                <td class="num">${fmt(t.mean_wind_speed_ms,2)} m/s</td>
+                <td class="num">${fmt(t.mean_power_pct,1)}%</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card" id="dswe-detail-card" style="display:none;">
+        <h2 id="dswe-detail-title">Turbine</h2>
+        <div class="desc" id="dswe-detail-desc"></div>
+        <div class="card-row" style="align-items:flex-end; margin-bottom:10px;">
+          <label style="font-size:12px; color:var(--text-dim);">Reference lat
+            <input id="dswe-lat" type="number" step="0.0001" style="display:block; width:110px; background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:6px 8px;">
+          </label>
+          <label style="font-size:12px; color:var(--text-dim);">Reference lon
+            <input id="dswe-lon" type="number" step="0.0001" style="display:block; width:110px; background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:6px 8px;">
+          </label>
+          <button class="btn-gold" id="dswe-recompute">Recompute MCP</button>
+        </div>
+        <div class="desc">Default reference point (Texas Panhandle, USA) is illustrative only — this dataset discloses no real location. The ratio below, and how far it sits from 1.0, is itself evidence of how representative that reference is, not an assumption.</div>
+        <div class="kpis" id="dswe-mcp-kpis"></div>
+        <h3 style="margin:18px 0 8px; font-size:14px; color:var(--text-dim);">Next 48h: raw ERA5 forecast vs. MCP-adjusted estimate</h3>
+        <div class="chart-wrap"><canvas id="chart-dswe-forecast"></canvas></div>
+        <div class="legend">
+          <span><span class="swatch" style="background:${GOLD}"></span>Raw ERA5 forecast</span>
+          <span><span class="swatch" style="background:${GOOD}"></span>MCP-adjusted</span>
+        </div>
+        <h3 style="margin:18px 0 8px; font-size:14px; color:var(--text-dim);">Real power curve (mast wind speed vs. turbine output)</h3>
+        <div class="chart-wrap"><canvas id="chart-dswe-curve"></canvas></div>
+        <div class="legend">
+          <span><span class="swatch" style="background:${GOLD}"></span>Binned (IEC 61400-12-1)</span>
+          <span><span class="swatch" style="background:${GOOD}"></span>Smooth (AMK kernel regression)</span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Ask the agent</h2>
+        <div class="desc">Grounded in this dataset's real turbine/mast facts and the MCP methodology — answered live, on this box.</div>
+        <div class="ask">
+          <input id="dswe-ask-input" type="text" maxlength="500" placeholder="e.g. how does the MCP ratio work?">
+          <button id="dswe-ask-btn">Ask</button>
+        </div>
+        <div class="ask-answer" id="dswe-ask-answer"></div>
+        <div class="ask-sources" id="dswe-ask-sources"></div>
+      </div>
+    </div>
+  </div>`;
+
+  panel.querySelectorAll(".dswe-turbine-row").forEach(row => {
+    row.addEventListener("click", () => loadDsweTurbine(row.dataset.turbine));
+  });
+
+  const askBtn = document.getElementById("dswe-ask-btn");
+  const askInput = document.getElementById("dswe-ask-input");
+  const askAnswer = document.getElementById("dswe-ask-answer");
+  const askSources = document.getElementById("dswe-ask-sources");
+  async function submitAsk(){
+    const q = askInput.value.trim();
+    if(!q) return;
+    askBtn.disabled = true; askBtn.textContent = "…";
+    askAnswer.style.display = "block";
+    askAnswer.textContent = "Thinking…";
+    askSources.textContent = "";
+    try{
+      const res = await fetch(`${API}/dswe/ask`, {
+        method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({question:q})
+      });
+      const data = await res.json();
+      askAnswer.textContent = res.ok ? data.answer : (data.detail || "Something went wrong.");
+      askSources.textContent = (res.ok && data.sources && data.sources.length) ? `Sources: ${data.sources.join(", ")}` : "";
+    }catch(e){
+      askAnswer.textContent = "Request failed — try again.";
+    }
+    askBtn.disabled = false; askBtn.textContent = "Ask";
+  }
+  askBtn.addEventListener("click", submitAsk);
+  askInput.addEventListener("keydown", e => { if(e.key==="Enter") submitAsk(); });
+}
+
+async function loadDsweTurbine(turbineId, lat, lon){
+  const card = document.getElementById("dswe-detail-card");
+  card.style.display = "block";
+  document.getElementById("dswe-detail-title").textContent = turbineId;
+  document.getElementById("dswe-detail-desc").textContent = "Computing MCP against live ERA5 data…";
+  const params = new URLSearchParams();
+  if(lat !== undefined) params.set("lat", lat);
+  if(lon !== undefined) params.set("lon", lon);
+  const res = await fetch(`${API}/dswe/turbines/${turbineId}/mcp${params.toString() ? "?"+params.toString() : ""}`);
+  if(!res.ok) return;
+  const d = await res.json();
+  card.dataset.turbine = turbineId;
+
+  document.getElementById("dswe-detail-title").textContent = `${d.turbine_id} — mast ${d.mast} (${d.site})`;
+  document.getElementById("dswe-detail-desc").textContent =
+    `Real mast data, ${d.period_start} → ${d.period_end}. Reference point: ${fmt(d.reference_lat,4)}, ${fmt(d.reference_lon,4)}.`;
+  document.getElementById("dswe-lat").value = d.reference_lat;
+  document.getElementById("dswe-lon").value = d.reference_lon;
+
+  document.getElementById("dswe-mcp-kpis").innerHTML = `
+    <div class="kpi"><div class="v">${fmt(d.mcp.mast_mean_ms,2)}</div><div class="l">Mast mean (m/s)</div></div>
+    <div class="kpi"><div class="v">${fmt(d.mcp.era5_mean_ms,2)}</div><div class="l">ERA5 mean (m/s)</div></div>
+    <div class="kpi"><div class="v">${fmt(d.mcp.ratio,3)}×</div><div class="l">MCP ratio</div></div>
+    <div class="kpi"><div class="v">${d.mcp.era5_hours_compared.toLocaleString()}</div><div class="l">ERA5 hours compared</div></div>`;
+
+  drawLineChart(document.getElementById("chart-dswe-forecast"), [
+    {data: d.forecast_next_48h.era5_raw_ms, color: GOLD},
+    {data: d.forecast_next_48h.mcp_adjusted_ms, color: GOOD},
+  ], {labelFmt:v=>v.toFixed(1)});
+
+  drawLineChart(document.getElementById("chart-dswe-curve"), [
+    {data: d.power_curve.map(p=>p.mean_power_pct), color: GOLD},
+    {data: d.power_curve_smooth.map(p=>p.mean_power_pct), color: GOOD},
+  ], {labelFmt:v=>v.toFixed(0)});
+
+  const recomputeBtn = document.getElementById("dswe-recompute");
+  recomputeBtn.onclick = () => {
+    const lat = document.getElementById("dswe-lat").value;
+    const lon = document.getElementById("dswe-lon").value;
+    loadDsweTurbine(d.turbine_id, lat, lon);
+  };
 }
 
 // ---------- Wind Prediction: naive -> foundation-model technique showcase ----------

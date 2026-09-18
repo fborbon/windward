@@ -36,6 +36,12 @@ Session/conversation state for the agent is kept in DynamoDB — a natural fit n
 
 Instead it's a parallel, standalone feature — `data_sources/edp_scada.py`, `rag/edp_incident_corpus.py` + `rag/edp_retriever.py`, and `/edp/*` API routes — that plays to what the dataset actually has: 22 real, independently labeled fault/normal case studies, genuinely better ground-truth anomaly labels than the other three farms carry. It reuses `analysis.efficiency.binned_power_curve` (which only needs wind speed + power columns, no farm metadata) and the same LangChain/FAISS/Bedrock-Titan RAG pipeline shape as the other farms' corpus, just with its own corpus builder and its own FAISS index, decoupled from `FARMS` and `agents/graph.py` entirely.
 
+## DSWE Inland-Offshore, and why it gets a real forecast-adjacent feature that EDP doesn't
+
+Same `FARMS` exclusion reasoning as EDP applies to the DSWE Inland-Offshore dataset (`data_sources/dswe_scada.py`) — no disclosed coordinates, so no real Open-Meteo weather join is possible. But this dataset has something EDP doesn't: a real on-site meteorological mast, paired with each turbine, plus a real documented calendar date range for that mast's measurement period (from the dataset's own Zenodo description — not derived from the data itself, which has no per-row timestamps at all, only a sequence number, and real gaps: WT1 has 47,542 rows against ~52,704 expected for continuous 10-minute coverage over its documented year, so timestamps can't be reconstructed by assuming even spacing either).
+
+That's enough to run a **Measure-Correlate-Predict (MCP)** ratio (`analysis.efficiency.measure_correlate_predict`) — real on-site mast mean vs. real Open-Meteo ERA5 mean over the same real calendar period, at a location the caller supplies. It's a ratio-of-means, not full regression-based MCP (which needs concurrent timestamp-paired samples this dataset can't provide). Deliberately never assumes a location silently: the dashboard's reference point is editable, defaults to a real but explicitly illustrative coordinate, and the computed ratio — including how far it lands from 1.0 — is presented as evidence of how representative that reference is, not hidden behind a single "predicted" number. This is diagnosis/resource-assessment, not the same claim as the three real farms' Open-Meteo-based forecasting.
+
 ## Open questions / decisions deferred
 
 - Real drone/inspection photo feed — currently one real, openly-licensed sample photo, not a live feed.

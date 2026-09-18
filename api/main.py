@@ -307,6 +307,115 @@ def edp_ask(request: EdpAskRequest):
     return {"answer": response.choices[0].message.content, "sources": [d.metadata.get("source", "?") for d in docs]}
 
 
+# --- DSWE Inland-Offshore Wind Farm Dataset1: real turbine+met-mast data, diagnosis/RAG only,
+# no forecasting (no disclosed location either — see data_sources/dswe_scada.py). A real
+# Measure-Correlate-Predict ratio against Open-Meteo ERA5 stands in for forecasting, at a
+# caller-supplied reference location (never assumed silently — see /dswe/turbines/{id}/mcp).
+
+# A real, well-known US wind-resource region (Texas Panhandle) — an explicitly illustrative
+# default reference point, NOT a claim about this dataset's real (undisclosed) location.
+DSWE_DEFAULT_LAT, DSWE_DEFAULT_LON = 35.2211, -101.8313
+
+
+@app.get("/dswe/turbines")
+def dswe_turbines():
+    from data_sources.dswe_scada import TURBINES, load_turbine
+
+    out = []
+    for turbine_id, meta in TURBINES.items():
+        df = load_turbine(turbine_id)
+        out.append({
+            "turbine_id": turbine_id,
+            "mast": meta["mast"],
+            "site": meta["site"],
+            "period_start": meta["period_start"],
+            "period_end": meta["period_end"],
+            "rows_observed": len(df),
+            "mean_wind_speed_ms": round(float(df["V"].mean()), 2),
+            "mean_power_pct": round(float(df["y (% relative to rated power)"].mean()), 1),
+        })
+    return out
+
+
+@app.get("/dswe/turbines/{turbine_id}/mcp")
+def dswe_turbine_mcp(turbine_id: str, lat: float = DSWE_DEFAULT_LAT, lon: float = DSWE_DEFAULT_LON):
+    import pandas as pd
+
+    from analysis.efficiency import binned_power_curve, measure_correlate_predict, smooth_power_curve
+    from data_sources.dswe_scada import TURBINES, load_turbine
+    from data_sources.meteo_client import fetch_forecast, fetch_historical
+
+    if turbine_id not in TURBINES:
+        raise HTTPException(404, f"unknown turbine_id {turbine_id!r}")
+    meta = TURBINES[turbine_id]
+    df = load_turbine(turbine_id)
+
+    weather = fetch_historical(lat, lon, meta["period_start"], meta["period_end"])
+    era5_series = pd.Series([w.wind_speed_ms for w in weather])
+    forecast = fetch_forecast(lat, lon, hours=48)
+    forecast_series = pd.Series([w.wind_speed_ms for w in forecast])
+
+    mcp = measure_correlate_predict(float(df["V"].mean()), float(era5_series.mean()), forecast_series)
+
+    curve_df = df.rename(columns={"V": "wind_speed_ms", "y (% relative to rated power)": "power_pct"})
+    curve = binned_power_curve(curve_df, power_col="power_pct")
+    smooth = smooth_power_curve(curve_df, curve.index.values, power_col="power_pct")
+
+    return {
+        "turbine_id": turbine_id,
+        "mast": meta["mast"],
+        "site": meta["site"],
+        "period_start": meta["period_start"],
+        "period_end": meta["period_end"],
+        "reference_lat": lat,
+        "reference_lon": lon,
+        "mcp": {
+            "ratio": _clean(mcp["ratio"]),
+            "mast_mean_ms": _clean(mcp["mast_mean_ms"]),
+            "era5_mean_ms": _clean(mcp["era5_mean_ms"]),
+            "era5_hours_compared": len(era5_series),
+        },
+        "forecast_next_48h": {
+            "timestamps": [p.timestamp.isoformat() for p in forecast],
+            "era5_raw_ms": [_clean(v) for v in forecast_series],
+            "mcp_adjusted_ms": [_clean(v) for v in mcp["predicted_local_ms"]],
+        },
+        "power_curve": [
+            {"wind_speed_bin": _clean(idx), "mean_power_pct": _clean(row["mean_power_kw"]), "sample_count": int(row["sample_count"])}
+            for idx, row in curve.iterrows() if not pd.isna(row["mean_power_kw"])
+        ],
+        "power_curve_smooth": [
+            {"wind_speed_bin": _clean(idx), "mean_power_pct": _clean(v)} for idx, v in smooth.items() if not pd.isna(v)
+        ],
+    }
+
+
+class DsweAskRequest(BaseModel):
+    question: str
+
+
+@app.post("/dswe/ask")
+def dswe_ask(request: DsweAskRequest):
+    if not request.question.strip() or len(request.question) > 500:
+        raise HTTPException(400, "question must be 1-500 characters")
+
+    from agents.llm_router import complete
+    from rag.dswe_retriever import get_retriever
+
+    docs = get_retriever().invoke(request.question.strip())
+    context = "\n".join(f"- {d.page_content}" for d in docs) or "(no matching reference found)"
+    prompt = (
+        "You are the Windward analysis agent for the DSWE Inland-Offshore Wind Farm Dataset1 "
+        "(6 real turbines, 3 real on-site met masts, diagnosis/RAG only — no disclosed location, "
+        "no forecasting, but a real Measure-Correlate-Predict ratio against Open-Meteo ERA5 is "
+        "available per turbine). Answer using ONLY the context below; if it doesn't cover the "
+        "question, say so plainly. Keep the answer under 120 words, plain English.\n\n"
+        f"Context:\n{context}\n\nQuestion: {request.question.strip()}"
+    )
+    response = complete([{"role": "user", "content": prompt}])
+    return {"answer": response.choices[0].message.content, "sources": [d.metadata.get("source", "?") for d in docs]}
+
+
 # Mounted last: exact-path routes above always win; everything else (including "/") falls
 # through to the dashboard's static files.
 app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="dashboard")

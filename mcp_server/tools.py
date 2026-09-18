@@ -59,3 +59,18 @@ def query_edp_incidents(question: str) -> str:
     )
     response = complete([{"role": "user", "content": prompt}])
     return response.choices[0].message.content
+
+
+def query_dswe_reference(question: str) -> str:
+    """RAG over the DSWE Inland-Offshore dataset's real turbine/mast facts and the
+    Measure-Correlate-Predict methodology — see rag/dswe_incident_corpus.py."""
+    from rag.dswe_retriever import get_retriever as get_dswe_retriever
+
+    docs = get_dswe_retriever().invoke(question)
+    context = "\n".join(f"- ({d.metadata.get('source', '?')}) {d.page_content}" for d in docs)
+    prompt = (
+        f"Answer the question using only the context below, citing sources by name. "
+        f"If the context doesn't cover it, say so.\n\nContext:\n{context}\n\nQuestion: {question}"
+    )
+    response = complete([{"role": "user", "content": prompt}])
+    return response.choices[0].message.content
