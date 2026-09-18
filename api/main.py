@@ -154,6 +154,11 @@ def _run_analysis(farm_id: str) -> dict:
             for turbine_id, row in efficiency.iterrows()
         ],
         "power_curves": power_curves,
+        "wind_rose": [
+            {"compass": row["compass"], "direction_deg": _clean(row["direction_deg"]), "energy_kwh": _clean(row["energy_kwh"])}
+            for _, row in result["wind_rose"].iterrows()
+        ],
+        "wind_speed_distribution": result["wind_speed_distribution"],
         "anomalies": result["anomalies"],
         "recommendation": result["recommendation"],
         "explanation": result["explanation"],

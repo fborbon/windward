@@ -182,3 +182,61 @@ def actual_vs_predicted(actual: pd.Series, predicted: pd.Series) -> pd.DataFrame
     df["residual_mw"] = df["actual_mw"] - df["predicted_mw"]
     df["pct_of_predicted"] = df["actual_mw"] / df["predicted_mw"].replace(0, np.nan)
     return df
+
+
+COMPASS_16 = [
+    "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+    "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW",
+]
+
+
+def wind_rose_energy_kwh(
+    df: pd.DataFrame, wind_dir_col: str = "wind_direction_deg", power_col: str = "output_mw", n_sectors: int = 16
+) -> pd.DataFrame:
+    """Cumulative energy (kWh) actually produced per wind-direction sector, over the whole
+    period in df - real additive production accounting (sum of power_mw over 1h samples, per
+    sector), not a theoretical curve. Bins are centered on each compass point (e.g. "N" covers
+    -11.25..11.25 degrees for 16 sectors), matching conventional wind-rose plotting."""
+    sector_width = 360.0 / n_sectors
+    shifted = (df[wind_dir_col] % 360 + sector_width / 2) % 360
+    sector_idx = (shifted // sector_width).astype(int).clip(0, n_sectors - 1)
+    energy_mwh = df.assign(_sector=sector_idx).groupby("_sector")[power_col].sum()  # MW over 1h samples = MWh
+    energy_kwh = (energy_mwh * 1000).reindex(range(n_sectors), fill_value=0.0)
+    labels = COMPASS_16 if n_sectors == 16 else [f"{i * sector_width:.0f}°" for i in range(n_sectors)]
+    return pd.DataFrame({
+        "sector": range(n_sectors),
+        "compass": labels,
+        "direction_deg": [i * sector_width for i in range(n_sectors)],
+        "energy_kwh": energy_kwh.values,
+    })
+
+
+def wind_speed_power_distribution(
+    df: pd.DataFrame, rated_capacity_mw: float, wind_col: str = "wind_speed_ms",
+    power_col: str = "output_mw", bin_width: float = 0.5,
+) -> dict:
+    """Site wind-speed distribution (with a fitted Weibull curve) paired with the farm's real
+    power output (as a share of rated capacity) at each wind speed, sharing the same x-axis -
+    the resource-assessment pair from demo_notebook/'s "Recurso eolico del emplazamiento"
+    section, computed here for the live dashboard instead of a notebook."""
+    from scipy.stats import weibull_min
+
+    wind_speed = df[wind_col].dropna()
+    shape, loc, scale = weibull_min.fit(wind_speed, floc=0)
+
+    hist_edges = np.arange(0, wind_speed.max() + bin_width, bin_width)
+    density, edges = np.histogram(wind_speed, bins=hist_edges, density=True)
+    bin_centers = edges[:-1] + bin_width / 2
+    weibull_pdf = weibull_min.pdf(bin_centers, shape, loc, scale)
+
+    power_binned = df.groupby(pd.cut(df[wind_col], bins=hist_edges), observed=True)[power_col].mean()
+    share_of_capacity = (power_binned / rated_capacity_mw).reindex(bin_centers, fill_value=np.nan)
+
+    return {
+        "weibull_shape": float(shape),
+        "weibull_scale": float(scale),
+        "wind_speed_bins": [round(float(v), 3) for v in bin_centers],
+        "wind_speed_density": [round(float(v), 5) for v in density],
+        "weibull_pdf": [round(float(v), 5) for v in weibull_pdf],
+        "power_share_of_capacity": [None if pd.isna(v) else round(float(v), 4) for v in share_of_capacity.values],
+    }

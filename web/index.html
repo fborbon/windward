@@ -258,6 +258,100 @@ function drawBarChart(canvas, points, {height=200, color=GOLD, xFmt=(v)=>v, yFmt
   });
 }
 
+// Histogram bars (e.g. an observed distribution) with a fitted curve overlaid on the same
+// x/y scale - used for the wind-speed distribution + Weibull fit panel.
+function drawHistogramWithLine(canvas, barValues, lineValues, {height=180, barColor=GOLD, lineColor=GOOD, yFmt=(v)=>v.toFixed(2)}={}){
+  const dpr = window.devicePixelRatio || 1;
+  const width = Math.max(560, canvas.parentElement.clientWidth);
+  canvas.width = width*dpr; canvas.height = height*dpr;
+  canvas.style.width = width+"px"; canvas.style.height = height+"px";
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,width,height);
+  if(barValues.length===0) return;
+
+  const padL=48, padR=12, padT=14, padB=8;
+  const plotW=width-padL-padR, plotH=height-padT-padB;
+  const max = Math.max(...barValues, ...lineValues) * 1.05;
+  if(max<=0) return;
+  const n = barValues.length;
+  const barW = plotW/n;
+  const x = i => padL + (i+0.5)/n*plotW;
+  const y = v => padT + plotH - (v/max)*plotH;
+
+  ctx.strokeStyle=GRID; ctx.font="11px 'IBM Plex Mono',monospace"; ctx.fillStyle=TEXT;
+  for(let t=0;t<=3;t++){
+    const v = max*t/3, yy = padT+plotH-(v/max)*plotH;
+    ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(width-padR,yy); ctx.stroke();
+    ctx.fillText(yFmt(v), 4, yy+4);
+  }
+
+  ctx.fillStyle = barColor; ctx.globalAlpha = 0.55;
+  barValues.forEach((v,i)=>{
+    const h = (v/max)*plotH;
+    ctx.fillRect(padL+i*barW+1, padT+plotH-h, Math.max(1,barW-2), h);
+  });
+  ctx.globalAlpha = 1;
+
+  ctx.strokeStyle = lineColor; ctx.lineWidth = 2; ctx.beginPath();
+  lineValues.forEach((v,i)=>{
+    const xx=x(i), yy=y(v);
+    if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
+  });
+  ctx.stroke();
+}
+
+// Polar "wind rose": one wedge per compass sector, radius proportional to value, N at top,
+// clockwise - the conventional wind-rose orientation.
+function drawWindRose(canvas, sectors, {size=300, color=GOLD}={}){
+  const dpr = window.devicePixelRatio || 1;
+  const width = Math.max(240, Math.min(size, canvas.parentElement.clientWidth));
+  const height = width;
+  canvas.width = width*dpr; canvas.height = height*dpr;
+  canvas.style.width = width+"px"; canvas.style.height = height+"px";
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,width,height);
+  if(sectors.length===0) return;
+
+  const cx = width/2, cy = height/2;
+  const maxR = Math.min(width,height)/2 - 28;
+  const maxVal = Math.max(...sectors.map(s=>s.energy_kwh));
+  if(maxVal<=0) return;
+  const n = sectors.length;
+  const sectorAngle = (2*Math.PI)/n;
+
+  ctx.strokeStyle = GRID; ctx.fillStyle = TEXT; ctx.font = "10px 'IBM Plex Mono',monospace";
+  [0.25,0.5,0.75,1].forEach(f=>{
+    ctx.beginPath();
+    ctx.arc(cx,cy,maxR*f,0,2*Math.PI);
+    ctx.stroke();
+  });
+
+  sectors.forEach((s,i)=>{
+    const r = (s.energy_kwh/maxVal)*maxR;
+    const start = -Math.PI/2 + i*sectorAngle - sectorAngle/2 + 0.015;
+    const end = -Math.PI/2 + i*sectorAngle + sectorAngle/2 - 0.015;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,start,end);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.85;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+
+  ctx.fillStyle = TEXT; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  sectors.forEach((s,i)=>{
+    const angle = -Math.PI/2 + i*sectorAngle;
+    const lx = cx + (maxR+14)*Math.cos(angle);
+    const ly = cy + (maxR+14)*Math.sin(angle);
+    ctx.fillText(s.compass, lx, ly);
+  });
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+
 // ---------- farm tabs + analysis ----------
 const EDP_FARM_ID = "edp_wind_farm_a";
 const WIND_PREDICTION_TAB_ID = "wind_prediction";
@@ -577,6 +671,24 @@ function renderAnalysis(panel, farmId, a){
       </div>
 
       <div class="card">
+        <h2>Wind resource &amp; power output</h2>
+        <div class="desc">Top: the site's real wind-speed distribution (ERA5, over the whole SCADA period) with a fitted Weibull curve. Bottom: the farm's real production at each wind speed, as a share of rated capacity - sharing the same x-axis.</div>
+        <div class="chart-wrap"><canvas id="chart-wind-dist-top"></canvas></div>
+        <div class="legend">
+          <span><span class="swatch" style="background:${GOLD}"></span>Observed (share of hours)</span>
+          <span><span class="swatch" style="background:${GOOD}"></span>Weibull fit</span>
+        </div>
+        <div class="chart-wrap" style="margin-top:10px;"><canvas id="chart-wind-dist-bottom"></canvas></div>
+        <div class="legend"><span><span class="swatch" style="background:${GOOD}"></span>Share of rated capacity</span></div>
+      </div>
+
+      <div class="card">
+        <h2>Wind rose - power by direction</h2>
+        <div class="desc">Cumulative energy (kWh) actually produced while the wind blew from each direction, over the whole real SCADA period · ${farm.name}.</div>
+        <div class="chart-wrap" style="display:flex; justify-content:center;"><canvas id="chart-wind-rose"></canvas></div>
+      </div>
+
+      <div class="card">
         <h2>Turbine efficiency vs. the Betz limit</h2>
         <div class="desc">Peak power coefficient (Cₚ) per turbine — the theoretical ceiling on wind-energy extraction is 16/27 ≈ 0.593 (Betz's law). A peak above that line means the anemometer, not the turbine, is lying.</div>
         <table>
@@ -654,6 +766,15 @@ function renderAnalysis(panel, farmId, a){
     {data:a.comparison_series.map(p=>p.actual_mw), color:GOLD},
     {data:a.comparison_series.map(p=>p.predicted_mw), color:GOOD},
   ], {labelFmt:v=>v.toFixed(1)});
+
+  const wsd = a.wind_speed_distribution;
+  drawHistogramWithLine(document.getElementById("chart-wind-dist-top"), wsd.wind_speed_density, wsd.weibull_pdf, {yFmt:v=>v.toFixed(2)});
+  drawBarChart(
+    document.getElementById("chart-wind-dist-bottom"),
+    wsd.wind_speed_bins.map((x,i)=>({x, y: wsd.power_share_of_capacity[i] ?? 0})),
+    {color:GOOD, xFmt:v=>v.toFixed(0), yFmt:v=>pct(v)}
+  );
+  drawWindRose(document.getElementById("chart-wind-rose"), a.wind_rose);
 
   const askBtn = document.getElementById("ask-btn");
   const askInput = document.getElementById("ask-input");

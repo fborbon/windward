@@ -29,6 +29,8 @@ from analysis.efficiency import (
     neighbor_underperformance,
     scada_reanalysis_wind_check,
     turbine_efficiency_summary,
+    wind_rose_energy_kwh,
+    wind_speed_power_distribution,
 )
 from data_sources.farms import FARMS, loader_for
 from forecasting.features import FEATURE_COLUMNS, TARGET_COLUMN
@@ -58,6 +60,8 @@ class WindwardState(TypedDict, total=False):
     efficiency_summary: pd.DataFrame
     anomalies: list
     data_quality: dict
+    wind_rose: pd.DataFrame
+    wind_speed_distribution: dict
     rag_context: list
     inspection_results: list
     investigation: dict
@@ -144,9 +148,14 @@ def diagnose_node(state: WindwardState) -> dict:
             "detail": "farm-mean SCADA wind speed diverges >5 m/s from the independent Open-Meteo reanalysis in a meaningful fraction of hours — possible data alignment or sensor issue",
         })
 
+    total_capacity_mw = farm.rated_power_kw * len(farm.turbine_ids) / 1000
+    wind_rose = wind_rose_energy_kwh(feature_frame)
+    wind_speed_distribution = wind_speed_power_distribution(feature_frame, total_capacity_mw)
+
     return {
         "power_curves": power_curves, "efficiency_summary": efficiency_summary,
         "anomalies": anomalies, "data_quality": data_quality,
+        "wind_rose": wind_rose, "wind_speed_distribution": wind_speed_distribution,
     }
 
 
