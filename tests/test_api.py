@@ -1,14 +1,33 @@
+import socket
+from urllib.parse import urlparse
+
+import pytest
 from fastapi.testclient import TestClient
 
+import config
 from api.main import app
 
 client = TestClient(app)
+
+
+def _mlflow_reachable() -> bool:
+    """test_forecast needs a live, registered model in the MLflow registry - true on the
+    deploy host (where MLflow runs alongside the app) and on a dev machine pointed at it, but
+    never in CI, which has no route to a private MLFLOW_TRACKING_URI. Skip rather than hang."""
+    host = urlparse(config.MLFLOW_TRACKING_URI).hostname
+    port = urlparse(config.MLFLOW_TRACKING_URI).port or 80
+    try:
+        with socket.create_connection((host, port), timeout=2):
+            return True
+    except OSError:
+        return False
 
 
 def test_health():
     assert client.get("/health").json() == {"status": "ok"}
 
 
+@pytest.mark.skipif(not _mlflow_reachable(), reason="MLFLOW_TRACKING_URI not reachable from here")
 def test_forecast():
     resp = client.post("/forecast", json={"farm_id": "kelmarsh", "horizon_hours": 6})
     assert resp.status_code == 200

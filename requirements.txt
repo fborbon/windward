@@ -22,10 +22,17 @@ mcp
 # Data / validation
 pydantic
 pandas
+numpy
+scipy
 httpx
 python-dotenv
 scikit-learn
 entsoe-py
+
+# Time-series forecasting showcase (wind_prediction/)
+statsmodels
+torch
+chronos-forecasting
 
 # AWS (Bedrock LLM calls + DynamoDB session store — existing account)
 boto3

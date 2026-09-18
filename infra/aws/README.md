@@ -12,6 +12,22 @@ Everything below runs on `forwardforecasting-dev` (EC2 `i-06b771ce9bfd7ec87`, `t
 | IAM | Inline policy `windward-app-access` on the existing role `forwardforecasting-dev-ssm-role` (attached to the instance profile) — scoped to exactly the S3 bucket, the `windward-agent-sessions` DynamoDB table, and the two Bedrock models used. No static keys anywhere; the app and the MLflow server both pick up credentials from EC2 instance metadata automatically via `boto3`. |
 | DynamoDB | `windward-agent-sessions` (`eu-west-1`, on-demand billing) — unchanged from the original setup, was already AWS |
 
+## CI/CD
+
+`.github/workflows/deploy.yml` runs `pytest` on every push to `master`, then deploys only if
+tests pass. No SSH keys anywhere: the workflow assumes `github-actions-windward-deploy`
+(`eu-west-1`, trust condition `token.actions.githubusercontent.com:sub` = `repo:fborbon@*/windward@*:ref:refs/heads/master`)
+via short-lived GitHub OIDC credentials, then runs the deploy as an `AWS-RunShellScript` document
+through SSM (`ssm:SendCommand` against exactly this instance) - `git pull` + `docker build` +
+`docker compose up -d --force-recreate` on the box itself, not a direct SSH session from the
+runner. `--force-recreate` is deliberate, not decorative: `docker compose up -d` alone doesn't
+reliably recreate a container when only the underlying image content changed under the same tag
+(compose diffs its own config, not image content) - a real gotcha hit on a sibling project's
+deploy before this one existed.
+
+The role's inline policy (`ssm-deploy-windward`) is scoped to `ssm:SendCommand`/`GetCommandInvocation`
+against this one instance ID and the `AWS-RunShellScript` document only - nothing broader.
+
 ## Reproducing this
 
 ```bash
