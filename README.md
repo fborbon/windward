@@ -2,7 +2,7 @@
 
 > **Live:** [windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/) — a real, persistently-running FastAPI service on AWS. A multi-agent AI system for wind farm production forecasting and operations support: classic ML forecasting tracked with self-hosted **MLflow**, a **LangGraph** agent workflow for diagnosis and recommendations, **two independent RAG stacks** (LangChain/FAISS + LlamaIndex) over real turbine data, a **multimodal** vision-LLM blade-inspection pass, and real **DynamoDB** session persistence — exposed via a **FastAPI** service and an **MCP server** so the agent's tools are callable from Claude or any MCP client.
 
-**Status:** end-to-end on **real data**, three farms, running as a real AWS service — real historical weather (Open-Meteo) joined with real turbine production (Kelmarsh + Penmanshiel + Hill of Towie open SCADA datasets, two different export formats), per-farm models trained and registered in a self-hosted MLflow registry (S3-backed). The full LangGraph agent runs for any farm: ingest → forecast → diagnose (physics-based efficiency + anomaly detection) → RAG (real fault-event corpus, Bedrock Titan embeddings, FAISS) → multimodal (real vision-LLM blade check) → investigate (real forecast-error-trend + model-age check, conditionally routing to a retrain recommendation) → recommend/recommend_retrain → explain (Amazon Nova Lite), every run persisted to DynamoDB. Dashboard: **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)** (one tab per farm, real charts, and a live "ask the agent" box — a real tool-calling agent (`agents/qa_agent.py`) that decides per question whether it needs the RAG-grounded maintenance corpus, the farm's current analysis, both, or neither, instead of one stuffed prompt). A fourth tab, **EDP Wind Farm A**, adds real labeled fault case studies (diagnosis/RAG only, no forecasting — see §5). A fifth tab, **Wind Prediction**, is a separate time-series-forecasting breadth showcase - naive baselines through a genuine zero-shot foundation-model forecast (§13) - plus the one part of this project that refreshes live rather than from a frozen SCADA snapshot: real-time Open-Meteo weather. Write-up: **[Teaching an Agent to Read Wind Farms](https://education.forwardforecasting.eu/windward-agent/)**.
+**Status:** end-to-end on **real data**, three farms, running as a real AWS service — real historical weather (Open-Meteo) joined with real turbine production (Kelmarsh + Penmanshiel + Hill of Towie open SCADA datasets, two different export formats), per-farm models trained and registered in a self-hosted MLflow registry (S3-backed). The full LangGraph agent runs for any farm: ingest → forecast → diagnose (physics-based efficiency + anomaly detection) → RAG (real fault-event corpus, Bedrock Titan embeddings, FAISS) → multimodal (real vision-LLM blade check) → investigate (real forecast-error-trend + model-age check, conditionally routing to a retrain recommendation) → recommend/recommend_retrain → explain (Amazon Nova Lite), every run persisted to DynamoDB. Dashboard: **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)** (one tab per farm, real charts, and a live "ask the agent" box — a real tool-calling agent (`agents/qa_agent.py`) that decides per question whether it needs the RAG-grounded maintenance corpus, the farm's current analysis, both, or neither, instead of one stuffed prompt). A fourth tab, **EDP Wind Farm A**, adds real labeled fault case studies (diagnosis/RAG only, no forecasting — see §5). A fifth tab, **Wind Prediction**, is a separate time-series-forecasting breadth showcase - naive baselines through a genuine zero-shot foundation-model forecast (§14) - plus the one part of this project that refreshes live rather than from a frozen SCADA snapshot: real-time Open-Meteo weather. Write-up: **[Teaching an Agent to Read Wind Farms](https://education.forwardforecasting.eu/windward-agent/)**.
 
 **Started as a deliberate skill demonstration** (MLflow, RAG, agentic workflows, MLOps — see §2), then pivoted toward becoming an actual product: now deployed as a persistent service on AWS, with plans to combine it with an energy-price-prediction model and commercialize both.
 
@@ -20,11 +20,12 @@
 6. [Data Processing Pipeline](#6-data-processing-pipeline)
 7. [Libraries & AI Technologies](#7-libraries--ai-technologies)
 8. [Forecasting Model](#8-forecasting-model)
-9. [Project Structure](#9-project-structure)
-10. [Setup](#10-setup)
-11. [Roadmap](#11-roadmap)
-12. [Cost & Resource Consumption](#12-cost--resource-consumption)
-13. [Wind Prediction: Time-Series Forecasting Showcase](#13-wind-prediction-time-series-forecasting-showcase)
+9. [Blade Inspection](#9-blade-inspection)
+10. [Project Structure](#10-project-structure)
+11. [Setup](#11-setup)
+12. [Roadmap](#12-roadmap)
+13. [Cost & Resource Consumption](#13-cost--resource-consumption)
+14. [Wind Prediction: Time-Series Forecasting Showcase](#14-wind-prediction-time-series-forecasting-showcase)
 
 ---
 
@@ -46,14 +47,14 @@ The split is deliberate: forecasting is a numerical ML problem (best solved with
 | DynamoDB | `storage/dynamo_session_store.py` — every agent run persisted as a real session record |
 | LangChain | `rag/langchain_retriever.py`, `rag/embeddings.py` — retriever + custom embeddings wrapper |
 | LangGraph | `agents/graph.py` — ingest → forecast → diagnose → rag/multimodal → investigate → (conditional) recommend / recommend_retrain → explain |
-| Langfuse | `observability/tracing.py`, wired into every graph run via `agents.graph.run()` and into every `agents/llm_router.py` completion call (which the `/ask` agent and `explain_node` both go through) — active now that `LANGFUSE_*` keys are set, see §12 |
+| Langfuse | `observability/tracing.py`, wired into every graph run via `agents.graph.run()` and into every `agents/llm_router.py` completion call (which the `/ask` agent and `explain_node` both go through) — active now that `LANGFUSE_*` keys are set, see §13 |
 | LiteLLM | `agents/llm_router.py` — provider-agnostic model calls |
 | Pydantic | `schemas/models.py` — every tool/agent I/O contract |
 | LlamaIndex | `rag/llamaindex_index.py` — second, independent RAG stack over turbine spec metadata |
 | Multimodal | `multimodal/blade_inspection.py` — real vision-LLM pass (Bedrock Nova, Converse API) on a real inspection photo |
 | Semantic Search | `rag/semantic_search.py` — nearest-neighbor search over the real incident corpus |
 | MLflow | `forecasting/train.py`, `forecasting/registry.py` — self-hosted tracking server + registry, S3 artifact store |
-| Time-series forecasting breadth (classical statistical, state-space, DL, attention, foundation models) | `wind_prediction/` - naive to Chronos foundation-model showcase, separate from the production regression model (§13) |
+| Time-series forecasting breadth (classical statistical, state-space, DL, attention, foundation models) | `wind_prediction/` - naive to Chronos foundation-model showcase, separate from the production regression model (§14) |
 
 ## 3. Architecture & Data Flow
 
@@ -239,7 +240,7 @@ Grouped by the AI capability each one supports — only libraries actually used 
 - **Amazon Nova Lite** (via LiteLLM/Bedrock) — the generation model behind `explain_node`'s field report. Invoked as `bedrock/eu.amazon.nova-lite-v1:0`, an EU cross-region *inference profile* — a real gotcha hit during development: bare Bedrock model IDs aren't invocable on-demand in `eu-west-1` for this model family, only via a region-prefixed inference profile.
 - **Amazon Nova Lite, multimodal** (`multimodal/blade_inspection.py`, direct Bedrock Converse API) — the same model family, called with an image content block instead of text-only, for the blade-inspection vision pass.
 - **MCP (Model Context Protocol)** — the open protocol/SDK for exposing tools to LLM clients (Claude and others) in a standard way. `mcp_server/` exposes `get_forecast`, `get_recommendation`, and `query_maintenance_docs` over MCP, so an external agent can operate Windward's capabilities directly rather than only via a bespoke REST call.
-- **Amazon Nova Lite, tool-calling agent** (`agents/qa_agent.py`, via LiteLLM/Bedrock) - powers the dashboard's "Ask the agent" box (`POST /analysis/{farm_id}/ask`). The LLM decides per question whether it needs `search_maintenance_docs` (the RAG retriever), `get_current_analysis` (the farm's precomputed numbers), both, or neither, instead of one stuffed prompt. This replaced an earlier design that used Claude's `sample` capability from a client-side Claude Artifact (billed to the *viewer's* own Claude account, no AWS cost) - once the dashboard moved off Artifacts onto a real self-hosted frontend (§9/§12), routing the chat through Windward's own Bedrock backend like everything else made more sense than requiring visitors to have a Claude account.
+- **Amazon Nova Lite, tool-calling agent** (`agents/qa_agent.py`, via LiteLLM/Bedrock) - powers the dashboard's "Ask the agent" box (`POST /analysis/{farm_id}/ask`). The LLM decides per question whether it needs `search_maintenance_docs` (the RAG retriever), `get_current_analysis` (the farm's precomputed numbers), both, or neither, instead of one stuffed prompt. This replaced an earlier design that used Claude's `sample` capability from a client-side Claude Artifact (billed to the *viewer's* own Claude account, no AWS cost) - once the dashboard moved off Artifacts onto a real self-hosted frontend (§10/§13), routing the chat through Windward's own Bedrock backend like everything else made more sense than requiring visitors to have a Claude account.
 
 **Observability**
 - **Langfuse** (`observability/tracing.py`) - **live and working**, tracing every LLM/agent call end to end: both `explain_node`'s narration inside `agents/graph.py` and `agents/qa_agent.py`'s tool-calling `/ask` loop show up as real traces in the Langfuse dashboard, auto-activating whenever `LANGFUSE_PUBLIC_KEY`/`SECRET_KEY` are set (no-op otherwise). Two coverage paths, because Windward has two different call shapes to trace: `get_handler()` returns a `langfuse.langchain.CallbackHandler` for the LangGraph run (`agents.graph.run()` passes it in as a LangChain callback); `wrap_completion()` wraps `agents/llm_router.py`'s raw `litellm.completion()` calls with a manual Langfuse generation span, for the `/ask` loop's direct calls that don't go through a LangChain `Runnable` at all. The manual path is deliberate, not incidental: litellm's own built-in `success_callback=["langfuse"]` hook is broken against the current Langfuse v4 SDK (`AttributeError: module 'langfuse' has no attribute 'version'`, still true on litellm 1.101.0 as of this writing) and - because litellm swallows that error as "non-blocking" while it actually aborts the completion - was silently degrading every `/ask` question to its stuffed-prompt fallback before this was caught. `wrap_completion()`'s direct `langfuse.get_client().start_as_current_observation()` call sidesteps that broken litellm code path entirely, so it isn't exposed to whichever litellm version happens to be installed.
@@ -290,7 +291,7 @@ That's a real, deliberate advantage over a theoretical curve, not just a simplif
 - **The trade-off, stated plainly:** this bakes in the training period's maintenance/curtailment
   pattern as if it will repeat. If grid capacity is added and a curtailment pattern that used to
   recur at high wind speed from a particular direction goes away, the model won't know that until
-  it's retrained on data from after the change - exactly the kind of concept drift §13's
+  it's retrained on data from after the change - exactly the kind of concept drift §14's
   monitoring section (and `agents/graph.py`'s `investigate_node`) is watching for.
 
 **Why this model (the algorithm choice):** the problem is tabular regression — a handful of physically meaningful features (wind speed, its cube, direction, temperature, pressure, real air density, price, hour-of-day — `forecasting/features.py`) predicting a continuous target (farm MW output) — on a moderate dataset (a few thousand hourly rows per farm). Gradient-boosted trees are a strong, well-understood default for exactly this shape of problem: they usually match or beat deep learning here with far less tuning and no GPU — training takes seconds on a small EC2 instance, no dedicated compute cluster needed. Validated with 5-fold CV in addition to the single held-out test split (`forecasting/train.py`) — a lower-variance read on generalization than either alone; per-farm k-fold mean test R² lands within ~0.01-0.02 of the single-split R² for all three farms, no sign the original split was lucky or unlucky.
@@ -328,7 +329,7 @@ All 8 come from forecastable sources (Open-Meteo weather forecast + day-ahead pr
 
 ### Why MAE and R², specifically
 
-- **MAE (Mean Absolute Error)** - the mean of `|actual - predicted|` across every held-out hour, in MW (the same units as the target itself). Concretely: Kelmarsh's 1.06 MW MAE means the forecast is off by about 1.06 MW per hour on average, against a farm rated at 12.3 MW. Chosen because it's the number that translates directly into the business metric that actually matters here - the imbalance-cost proxy in §1/§13 is built by multiplying absolute error by price, not a squared or dimensionless error - and because it weighs every hour's miss linearly, so it isn't dominated by the rare large residual the way a squared-error metric (RMSE) would be.
+- **MAE (Mean Absolute Error)** - the mean of `|actual - predicted|` across every held-out hour, in MW (the same units as the target itself). Concretely: Kelmarsh's 1.06 MW MAE means the forecast is off by about 1.06 MW per hour on average, against a farm rated at 12.3 MW. Chosen because it's the number that translates directly into the business metric that actually matters here - the imbalance-cost proxy in §1/§14 is built by multiplying absolute error by price, not a squared or dimensionless error - and because it weighs every hour's miss linearly, so it isn't dominated by the rare large residual the way a squared-error metric (RMSE) would be.
 - **R² (coefficient of determination)** - `1 - (sum of squared residuals / total variance of the target)`: how much of the hour-to-hour variance in output the model explains. 1.0 is a perfect fit, 0.0 is no better than always predicting the training mean, negative is worse than that. Kelmarsh's R²=0.73 means the model accounts for 73% of that farm's real output variance. Chosen because it's scale-free, so it's the metric that's actually comparable *across* farms of very different rated capacity (Kelmarsh 12.3 MW vs. Hill of Towie 48.3 MW) - a raw MAE alone can't tell you whether a model is doing a relatively better or worse job once farm size differs, and R² can.
 
 Neither is used blind: `demo_notebook/`'s own case study (§4-5 there) shows R² computed from a random train/test split reads meaningfully higher than the same model's R² from a chronological split - a random split leaks every season into both sides and overstates real forward-looking accuracy - which is exactly the kind of thing a single headline metric can hide.
@@ -343,7 +344,40 @@ Neither is used blind: `demo_notebook/`'s own case study (§4-5 there) shows R²
 
 These are meaningfully harder, more honest numbers than an early synthetic-production prototype's R² 0.95 — real SCADA carries wake effects, curtailment, and downtime the model has to learn around, which is the actual point of using real data.
 
-## 9. Project Structure
+## 9. Blade Inspection
+
+A real multimodal-LLM pass that turns the numeric efficiency diagnosis into a first-pass visual
+one - finding a plausible *explanation* for turbine underperformance, not just flagging that it's
+happening.
+
+**What it does:** after `diagnose` (§4) computes per-turbine efficiency from real SCADA data,
+`multimodal_node` (`agents/graph.py`) picks the **worst-performing turbine in the fleet** by
+lowest capacity factor - no manual selection, it's driven by the same efficiency numbers
+`recommend_node` (§4) builds its own recommendation from - and runs `inspect_image()`
+(`multimodal/blade_inspection.py`)
+against a real photo of a technician inspecting a turbine blade ([Wikimedia Commons, CC BY-SA
+3.0](https://commons.wikimedia.org/wiki/File:Begutachtung_eines_Rotorblattes.JPG); not a live
+drone feed per turbine yet, see §12's roadmap). The result surfaces on the dashboard's "Blade
+inspection (vision-LLM)" card next to the photo.
+
+**How AI is applied:** a genuine multimodal LLM call, not an image-classification model or OCR -
+the raw image bytes and a text prompt go to **Amazon Nova Lite** together, via AWS Bedrock's
+Converse API (`boto3`, called directly rather than through LiteLLM - the code comment notes
+LiteLLM's Bedrock image support was inconsistent across Nova versions, and Converse's image block
+is the officially documented multimodal input path for Nova). The prompt asks Nova to visually
+assess the photo for specific damage types (leading-edge erosion, cracks, delamination,
+lightning-strike marks, icing) and reply with **only a JSON object** -
+`{damage_detected, damage_types, confidence, description}` - which is parsed and validated into a
+`BladeInspectionResult` Pydantic model (`schemas/models.py`), not left as free text, so the rest
+of the app (dashboard, `explain_node`'s narration) can rely on its shape.
+
+**The honest limitation:** it's the same one sample photo every run, re-labeled with whichever
+turbine currently has the worst capacity factor - so today this demonstrates the *mechanism* (a
+real vision-LLM call producing a structured damage verdict, triggered by a real data-driven
+turbine selection) rather than a genuine per-turbine live inspection pipeline. Wiring it to real
+per-turbine drone imagery is explicitly future work, not claimed as done.
+
+## 10. Project Structure
 
 ```
 windward/
@@ -359,8 +393,8 @@ windward/
 ├── observability/               # Langfuse tracing, wired into every graph run (§2)
 ├── storage/                       # DynamoDB session store
 ├── dashboard/                      # legacy static-payload export (§6) - superseded by the live GET /analysis/{farm_id}
-├── wind_prediction/                 # naive -> foundation-model time-series showcase (§13), separate from forecasting/
-├── Dockerfile / docker-compose.prod.yml  # the persistent deployment (§12)
+├── wind_prediction/                 # naive -> foundation-model time-series showcase (§14), separate from forecasting/
+├── Dockerfile / docker-compose.prod.yml  # the persistent deployment (§13)
 ├── web/                               # static dashboard served by the FastAPI app at windward.forwardforecasting.eu
 ├── infra/
 │   └── aws/                            # the live deployment — what's actually running, and how to reproduce it
@@ -369,7 +403,7 @@ windward/
     └── ARCHITECTURE.md
 ```
 
-## 10. Setup
+## 11. Setup
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
@@ -379,7 +413,7 @@ cp .env.example .env   # fill in AWS region / MLflow tracking URI
 
 Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `http://127.0.0.1:5000`) and picks up AWS credentials from the environment — an EC2 instance role in production, or your own AWS CLI profile locally.
 
-## 11. Roadmap
+## 12. Roadmap
 
 - [x] Data source clients (meteo, price) + Pydantic schemas
 - [x] Real production data — Kelmarsh + Penmanshiel + Hill of Towie open SCADA datasets
@@ -401,13 +435,13 @@ Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `ht
 - [x] Real power-curve-correction methods in `diagnose` (§4.1) — real per-hour air density (not a sea-level constant) in the Cp/Betz-limit calc, least-squares power-curve-displacement fitting to quantify suspected anemometer bias, KD-tree neighbor-turbine underperformance detection (real per-turbine coordinates via `load_turbine_static()`), and a SCADA-vs-independent-reanalysis QC cross-check. All four verified against real data for all three farms; the air-density fix alone moved Kelmarsh 5's peak Cp from above the Betz limit to right at it
 - [x] `air_density_kg_m3` added as a forecasting model feature (`forecasting/features.py`, now shared by both the training and inference paths via one `add_derived_features()` helper instead of the same two lines duplicated three times) — all three farms' models retrained and re-registered (v2) with the new 8-feature schema; verified live post-deploy
 - [x] 5-fold cross-validation added to `forecasting/train.py` alongside the existing single train/test split (additional MLflow metrics only — same model gets registered either way)
-- [x] **Deployed persistently on AWS** (§12) — self-hosted MLflow (systemd + SQLite + S3) and the FastAPI+agent service (Docker, host networking) run on `forwardforecasting-dev`, an existing EC2 instance (its idle-shutdown automation was disabled so this stays up). Live at **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)**, real HTTPS via Let's Encrypt. Verified: both `/health` and `/forecast` respond correctly through the public domain. Auth is the EC2 instance's IAM role — no static AWS keys anywhere.
+- [x] **Deployed persistently on AWS** (§13) — self-hosted MLflow (systemd + SQLite + S3) and the FastAPI+agent service (Docker, host networking) run on `forwardforecasting-dev`, an existing EC2 instance (its idle-shutdown automation was disabled so this stays up). Live at **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)**, real HTTPS via Let's Encrypt. Verified: both `/health` and `/forecast` respond correctly through the public domain. Auth is the EC2 instance's IAM role — no static AWS keys anywhere.
 - [x] ~~Spain day-ahead price forecasting (`spain_price/`)~~ — added, then removed 2026-09-09: national day-ahead price prediction doesn't belong bundled into a wind-farm-production project whose farms are all in the UK, and it's now a separate, standalone project (real OMIE ingestion, forecasting, backtesting).
 - [x] **EDP Wind Farm A** — 22 real labeled fault case studies (CARE-to-Compare benchmark, Zenodo 10.5281/zenodo.15846963, CC BY-SA 4.0), diagnosis/RAG only, no forecasting (anonymized: no coordinates, no rated power/rotor diameter — see §5). Own loader, own RAG corpus/retriever, own `/edp/*` API routes and dashboard tab, deliberately kept out of `data_sources.farms.FARMS` rather than forced into the forecast-coupled `agents/graph.py` pipeline. Verified live: real power curve per case study, real status-code breakdown, RAG-grounded Q&A correctly citing the real fault descriptions
-- [x] **`wind_prediction/`** - naive to time-series-foundation-model forecasting showcase (§13), one genuinely-executed representative technique per family (SARIMA, Holt-Winters, Kalman-filtered structural time series, VAR, Gradient Boosting, LSTM, a compact Transformer encoder, zero-shot Amazon Chronos-Bolt, and a statistical+ML hybrid), scored on an identical sliding-window backtest; own dashboard tab plus a genuinely live-refreshing Open-Meteo panel
+- [x] **`wind_prediction/`** - naive to time-series-foundation-model forecasting showcase (§14), one genuinely-executed representative technique per family (SARIMA, Holt-Winters, Kalman-filtered structural time series, VAR, Gradient Boosting, LSTM, a compact Transformer encoder, zero-shot Amazon Chronos-Bolt, and a statistical+ML hybrid), scored on an identical sliding-window backtest; own dashboard tab plus a genuinely live-refreshing Open-Meteo panel
 - [ ] Evaluated applying a published statistical power-curve-comparison method (`dswe.ComparePCurve`/`FunGP`, from Yu Ding's *Data Science for Wind Energy* and the [DSWE-Python](https://github.com/TAMU-AML/DSWE-Python) package, MIT license) to upgrade `fit_power_curve_displacement`'s bare least-squares shift with a real significance test — not pursued: the published `dswe` 0.1.3 PyPI release has two real, reproducible bugs against current numpy/scipy (a `grid_size` list-vs-scalar mismatch in `generate_test_set`; a deeper `TypeError` in `_GPMethods.compute_loglike_GP` when scipy's L-BFGS-B passes array-typed values into `math.pow`), confirmed by running it against real Kelmarsh turbine data, not just reading the source. Re-implementing its GP hyperparameter optimizer from scratch inside Windward to work around a third-party package's bugs was judged out of scope; revisit if `dswe` ships a fix
 
-## 12. Cost & Resource Consumption
+## 13. Cost & Resource Consumption
 
 **Anthropic** is not called by the running system at all — Claude Code was the *development* tool used to build Windward (a separate, development-time cost, not part of this project's runtime bill); the MCP server exposes tools *to* Claude-compatible clients rather than calling Anthropic's API. Everything below is **AWS**, and it's genuinely marginal: the service runs as one more Docker container + one more systemd service on `forwardforecasting-dev`, an EC2 instance already running other unrelated services and already paid for. Nothing here required provisioning a new host.
 
@@ -424,11 +458,11 @@ Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `ht
 
 **Estimated total: under $0.10/month, indefinitely.** Auth throughout is the EC2 instance's IAM role (`forwardforecasting-dev-ssm-role`, scoped to exactly this S3 bucket, this DynamoDB table, and the two Bedrock models used) — no static AWS keys anywhere in the codebase or on the server.
 
-## 13. Wind Prediction: Time-Series Forecasting Showcase
+## 14. Wind Prediction: Time-Series Forecasting Showcase
 
 `wind_prediction/` is deliberately separate from `forecasting/`. `forecasting/` answers "what will this farm produce" - a production regression model, tracked/registered/served like any real ML system (§8). `wind_prediction/` answers a different question a lot of energy/wind-sector DS roles specifically screen for: **which time-series forecasting paradigm fits this kind of signal, and why** - a breadth showcase across the field, not a second production candidate. It has its own dashboard tab (**Wind Prediction**, `windward.forwardforecasting.eu`) and its own API routes (`GET /wind-prediction`, `GET /wind-prediction/live-weather`).
 
-### 13.1 Why this needed its own section: static SCADA vs. live meteorological data
+### 14.1 Why this needed its own section: static SCADA vs. live meteorological data
 
 Every SCADA dataset this project uses is a frozen, donated historical snapshot - there's no live turbine production feed to refresh daily (see §5's years-covered table below). Weather is the one exception: Open-Meteo's forecast API is genuinely live. The **Live meteorological data** panel on the Wind Prediction tab calls it fresh on every page load (`GET /wind-prediction/live-weather`, `data_sources/meteo_client.fetch_forecast`) - not from any precomputed file - so it's the one part of this whole project that actually refreshes in real time, honestly labeled as such next to the rest of the tab, which is a fixed historical backtest.
 
@@ -440,7 +474,7 @@ Every SCADA dataset this project uses is a frozen, donated historical snapshot -
 | EDP Wind Farm A | 2022-08 – 2023-08 (22 anonymized windows) | No - frozen historical donation |
 | **ERA5 / Open-Meteo weather** | Historical archive back to 1940, **plus a live forecast API** | **Yes - genuinely live** |
 
-### 13.2 Technique taxonomy and what's actually implemented
+### 14.2 Technique taxonomy and what's actually implemented
 
 One representative technique per family is genuinely implemented and executed (`wind_prediction/models.py`) - not every named algorithm (e.g. SARIMA stands in for AR/MA/ARMA/ARIMA/SARIMA). The full field taxonomy lives in `wind_prediction/taxonomy.py` (single source of truth for both the README and the dashboard table) and is reproduced here:
 
@@ -459,7 +493,7 @@ One representative technique per family is genuinely implemented and executed (`
 
 TimeGPT is excluded from execution (paid API, no key here); Moirai/Lag-Llama are heavier multivariate/probabilistic foundation models in the same category as Chronos.
 
-### 13.3 Evaluation protocol
+### 14.3 Evaluation protocol
 
 Every technique is scored identically, so the comparison is fair:
 
@@ -468,7 +502,7 @@ Every technique is scored identically, so the comparison is fair:
 - **No leakage:** each window may use real data strictly before its forecast origin (and, for weather-driven models, the true weather *at* the forecast hours - standing in for forecast weather inputs, exactly like `forecasting/pipeline.py`'s production model), never true output values from inside the window, and never another technique's predictions.
 - **State updates, not full retraining:** the statsmodels-based techniques (SARIMA, structural time series) condition on each window's true outcome via `.append(refit=False)` before forecasting the next window - cheap and realistic, but not a full walk-forward *retrain*. That's the honest trade-off against a production-grade version of this backtest; noted rather than glossed over.
 
-### 13.4 Results
+### 14.4 Results
 
 Run `python -m wind_prediction.evaluate` (or `python -m wind_prediction.export` to also refresh the dashboard payload) to reproduce:
 
@@ -495,10 +529,10 @@ Run `python -m wind_prediction.evaluate` (or `python -m wind_prediction.export` 
 - **The small, briefly-trained DL/Transformer models underperform even simple baselines here** - the Transformer's R² is *negative* (worse than always predicting the test-period mean). This isn't a bug; it's a well-documented, real finding in the time-series literature - small/mid-size deep forecasters routinely lose to much simpler models without substantially more data and tuning than a single-farm demo can offer (see Zeng et al., *"Are Transformers Effective for Time Series Forecasting?"*, AAAI 2023, where a one-layer linear model beats several Transformer variants on comparable benchmarks). Reproducing that finding here, rather than hiding it, is the point of including them.
 - **Chronos, zero-shot and with no farm-specific training at all, still beats the structural TS/ETS/Hybrid/persistence baselines** and lands close to SARIMA/VAR - genuinely interesting less for outright accuracy (a tiny zero-shot model on one specific site's turbine curve isn't its strongest case) than for getting into that range with **zero training**, a real preview of why foundation models are attracting attention in forecasting.
 
-### 13.5 What this doesn't claim
+### 14.5 What this doesn't claim
 
 This is a demonstrative breadth showcase, not a second production system, and it doesn't pretend otherwise:
 - One farm, one year, one train/test split - not the multi-farm, multi-year robustness check `forecasting/` gets before being registered.
-- The classical models' `.append(refit=False)` update is a lighter-weight stand-in for a full walk-forward retrain (§13.3).
+- The classical models' `.append(refit=False)` update is a lighter-weight stand-in for a full walk-forward retrain (§14.3).
 - The DL/Transformer models are small and trained briefly (CPU, a few dozen epochs) - sized for one farm-year of data and a live demo, not tuned for a leaderboard.
 - Chronos runs zero-shot by design - no farm-specific fine-tuning was attempted, which is the whole point of including it, not a shortcut.
