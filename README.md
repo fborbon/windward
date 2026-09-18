@@ -262,12 +262,43 @@ Grouped by the AI capability each one supports — only libraries actually used 
 
 **Model:** `sklearn.ensemble.GradientBoostingRegressor`, one instance trained per farm.
 
-**Why this model:** the problem is tabular regression — a handful of physically meaningful features (wind speed, its cube, direction, temperature, pressure, real air density, price, hour-of-day — `forecasting/features.py`) predicting a continuous target (farm MW output) — on a moderate dataset (a few thousand hourly rows per farm). Gradient-boosted trees are a strong, well-understood default for exactly this shape of problem: they usually match or beat deep learning here with far less tuning and no GPU — training takes seconds on a small EC2 instance, no dedicated compute cluster needed. Validated with 5-fold CV in addition to the single held-out test split (`forecasting/train.py`) — a lower-variance read on generalization than either alone; per-farm k-fold mean test R² lands within ~0.01-0.02 of the single-split R² for all three farms, no sign the original split was lucky or unlucky.
+### How weather becomes a power prediction - no theoretical power curve involved
+
+There's no manufacturer power-curve lookup table anywhere in this path, and no per-turbine
+physics simulation. `forecasting.pipeline.build_training_frame` (§6) joins real historical
+weather for the farm's coordinates against that same farm's real historical SCADA production,
+hour for hour, and `GradientBoostingRegressor` learns the mapping between them directly from
+that correlation: *for this wind speed, temperature/pressure (→ air density), and wind
+direction, this farm has historically produced about this much power.* That's the entire
+mechanism - an empirical, farm-level power curve learned from real operating data, not a
+theoretical one.
+
+That's a real, deliberate advantage over a theoretical curve, not just a simplification:
+- **It's the whole farm, not one isolated turbine.** A manufacturer power curve describes a
+  single turbine in undisturbed flow. `wind_direction_deg` is in the feature set specifically
+  because wake losses (upstream turbines shadowing downstream ones) depend on direction relative
+  to the farm's actual layout - something no single-turbine curve can express, and something the
+  model can only pick up because it's trained on the real, multi-turbine SCADA total.
+- **It's what the farm actually delivered, not what it could physically produce.** SCADA
+  production isn't filtered to exclude maintenance stoppages or grid-curtailment events (§6, §4.1)
+  before it becomes the training target - `greenbyte_scada.load_farm_hourly_production` clips
+  negative readings to zero and nothing else. So the learned relationship blends true
+  weather-driven output with however often *this farm, historically,* was down for maintenance or
+  curtailed under those conditions. For a forecast that's actually used to bid into a market (§1),
+  that's the right thing to predict - a trader cares what the farm will really deliver, not its
+  nameplate potential under ideal availability.
+- **The trade-off, stated plainly:** this bakes in the training period's maintenance/curtailment
+  pattern as if it will repeat. If grid capacity is added and a curtailment pattern that used to
+  recur at high wind speed from a particular direction goes away, the model won't know that until
+  it's retrained on data from after the change - exactly the kind of concept drift §13's
+  monitoring section (and `agents/graph.py`'s `investigate_node`) is watching for.
+
+**Why this model (the algorithm choice):** the problem is tabular regression — a handful of physically meaningful features (wind speed, its cube, direction, temperature, pressure, real air density, price, hour-of-day — `forecasting/features.py`) predicting a continuous target (farm MW output) — on a moderate dataset (a few thousand hourly rows per farm). Gradient-boosted trees are a strong, well-understood default for exactly this shape of problem: they usually match or beat deep learning here with far less tuning and no GPU — training takes seconds on a small EC2 instance, no dedicated compute cluster needed. Validated with 5-fold CV in addition to the single held-out test split (`forecasting/train.py`) — a lower-variance read on generalization than either alone; per-farm k-fold mean test R² lands within ~0.01-0.02 of the single-split R² for all three farms, no sign the original split was lucky or unlucky.
 
 **Strengths for this specific problem:**
 - Captures the non-linear cubic relationship between wind speed and power, and interaction effects (e.g. wind speed × time-of-day), without manual feature crosses.
 - Robust to the mixed feature scales present (m/s, degrees, hPa, EUR/MWh) — no normalization step needed.
-- Robust to noisy/outlier-heavy targets, which matters because real SCADA production includes curtailment and downtime events that don't follow the physical power curve.
+- Robust to noisy/outlier-heavy targets: a *recurring* curtailment/downtime pattern gets learned as part of the farm's effective power curve (see above), but a one-off fault at an otherwise-windy hour is exactly the kind of single-point outlier tree ensembles don't overfit to the way a linear model would.
 - Feature importances give a cheap sanity check that the model is actually leaning on wind speed, not spurious correlations.
 
 **Configuration** (`forecasting/train.py`):
