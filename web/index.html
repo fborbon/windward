@@ -79,6 +79,19 @@
 
   .chart-wrap{overflow-x:auto;}
   canvas{display:block;}
+  .chart-wrap canvas{cursor:zoom-in;}
+
+  .chart-modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:1000;
+    display:none; align-items:center; justify-content:center; padding:24px;
+  }
+  .chart-modal-overlay.open{display:flex;}
+  .chart-modal-overlay img{max-width:96vw; max-height:92vh; background:var(--surface); border-radius:10px; border:1px solid var(--border);}
+  .chart-modal-close{
+    position:absolute; top:18px; right:24px; background:none; border:none; color:var(--text);
+    font-size:32px; line-height:1; cursor:pointer; padding:4px 10px;
+  }
+  .chart-modal-close:hover{color:var(--gold);}
 
   .legend{display:flex; gap:16px; font-size:12px; color:var(--text-dim); margin-top:8px;}
   .legend span{display:inline-flex; align-items:center; gap:6px;}
@@ -179,7 +192,7 @@ function fmt(n, d=1){ return (n===null||n===undefined||Number.isNaN(n)) ? "—" 
 function pct(n, d=1){ return (n===null||n===undefined||Number.isNaN(n)) ? "—" : (Number(n)*100).toFixed(d)+"%"; }
 
 // ---------- canvas line chart (dual series) ----------
-function drawLineChart(canvas, series, {height=220, colors, yLabel="", labelFmt=(v)=>v.toFixed(0)}={}){
+function drawLineChart(canvas, series, {height=220, colors, yUnit="", xUnit="", labelFmt=(v)=>v.toFixed(0)}={}){
   const dpr = window.devicePixelRatio || 1;
   const width = Math.max(560, canvas.parentElement.clientWidth);
   canvas.width = width*dpr; canvas.height = height*dpr;
@@ -221,19 +234,41 @@ function drawLineChart(canvas, series, {height=220, colors, yLabel="", labelFmt=
     });
     ctx.stroke();
   });
+
+  drawAxisUnits(ctx, {padL, padR, padT, plotW, width, height, yUnit, xUnit});
 }
 
-function drawBarChart(canvas, points, {height=200, color=GOLD, xFmt=(v)=>v, yFmt=(v)=>v.toFixed(0)}={}){
+// Shared axis-unit captions: y-unit top-left above the topmost gridline, x-unit centered
+// below the plot - reuses padding every chart already reserves, no layout change needed.
+function drawAxisUnits(ctx, {padL, padR, padT, plotW, width, height, yUnit="", xUnit=""}){
+  ctx.font = "10px 'IBM Plex Mono',monospace"; ctx.fillStyle = DIM;
+  if(yUnit){ ctx.textAlign="left"; ctx.fillText(yUnit, padL, 10); }
+  if(xUnit){ ctx.textAlign="center"; ctx.fillText(xUnit, padL+plotW/2, height-4); }
+  ctx.textAlign="start";
+}
+
+function drawBarChart(canvas, points, {height=200, color=GOLD, xFmt=(v)=>v, yFmt=(v)=>v.toFixed(0), rotateLabels=false, yUnit="", xUnit=""}={}){
   const dpr = window.devicePixelRatio || 1;
   const width = Math.max(560, canvas.parentElement.clientWidth);
+  const ctx = canvas.getContext("2d");
+
+  // Rotated labels need their pixel width measured up front - it becomes the bottom padding.
+  ctx.font="11px 'IBM Plex Mono',monospace";
+  let padB = 28;
+  if(rotateLabels && points.length){
+    const maxLabelW = Math.max(...points.map(p=>ctx.measureText(xFmt(p.x)).width));
+    padB = Math.min(maxLabelW+16, height*0.8) + (xUnit ? 14 : 0);
+  } else if(xUnit){
+    padB = 42;
+  }
+
   canvas.width = width*dpr; canvas.height = height*dpr;
   canvas.style.width = width+"px"; canvas.style.height = height+"px";
-  const ctx = canvas.getContext("2d");
   ctx.scale(dpr,dpr);
   ctx.clearRect(0,0,width,height);
   if(points.length===0) return;
 
-  const padL=48, padR=12, padT=14, padB=28;
+  const padL=48, padR=12, padT=14;
   const plotW=width-padL-padR, plotH=height-padT-padB;
   const max = Math.max(...points.map(p=>p.y));
   const barW = plotW/points.length;
@@ -250,17 +285,33 @@ function drawBarChart(canvas, points, {height=200, color=GOLD, xFmt=(v)=>v, yFmt
     ctx.fillRect(padL+i*barW+1, padT+plotH-h, Math.max(1,barW-2), h);
   });
   ctx.fillStyle=TEXT;
-  const step = Math.ceil(points.length/8);
-  points.forEach((p,i)=>{
-    if(i%step===0){
-      ctx.fillText(xFmt(p.x), padL+i*barW, height-8);
-    }
-  });
+  if(rotateLabels){
+    ctx.textAlign="left"; ctx.textBaseline="middle";
+    points.forEach((p,i)=>{
+      const cx = padL+i*barW+barW/2;
+      ctx.save();
+      ctx.translate(cx, padT+plotH+6);
+      ctx.rotate(Math.PI/2);
+      ctx.fillText(xFmt(p.x), 0, 0);
+      ctx.restore();
+    });
+    ctx.textAlign="start"; ctx.textBaseline="alphabetic";
+  } else {
+    const step = Math.ceil(points.length/8);
+    const tickY = xUnit ? height-22 : height-8;
+    points.forEach((p,i)=>{
+      if(i%step===0){
+        ctx.fillText(xFmt(p.x), padL+i*barW, tickY);
+      }
+    });
+  }
+
+  drawAxisUnits(ctx, {padL, padR, padT, plotW, width, height, yUnit, xUnit});
 }
 
 // Histogram bars (e.g. an observed distribution) with a fitted curve overlaid on the same
 // x/y scale - used for the wind-speed distribution + Weibull fit panel.
-function drawHistogramWithLine(canvas, barValues, lineValues, {height=180, barColor=GOLD, lineColor=GOOD, yFmt=(v)=>v.toFixed(2)}={}){
+function drawHistogramWithLine(canvas, barValues, lineValues, {height=180, barColor=GOLD, lineColor=GOOD, yFmt=(v)=>v.toFixed(2), yUnit="", xUnit=""}={}){
   const dpr = window.devicePixelRatio || 1;
   const width = Math.max(560, canvas.parentElement.clientWidth);
   canvas.width = width*dpr; canvas.height = height*dpr;
@@ -270,7 +321,7 @@ function drawHistogramWithLine(canvas, barValues, lineValues, {height=180, barCo
   ctx.clearRect(0,0,width,height);
   if(barValues.length===0) return;
 
-  const padL=48, padR=12, padT=14, padB=8;
+  const padL=48, padR=12, padT=14, padB=xUnit ? 20 : 8;
   const plotW=width-padL-padR, plotH=height-padT-padB;
   const max = Math.max(...barValues, ...lineValues) * 1.05;
   if(max<=0) return;
@@ -299,6 +350,8 @@ function drawHistogramWithLine(canvas, barValues, lineValues, {height=180, barCo
     if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
   });
   ctx.stroke();
+
+  drawAxisUnits(ctx, {padL, padR, padT, plotW, width, height, yUnit, xUnit});
 }
 
 // Polar "wind rose": one wedge per compass sector, radius proportional to value, N at top,
@@ -315,17 +368,22 @@ function drawWindRose(canvas, sectors, {size=300, color=GOLD}={}){
   if(sectors.length===0) return;
 
   const cx = width/2, cy = height/2;
-  const maxR = Math.min(width,height)/2 - 28;
+  const maxR = Math.min(width,height)/2 - 34;
   const maxVal = Math.max(...sectors.map(s=>s.energy_kwh));
   if(maxVal<=0) return;
   const n = sectors.length;
   const sectorAngle = (2*Math.PI)/n;
 
-  ctx.strokeStyle = GRID; ctx.fillStyle = TEXT; ctx.font = "10px 'IBM Plex Mono',monospace";
+  // Ring labels sit at the midpoint between two compass ticks (not on a tick itself) so they
+  // don't collide with the N/NNE perimeter labels at the top of the rose.
+  const ringLabelAngle = -Math.PI/2 + sectorAngle/2;
+  const ringFmt = v => new Intl.NumberFormat('en', {notation:'compact', maximumFractionDigits:1}).format(v) + " kWh";
+  ctx.strokeStyle = GRID; ctx.fillStyle = TEXT; ctx.font = "10px 'IBM Plex Mono',monospace"; ctx.textAlign = "left";
   [0.25,0.5,0.75,1].forEach(f=>{
     ctx.beginPath();
     ctx.arc(cx,cy,maxR*f,0,2*Math.PI);
     ctx.stroke();
+    ctx.fillText(ringFmt(maxVal*f), cx+maxR*f*Math.cos(ringLabelAngle)+3, cy+maxR*f*Math.sin(ringLabelAngle)+3);
   });
 
   sectors.forEach((s,i)=>{
@@ -345,8 +403,8 @@ function drawWindRose(canvas, sectors, {size=300, color=GOLD}={}){
   ctx.fillStyle = TEXT; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   sectors.forEach((s,i)=>{
     const angle = -Math.PI/2 + i*sectorAngle;
-    const lx = cx + (maxR+14)*Math.cos(angle);
-    const ly = cy + (maxR+14)*Math.sin(angle);
+    const lx = cx + (maxR+20)*Math.cos(angle);
+    const ly = cy + (maxR+20)*Math.sin(angle);
     ctx.fillText(s.compass, lx, ly);
   });
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
@@ -517,7 +575,7 @@ async function loadEdpEvent(eventId){
   drawLineChart(document.getElementById("chart-edp-curve"), [
     {data: d.power_curve.map(p=>p.mean_power_frac), color: GOLD},
     {data: d.power_curve_smooth.map(p=>p.mean_power_frac), color: GOOD},
-  ], {labelFmt:v=>v.toFixed(2)});
+  ], {labelFmt:v=>v.toFixed(2), yUnit:"Power (fraction of rated capacity)", xUnit:"Wind speed (m/s)"});
 }
 
 // ---------- DSWE Inland-Offshore: real turbine+met-mast data, Measure-Correlate-Predict ----------
@@ -663,12 +721,12 @@ async function loadDsweTurbine(turbineId, lat, lon){
   drawLineChart(document.getElementById("chart-dswe-forecast"), [
     {data: d.forecast_next_48h.era5_raw_ms, color: GOLD},
     {data: d.forecast_next_48h.mcp_adjusted_ms, color: GOOD},
-  ], {labelFmt:v=>v.toFixed(1)});
+  ], {labelFmt:v=>v.toFixed(1), yUnit:"Wind speed (m/s)", xUnit:"Hours ahead"});
 
   drawLineChart(document.getElementById("chart-dswe-curve"), [
     {data: d.power_curve.map(p=>p.mean_power_pct), color: GOLD},
     {data: d.power_curve_smooth.map(p=>p.mean_power_pct), color: GOOD},
-  ], {labelFmt:v=>v.toFixed(0)});
+  ], {labelFmt:v=>v.toFixed(0), yUnit:"Power (% of rated capacity)", xUnit:"Wind speed (m/s)"});
 
   const recomputeBtn = document.getElementById("dswe-recompute");
   recomputeBtn.onclick = () => {
@@ -770,7 +828,7 @@ function renderWindPrediction(panel, data){
   drawBarChart(
     document.getElementById("chart-wp-mae"),
     results.map(r => ({x: r.name, y: r.mae_mw})),
-    {yFmt: v => v.toFixed(1), xFmt: v => v.length > 14 ? v.slice(0,13)+"…" : v},
+    {height: 280, yFmt: v => v.toFixed(1), rotateLabels: true, yUnit: "MAE (MW)"},
   );
 
   const seriesNames = ["actual", ...data.chart_techniques];
@@ -779,7 +837,7 @@ function renderWindPrediction(panel, data){
   drawLineChart(
     document.getElementById("chart-wp-series"),
     seriesNames.map((n,i) => ({data: data.chart_series[n], color: WP_COLORS[i%WP_COLORS.length]})),
-    {height: 260, labelFmt: v => v.toFixed(1)},
+    {height: 260, labelFmt: v => v.toFixed(1), yUnit: "Production (MW)", xUnit: `Time (last ${data.chart_days} days, hourly)`},
   );
 
   loadWindPredictionLiveWeather(data.farm_id);
@@ -801,7 +859,7 @@ async function loadWindPredictionLiveWeather(farmId){
     meta.textContent = `Fetched live at ${fetchedAt.toLocaleTimeString()} · source: ${d.source} · ${d.points.length}h forecast`;
     const canvas = document.getElementById("chart-wp-live");
     if(canvas){
-      drawLineChart(canvas, [{data: d.points.map(p=>p.wind_speed_ms), color: GOLD}], {height:180, labelFmt:v=>v.toFixed(0)});
+      drawLineChart(canvas, [{data: d.points.map(p=>p.wind_speed_ms), color: GOLD}], {height:180, labelFmt:v=>v.toFixed(0), yUnit:"Wind speed (m/s)", xUnit:`Hours ahead (next ${d.points.length}h)`});
     }
   }catch(e){
     meta.textContent = "Live fetch failed - try again.";
@@ -934,14 +992,14 @@ function renderAnalysis(panel, farmId, a){
   drawLineChart(document.getElementById("chart-comparison"), [
     {data:a.comparison_series.map(p=>p.actual_mw), color:GOLD},
     {data:a.comparison_series.map(p=>p.predicted_mw), color:GOOD},
-  ], {labelFmt:v=>v.toFixed(1)});
+  ], {labelFmt:v=>v.toFixed(1), yUnit:"Production (MW)", xUnit:"Time (last 14 days, hourly)"});
 
   const wsd = a.wind_speed_distribution;
-  drawHistogramWithLine(document.getElementById("chart-wind-dist-top"), wsd.wind_speed_density, wsd.weibull_pdf, {yFmt:v=>v.toFixed(2)});
+  drawHistogramWithLine(document.getElementById("chart-wind-dist-top"), wsd.wind_speed_density, wsd.weibull_pdf, {yFmt:v=>v.toFixed(2), yUnit:"Density (per m/s)", xUnit:"Wind speed (m/s)"});
   drawBarChart(
     document.getElementById("chart-wind-dist-bottom"),
     wsd.wind_speed_bins.map((x,i)=>({x, y: wsd.power_share_of_capacity[i] ?? 0})),
-    {color:GOOD, xFmt:v=>v.toFixed(0), yFmt:v=>pct(v)}
+    {color:GOOD, xFmt:v=>v.toFixed(0), yFmt:v=>pct(v), yUnit:"Share of rated capacity (%)", xUnit:"Wind speed (m/s)"}
   );
   drawWindRose(document.getElementById("chart-wind-rose"), a.wind_rose);
 
@@ -974,7 +1032,31 @@ function renderAnalysis(panel, farmId, a){
   askInput.addEventListener("keydown", e => { if(e.key==="Enter") submitAsk(); });
 }
 
+// Click-to-expand: every chart canvas opens an enlarged snapshot of itself in a modal
+// overlay (canvas.toDataURL() - already rendered at devicePixelRatio resolution, so it stays
+// sharp scaled up) rather than re-running each chart's own draw call at a bigger size.
+function initChartZoom(){
+  const overlay = document.createElement("div");
+  overlay.className = "chart-modal-overlay";
+  overlay.innerHTML = `<button class="chart-modal-close" aria-label="Close">&times;</button><img alt="Expanded chart">`;
+  document.body.appendChild(overlay);
+  const img = overlay.querySelector("img");
+
+  function close(){ overlay.classList.remove("open"); img.src = ""; }
+  overlay.addEventListener("click", e => { if(e.target === overlay) close(); });
+  overlay.querySelector(".chart-modal-close").addEventListener("click", close);
+  document.addEventListener("keydown", e => { if(e.key === "Escape") close(); });
+
+  document.addEventListener("click", e => {
+    const canvas = e.target.closest(".chart-wrap canvas");
+    if(!canvas || !canvas.width) return;
+    img.src = canvas.toDataURL();
+    overlay.classList.add("open");
+  });
+}
+
 loadFarms();
+initChartZoom();
 window.addEventListener("resize", () => { if(ACTIVE_FARM) selectFarm.__redraw && selectFarm.__redraw(); });
 </script>
 
