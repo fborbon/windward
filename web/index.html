@@ -86,7 +86,7 @@
     display:none; align-items:center; justify-content:center; padding:24px;
   }
   .chart-modal-overlay.open{display:flex;}
-  .chart-modal-overlay img{max-width:96vw; max-height:92vh; background:var(--surface); border-radius:10px; border:1px solid var(--border);}
+  .chart-modal-overlay img{max-width:96vw; max-height:92vh; object-fit:contain; background:var(--surface); border-radius:10px; border:1px solid var(--border);}
   .chart-modal-close{
     position:absolute; top:18px; right:24px; background:none; border:none; color:var(--text);
     font-size:32px; line-height:1; cursor:pointer; padding:4px 10px;
@@ -192,7 +192,7 @@ function fmt(n, d=1){ return (n===null||n===undefined||Number.isNaN(n)) ? "—" 
 function pct(n, d=1){ return (n===null||n===undefined||Number.isNaN(n)) ? "—" : (Number(n)*100).toFixed(d)+"%"; }
 
 // ---------- canvas line chart (dual series) ----------
-function drawLineChart(canvas, series, {height=220, colors, yUnit="", xUnit="", labelFmt=(v)=>v.toFixed(0)}={}){
+function drawLineChart(canvas, series, {height=220, colors, yUnit="", xUnit="", timestamps=null, labelFmt=(v)=>v.toFixed(0)}={}){
   const dpr = window.devicePixelRatio || 1;
   const width = Math.max(560, canvas.parentElement.clientWidth);
   canvas.width = width*dpr; canvas.height = height*dpr;
@@ -201,7 +201,8 @@ function drawLineChart(canvas, series, {height=220, colors, yUnit="", xUnit="", 
   ctx.scale(dpr,dpr);
   ctx.clearRect(0,0,width,height);
 
-  const padL=48, padR=12, padT=14, padB=26;
+  const hasTicks = !!(timestamps && timestamps.length);
+  const padL=48, padR=12, padT=14, padB = hasTicks ? 40 : 26;
   const plotW = width-padL-padR, plotH = height-padT-padB;
 
   const allVals = series.flatMap(s=>s.data.filter(v=>v!==null));
@@ -234,6 +235,22 @@ function drawLineChart(canvas, series, {height=220, colors, yUnit="", xUnit="", 
     });
     ctx.stroke();
   });
+
+  if(hasTicks){
+    const first = new Date(timestamps[0]), last = new Date(timestamps[timestamps.length-1]);
+    const spanHours = (last-first)/3600000;
+    const shortSpan = spanHours <= 60; // e.g. a 48h forecast - hour-only ticks are enough
+    const fmt = d => shortSpan
+      ? d.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'})
+      : d.toLocaleDateString('en-GB', {month:'short', day:'numeric'}) + ' ' + d.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
+    ctx.fillStyle = TEXT; ctx.font = "10px 'IBM Plex Mono',monospace"; ctx.textAlign = "center";
+    const nTicks = Math.min(6, timestamps.length);
+    for(let t=0;t<nTicks;t++){
+      const i = nTicks===1 ? 0 : Math.round(t*(timestamps.length-1)/(nTicks-1));
+      ctx.fillText(fmt(new Date(timestamps[i])), x(i), height-(xUnit?24:8));
+    }
+    ctx.textAlign = "start";
+  }
 
   drawAxisUnits(ctx, {padL, padR, padT, plotW, width, height, yUnit, xUnit});
 }
@@ -721,7 +738,7 @@ async function loadDsweTurbine(turbineId, lat, lon){
   drawLineChart(document.getElementById("chart-dswe-forecast"), [
     {data: d.forecast_next_48h.era5_raw_ms, color: GOLD},
     {data: d.forecast_next_48h.mcp_adjusted_ms, color: GOOD},
-  ], {labelFmt:v=>v.toFixed(1), yUnit:"Wind speed (m/s)", xUnit:"Hours ahead"});
+  ], {labelFmt:v=>v.toFixed(1), yUnit:"Wind speed (m/s)", xUnit:"Time (UTC)", timestamps: d.forecast_next_48h.timestamps});
 
   drawLineChart(document.getElementById("chart-dswe-curve"), [
     {data: d.power_curve.map(p=>p.mean_power_pct), color: GOLD},
@@ -859,7 +876,7 @@ async function loadWindPredictionLiveWeather(farmId){
     meta.textContent = `Fetched live at ${fetchedAt.toLocaleTimeString()} · source: ${d.source} · ${d.points.length}h forecast`;
     const canvas = document.getElementById("chart-wp-live");
     if(canvas){
-      drawLineChart(canvas, [{data: d.points.map(p=>p.wind_speed_ms), color: GOLD}], {height:180, labelFmt:v=>v.toFixed(0), yUnit:"Wind speed (m/s)", xUnit:`Hours ahead (next ${d.points.length}h)`});
+      drawLineChart(canvas, [{data: d.points.map(p=>p.wind_speed_ms), color: GOLD}], {height:180, labelFmt:v=>v.toFixed(0), yUnit:"Wind speed (m/s)", xUnit:`Time (UTC), next ${d.points.length}h`, timestamps: d.points.map(p=>p.timestamp)});
     }
   }catch(e){
     meta.textContent = "Live fetch failed - try again.";
@@ -992,7 +1009,7 @@ function renderAnalysis(panel, farmId, a){
   drawLineChart(document.getElementById("chart-comparison"), [
     {data:a.comparison_series.map(p=>p.actual_mw), color:GOLD},
     {data:a.comparison_series.map(p=>p.predicted_mw), color:GOOD},
-  ], {labelFmt:v=>v.toFixed(1), yUnit:"Production (MW)", xUnit:"Time (last 14 days, hourly)"});
+  ], {labelFmt:v=>v.toFixed(1), yUnit:"Production (MW)", xUnit:"Time (last 14 days, hourly)", timestamps: a.comparison_series.map(p=>p.timestamp)});
 
   const wsd = a.wind_speed_distribution;
   drawHistogramWithLine(document.getElementById("chart-wind-dist-top"), wsd.wind_speed_density, wsd.weibull_pdf, {yFmt:v=>v.toFixed(2), yUnit:"Density (per m/s)", xUnit:"Wind speed (m/s)"});
@@ -1050,6 +1067,12 @@ function initChartZoom(){
   document.addEventListener("click", e => {
     const canvas = e.target.closest(".chart-wrap canvas");
     if(!canvas || !canvas.width) return;
+    // Double the chart's on-page size (its CSS width/height, not the dpr-scaled bitmap) -
+    // max-width/max-height in CSS still cap it so it never overflows a small viewport.
+    const cssW = parseFloat(canvas.style.width) || canvas.width;
+    const cssH = parseFloat(canvas.style.height) || canvas.height;
+    img.style.width = (cssW*2)+"px";
+    img.style.height = (cssH*2)+"px";
     img.src = canvas.toDataURL();
     overlay.classList.add("open");
   });

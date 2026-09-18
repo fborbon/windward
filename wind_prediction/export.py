@@ -35,9 +35,13 @@ def export(farm_id: str = "kelmarsh") -> dict:
     results_df: pd.DataFrame = out["results"]
     predictions: dict = out["predictions"]
     y_true: pd.Series = out["y_true"]
+    test_df: pd.DataFrame = out["test_df"]
 
     tail_idx = y_true.index[-24 * CHART_DAYS:]
-    series_out = {"actual": [None if pd.isna(v) else round(float(v), 3) for v in y_true.loc[tail_idx]]}
+    series_out = {
+        "timestamps": [ts.isoformat() for ts in test_df.loc[tail_idx, "timestamp"]],
+        "actual": [None if pd.isna(v) else round(float(v), 3) for v in y_true.loc[tail_idx]],
+    }
     for name in CHART_TECHNIQUES:
         pred = predictions[name].reindex(tail_idx)
         series_out[name] = [None if pd.isna(v) else round(float(v), 3) for v in pred]
