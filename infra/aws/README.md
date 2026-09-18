@@ -1,6 +1,6 @@
 # AWS resources — live deployment
 
-Everything below runs on `forwardforecasting-dev` (EC2 `i-06b771ce9bfd7ec87`, `t3.small`, `eu-west-1`), an existing instance also hosting `job-hunter-suite` and reachable over both a public IP and Tailscale. Its idle-shutdown automation (`idle-shutdown.timer`) was disabled specifically so this project stays up persistently — it was previously a personal dev sandbox that auto-stopped after 30 minutes of inactivity.
+Everything below runs on `forwardforecasting-dev` (EC2 `i-06b771ce9bfd7ec87`, `t3.small`, `eu-west-1`), an existing instance also hosting other unrelated services and reachable over both a public IP and Tailscale. Its idle-shutdown automation (`idle-shutdown.timer`) was disabled specifically so this project stays up persistently — it was previously a personal dev sandbox that auto-stopped after 30 minutes of inactivity.
 
 | Resource | Detail |
 |---|---|

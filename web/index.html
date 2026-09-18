@@ -553,6 +553,13 @@ function renderAnalysis(panel, farmId, a){
   panel.innerHTML = `
   <div class="grid">
     <div>
+      ${farmId === "kelmarsh" ? `
+      <div class="card">
+        <h2>Site layout</h2>
+        <div class="desc">Real siting of ${farm.name}'s ${farm.turbine_count} turbines.</div>
+        <img src="Keimarsh_windfarm_layout.png" alt="${farm.name} siting layout" style="width:100%; border-radius:10px; display:block;">
+      </div>
+      ` : ""}
       <div class="card">
         <h2>Actual vs. predicted production</h2>
         <div class="desc">Farm-level output over the last 14 days of the real SCADA period · ${farm.name}, ${farm.total_capacity_mw} MW rated.</div>
