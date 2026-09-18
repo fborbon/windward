@@ -1,15 +1,15 @@
 # AWS resources — live deployment
 
-Everything below runs on `forwardforecasting-dev` (EC2 `i-06b771ce9bfd7ec87`, `t3.small`, `eu-west-1`), an existing instance also hosting other unrelated services and reachable over both a public IP and Tailscale. Its idle-shutdown automation (`idle-shutdown.timer`) was disabled specifically so this project stays up persistently — it was previously a personal dev sandbox that auto-stopped after 30 minutes of inactivity.
+Everything below runs on `forwardforecasting` (EC2 `i-0654bedfd22c8f93c`, `t3.medium`, `eu-west-1`), the main production instance also hosting job-hunter-suite, the forwardforecasting.eu landing page, and other unrelated services. Migrated here from a separate `forwardforecasting-dev` box (2026-09-18) once that instance's own idle-shutdown automation had already been disabled to keep windward up persistently — at that point it wasn't saving anything by being separate, just doubling EC2 spend, so it was consolidated onto the always-on production host instead (resized `forwardforecasting` from `t3.small` to `t3.medium` first — 2GB RAM wasn't enough headroom once windward's SCADA-processing + LangGraph + MLflow footprint joined the existing services). `forwardforecasting-dev` was terminated once this migration was verified live.
 
 | Resource | Detail |
 |---|---|
-| MLflow tracking server | `/home/ubuntu/mlflow-server`, native systemd service (`mlflow.service`), `mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root s3://windward-mlflow-artifacts-ff --host 127.0.0.1 --port 5000`. ~180MB RSS. |
+| MLflow tracking server | `/home/ubuntu/mlflow-server`, native systemd service (`mlflow.service`), `mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root s3://windward-mlflow-artifacts-ff --host 127.0.0.1 --port 5000`. ~180MB RSS. Shared with `energy-trader`, which also runs on this box and points its own `MLFLOW_TRACKING_URI` at the same server. |
 | S3 bucket | `windward-mlflow-artifacts-ff` (`eu-west-1`), versioning enabled — MLflow model/artifact storage |
-| FastAPI + agent service | `/home/ubuntu/Developments/windward`, Docker (`docker-compose.prod.yml`), `network_mode: host` (so the container can reach the host's MLflow server on `127.0.0.1:5000` — a bridge-networked container would see its own loopback instead and fail with connection refused, a real bug hit during setup), 700MB memory limit |
-| nginx + SSL | `windward.forwardforecasting.eu` → `127.0.0.1:8000`, real Let's Encrypt cert via `certbot --nginx` |
-| DNS | Route53 `A` record, `windward.forwardforecasting.eu` → the instance's public IP |
-| IAM | Inline policy `windward-app-access` on the existing role `forwardforecasting-dev-ssm-role` (attached to the instance profile) — scoped to exactly the S3 bucket, the `windward-agent-sessions` DynamoDB table, and the two Bedrock models used. No static keys anywhere; the app and the MLflow server both pick up credentials from EC2 instance metadata automatically via `boto3`. |
+| FastAPI + agent service | `/home/ubuntu/Developments/windward`, Docker (`docker-compose.prod.yml`), `network_mode: host` (so the container can reach the host's MLflow server on `127.0.0.1:5000` — a bridge-networked container would see its own loopback instead and fail with connection refused, a real bug hit during setup), 700MB memory limit. Binds host port **8020**, not 8000 — 8000 was already taken by an unrelated service on this shared box. |
+| nginx + SSL | `windward.forwardforecasting.eu` → `127.0.0.1:8020`, real Let's Encrypt cert via `certbot --nginx` |
+| DNS | Route53 `A` record, `windward.forwardforecasting.eu` → the instance's Elastic IP (`54.78.82.101`) |
+| IAM | Inline policy `windward-app-access` on the existing role behind this instance's profile (`social-pulse-bedrock`) — scoped to exactly the S3 bucket, the `windward-agent-sessions` DynamoDB table, and the two Bedrock models used (Bedrock itself is also covered more broadly by that role's existing `AmazonBedrockFullAccess`, attached for an unrelated project). No static keys anywhere; the app and the MLflow server both pick up credentials from EC2 instance metadata automatically via `boto3`. |
 | DynamoDB | `windward-agent-sessions` (`eu-west-1`, on-demand billing) — unchanged from the original setup, was already AWS |
 
 ## CI/CD
@@ -26,7 +26,8 @@ reliably recreate a container when only the underlying image content changed und
 deploy before this one existed.
 
 The role's inline policy (`ssm-deploy-windward`) is scoped to `ssm:SendCommand`/`GetCommandInvocation`
-against this one instance ID and the `AWS-RunShellScript` document only - nothing broader.
+against this one instance ID and the `AWS-RunShellScript` document only - nothing broader. Repointed
+to `i-0654bedfd22c8f93c` as part of the `forwardforecasting-dev` → `forwardforecasting` migration.
 
 ## Reproducing this
 

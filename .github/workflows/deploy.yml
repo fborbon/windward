@@ -17,7 +17,7 @@ permissions:
 env:
   AWS_REGION: eu-west-1
   DEPLOY_ROLE_ARN: arn:aws:iam::295936871972:role/github-actions-windward-deploy
-  INSTANCE_ID: i-06b771ce9bfd7ec87
+  INSTANCE_ID: i-0654bedfd22c8f93c  # forwardforecasting (prod) — migrated off forwardforecasting-dev
 
 jobs:
   test:
