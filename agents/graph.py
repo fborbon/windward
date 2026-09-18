@@ -28,6 +28,7 @@ from analysis.efficiency import (
     fit_power_curve_displacement,
     neighbor_underperformance,
     scada_reanalysis_wind_check,
+    smooth_power_curve,
     turbine_efficiency_summary,
     wind_rose_energy_kwh,
     wind_speed_power_distribution,
@@ -57,6 +58,7 @@ class WindwardState(TypedDict, total=False):
     turbine_hourly: pd.DataFrame
     comparison: pd.DataFrame  # actual vs predicted, farm-level
     power_curves: dict
+    smooth_power_curves: dict
     efficiency_summary: pd.DataFrame
     anomalies: list
     data_quality: dict
@@ -89,10 +91,12 @@ def diagnose_node(state: WindwardState) -> dict:
     turbine_hourly = state["turbine_hourly"]
     feature_frame = state["feature_frame"]
 
-    power_curves = {
-        turbine_id: binned_power_curve(g)
-        for turbine_id, g in turbine_hourly.groupby("turbine_id")
-    }
+    power_curves = {}
+    smooth_power_curves = {}
+    for turbine_id, g in turbine_hourly.groupby("turbine_id"):
+        curve = binned_power_curve(g)
+        power_curves[turbine_id] = curve
+        smooth_power_curves[turbine_id] = smooth_power_curve(g, curve.index.values)
     farm_mean_curve = binned_power_curve(turbine_hourly)  # pooled across all turbines — the displacement-fit reference
 
     # Real per-hour air density (ideal gas law on the farm's actual weather) rather than the
@@ -153,7 +157,8 @@ def diagnose_node(state: WindwardState) -> dict:
     wind_speed_distribution = wind_speed_power_distribution(feature_frame, total_capacity_mw)
 
     return {
-        "power_curves": power_curves, "efficiency_summary": efficiency_summary,
+        "power_curves": power_curves, "smooth_power_curves": smooth_power_curves,
+        "efficiency_summary": efficiency_summary,
         "anomalies": anomalies, "data_quality": data_quality,
         "wind_rose": wind_rose, "wind_speed_distribution": wind_speed_distribution,
     }

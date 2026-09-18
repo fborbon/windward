@@ -48,6 +48,33 @@ def binned_power_curve(df: pd.DataFrame, wind_col: str = "wind_speed_ms", power_
     return curve.rename(columns={"mean": "mean_power_kw", "count": "sample_count"})
 
 
+def smooth_power_curve(
+    df: pd.DataFrame, test_points, wind_col: str = "wind_speed_ms", power_col: str = "power_kw"
+) -> pd.Series:
+    """A continuous, non-parametric power curve via kernel regression — AMK (Additive
+    Multiplicative Kernel), Lee et al. 2015, from Yu Ding's *Data Science for Wind Energy* and
+    its companion `dswe` package (MIT license) — as a smoother alternative to the discrete IEC
+    binning above (binned_power_curve() has 0.5 m/s buckets with a handful of samples each in
+    the tails; AMK borrows strength across nearby wind speeds instead). Evaluated at the same
+    wind-speed points passed in (typically a binned_power_curve()'s bin centers) so the two
+    curves overlay directly on one chart. Two of this package's other methods, ComparePCurve
+    and FunGP, were evaluated and NOT used — real, reproducible bugs against current numpy/
+    scipy, confirmed by running them against real Kelmarsh data (see README roadmap); AMK hit
+    neither."""
+    from dswe import AMK
+
+    clean = df[[wind_col, power_col]].dropna()
+    test_x = np.asarray(test_points, dtype=float).reshape(-1, 1)
+    # A fixed 0.5 m/s bandwidth (matching binned_power_curve's own bin width) instead of AMK's
+    # data-adaptive "dpi" plug-in estimator: dpi's bandwidth search has real, data-dependent
+    # cost — one specific real turbine (Kelmarsh_1) took 5.7s under "dpi" vs <50ms for every
+    # other turbine across all three farms, confirmed reproducible in diagnose_node's per-
+    # turbine loop. A fixed bandwidth sidesteps that entirely (uniformly <50ms per turbine,
+    # verified against all three farms) for a curve visually indistinguishable from "dpi"'s.
+    model = AMK(X_train=clean[[wind_col]].values, y_train=clean[power_col].values, X_test=test_x, bw=[0.5], fixed_cov=[0])
+    return pd.Series(model.predictions, index=np.asarray(test_points, dtype=float), name="mean_power_kw_smooth")
+
+
 def fit_power_curve_displacement(reference_curve: pd.DataFrame, wind_speed_ms: pd.Series, power_kw: pd.Series) -> float:
     """Least-squares horizontal (wind-speed axis) displacement between a turbine's observed
     power curve and a reference curve (the farm-mean binned curve) — quantifies a systematic

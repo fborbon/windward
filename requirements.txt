@@ -29,6 +29,10 @@ python-dotenv
 scikit-learn
 entsoe-py
 
+# Power-curve kernel regression (analysis/efficiency.py:smooth_power_curve) — AMK only;
+# ComparePCurve/FunGP from the same package were evaluated and not used, see README roadmap
+dswe
+
 # Time-series forecasting showcase (wind_prediction/)
 statsmodels
 torch

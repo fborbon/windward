@@ -440,6 +440,10 @@ function renderEdp(panel, events){
         <div class="desc" id="edp-detail-desc"></div>
         <div class="kpis" id="edp-status-kpis"></div>
         <div class="chart-wrap"><canvas id="chart-edp-curve"></canvas></div>
+        <div class="legend">
+          <span><span class="swatch" style="background:${GOLD}"></span>Binned (IEC 61400-12-1)</span>
+          <span><span class="swatch" style="background:${GOOD}"></span>Smooth (AMK kernel regression)</span>
+        </div>
         <div class="desc" style="margin-top:8px;">Power (y-axis) is a normalized fraction of rated capacity, not real kW — see above.</div>
       </div>
     </div>
@@ -506,6 +510,7 @@ async function loadEdpEvent(eventId){
     <div class="kpi"><div class="v">${count.toLocaleString()}</div><div class="l">${label}</div></div>`).join("");
   drawLineChart(document.getElementById("chart-edp-curve"), [
     {data: d.power_curve.map(p=>p.mean_power_frac), color: GOLD},
+    {data: d.power_curve_smooth.map(p=>p.mean_power_frac), color: GOOD},
   ], {labelFmt:v=>v.toFixed(2)});
 }
 

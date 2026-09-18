@@ -125,6 +125,12 @@ def _run_analysis(farm_id: str) -> dict:
             if not pd.isna(row["mean_power_kw"])
         ]
 
+    smooth_power_curves = {}
+    for turbine_id, curve in result["smooth_power_curves"].items():
+        smooth_power_curves[turbine_id] = [
+            {"wind_speed_bin": _clean(idx), "mean_power_kw": _clean(v)} for idx, v in curve.items() if not pd.isna(v)
+        ]
+
     payload = {
         "_cached_at": time.time(),
         "farm_id": farm_id,
@@ -154,6 +160,7 @@ def _run_analysis(farm_id: str) -> dict:
             for turbine_id, row in efficiency.iterrows()
         ],
         "power_curves": power_curves,
+        "smooth_power_curves": smooth_power_curves,
         "wind_rose": [
             {"compass": row["compass"], "direction_deg": _clean(row["direction_deg"]), "energy_kwh": _clean(row["energy_kwh"])}
             for _, row in result["wind_rose"].iterrows()
@@ -243,7 +250,7 @@ def edp_events():
 
 @app.get("/edp/events/{event_id}")
 def edp_event_detail(event_id: int):
-    from analysis.efficiency import binned_power_curve
+    from analysis.efficiency import binned_power_curve, smooth_power_curve
     from data_sources.edp_scada import STATUS_LABELS, load_event_series, load_events
 
     events = load_events()
@@ -252,6 +259,7 @@ def edp_event_detail(event_id: int):
     event = events.loc[event_id]
     series = load_event_series(event_id)
     curve = binned_power_curve(series, power_col="power_frac")
+    smooth = smooth_power_curve(series, curve.index.values, power_col="power_frac")
     status_counts = series["status_type_id"].value_counts().sort_index()
 
     return {
@@ -265,6 +273,9 @@ def edp_event_detail(event_id: int):
             {"wind_speed_bin": _clean(idx), "mean_power_frac": _clean(row["mean_power_kw"]), "sample_count": int(row["sample_count"])}
             for idx, row in curve.iterrows()
             if not pd.isna(row["mean_power_kw"])
+        ],
+        "power_curve_smooth": [
+            {"wind_speed_bin": _clean(idx), "mean_power_frac": _clean(v)} for idx, v in smooth.items() if not pd.isna(v)
         ],
         "status_breakdown": {STATUS_LABELS.get(int(sid), str(sid)): int(count) for sid, count in status_counts.items()},
     }
