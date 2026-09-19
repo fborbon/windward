@@ -192,14 +192,16 @@ function fmt(n, d=1){ return (n===null||n===undefined||Number.isNaN(n)) ? "—" 
 function pct(n, d=1){ return (n===null||n===undefined||Number.isNaN(n)) ? "—" : (Number(n)*100).toFixed(d)+"%"; }
 
 // ---------- canvas line chart (dual series) ----------
-function drawLineChart(canvas, series, {height=220, colors, yUnit="", xUnit="", timestamps=null, labelFmt=(v)=>v.toFixed(0)}={}){
-  const dpr = window.devicePixelRatio || 1;
+function drawLineChart(canvas, series, opts={}){
+  const {height=220, colors, yUnit="", xUnit="", timestamps=null, labelFmt=(v)=>v.toFixed(0), scale=1} = opts;
+  const dpr = (window.devicePixelRatio || 1) * scale;
   const width = Math.max(560, canvas.parentElement.clientWidth);
   canvas.width = width*dpr; canvas.height = height*dpr;
   canvas.style.width = width+"px"; canvas.style.height = height+"px";
   const ctx = canvas.getContext("2d");
   ctx.scale(dpr,dpr);
   ctx.clearRect(0,0,width,height);
+  canvas._chartRedraw = s => drawLineChart(canvas, series, {...opts, scale:s});
 
   const hasTicks = !!(timestamps && timestamps.length);
   const padL=48, padR=12, padT=14, padB = hasTicks ? 40 : 26;
@@ -264,10 +266,12 @@ function drawAxisUnits(ctx, {padL, padR, padT, plotW, width, height, yUnit="", x
   ctx.textAlign="start";
 }
 
-function drawBarChart(canvas, points, {height=200, color=GOLD, xFmt=(v)=>v, yFmt=(v)=>v.toFixed(0), rotateLabels=false, yUnit="", xUnit=""}={}){
-  const dpr = window.devicePixelRatio || 1;
+function drawBarChart(canvas, points, opts={}){
+  const {height=200, color=GOLD, xFmt=(v)=>v, yFmt=(v)=>v.toFixed(0), rotateLabels=false, yUnit="", xUnit="", scale=1} = opts;
+  const dpr = (window.devicePixelRatio || 1) * scale;
   const width = Math.max(560, canvas.parentElement.clientWidth);
   const ctx = canvas.getContext("2d");
+  canvas._chartRedraw = s => drawBarChart(canvas, points, {...opts, scale:s});
 
   // Rotated labels need their pixel width measured up front - it becomes the bottom padding.
   ctx.font="11px 'IBM Plex Mono',monospace";
@@ -328,14 +332,16 @@ function drawBarChart(canvas, points, {height=200, color=GOLD, xFmt=(v)=>v, yFmt
 
 // Histogram bars (e.g. an observed distribution) with a fitted curve overlaid on the same
 // x/y scale - used for the wind-speed distribution + Weibull fit panel.
-function drawHistogramWithLine(canvas, barValues, lineValues, {height=180, barColor=GOLD, lineColor=GOOD, yFmt=(v)=>v.toFixed(2), yUnit="", xUnit=""}={}){
-  const dpr = window.devicePixelRatio || 1;
+function drawHistogramWithLine(canvas, barValues, lineValues, opts={}){
+  const {height=180, barColor=GOLD, lineColor=GOOD, yFmt=(v)=>v.toFixed(2), yUnit="", xUnit="", scale=1} = opts;
+  const dpr = (window.devicePixelRatio || 1) * scale;
   const width = Math.max(560, canvas.parentElement.clientWidth);
   canvas.width = width*dpr; canvas.height = height*dpr;
   canvas.style.width = width+"px"; canvas.style.height = height+"px";
   const ctx = canvas.getContext("2d");
   ctx.scale(dpr,dpr);
   ctx.clearRect(0,0,width,height);
+  canvas._chartRedraw = s => drawHistogramWithLine(canvas, barValues, lineValues, {...opts, scale:s});
   if(barValues.length===0) return;
 
   const padL=48, padR=12, padT=14, padB=xUnit ? 20 : 8;
@@ -373,8 +379,9 @@ function drawHistogramWithLine(canvas, barValues, lineValues, {height=180, barCo
 
 // Polar "wind rose": one wedge per compass sector, radius proportional to value, N at top,
 // clockwise - the conventional wind-rose orientation.
-function drawWindRose(canvas, sectors, {size=300, color=GOLD}={}){
-  const dpr = window.devicePixelRatio || 1;
+function drawWindRose(canvas, sectors, opts={}){
+  const {size=300, color=GOLD, scale=1} = opts;
+  const dpr = (window.devicePixelRatio || 1) * scale;
   const width = Math.max(240, Math.min(size, canvas.parentElement.clientWidth));
   const height = width;
   canvas.width = width*dpr; canvas.height = height*dpr;
@@ -382,6 +389,7 @@ function drawWindRose(canvas, sectors, {size=300, color=GOLD}={}){
   const ctx = canvas.getContext("2d");
   ctx.scale(dpr,dpr);
   ctx.clearRect(0,0,width,height);
+  canvas._chartRedraw = s => drawWindRose(canvas, sectors, {...opts, scale:s});
   if(sectors.length===0) return;
 
   const cx = width/2, cy = height/2;
@@ -1066,14 +1074,18 @@ function initChartZoom(){
 
   document.addEventListener("click", e => {
     const canvas = e.target.closest(".chart-wrap canvas");
-    if(!canvas || !canvas.width) return;
-    // Double the chart's on-page size (its CSS width/height, not the dpr-scaled bitmap) -
-    // max-width/max-height in CSS still cap it so it never overflows a small viewport.
+    if(!canvas || !canvas.width || !canvas._chartRedraw) return;
     const cssW = parseFloat(canvas.style.width) || canvas.width;
     const cssH = parseFloat(canvas.style.height) || canvas.height;
+    // Re-render the chart into its own canvas at 2x pixel density (on top of whatever the
+    // real devicePixelRatio already is), THEN display that bitmap at 2x the on-page CSS
+    // size - so the doubled image has the same pixels-per-displayed-point as the original,
+    // not a blurry upscale of the normal-resolution capture.
+    canvas._chartRedraw(2);
     img.style.width = (cssW*2)+"px";
     img.style.height = (cssH*2)+"px";
     img.src = canvas.toDataURL();
+    canvas._chartRedraw(1); // restore the on-page canvas to its normal resolution
     overlay.classList.add("open");
   });
 }
