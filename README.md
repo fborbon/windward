@@ -477,7 +477,7 @@ Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `ht
 
 ## 14. Wind Prediction: Time-Series Forecasting Showcase
 
-`wind_prediction/` is deliberately separate from `forecasting/`. `forecasting/` answers "what will this farm produce" - a production regression model, tracked/registered/served like any real ML system (§8). `wind_prediction/` answers a different question a lot of energy/wind-sector DS roles specifically screen for: **which time-series forecasting paradigm fits this kind of signal, and why** - a breadth showcase across the field, not a second production candidate. It has its own dashboard tab (**Wind Prediction**, `windward.forwardforecasting.eu`) and its own API routes (`GET /wind-prediction`, `GET /wind-prediction/live-weather`).
+`wind_prediction/` is deliberately separate from `forecasting/`. `forecasting/` answers "what will this farm produce" - a production regression model, tracked/registered/served like any real ML system (§8). `wind_prediction/` answers a different question a lot of energy/wind-sector DS roles specifically screen for: **which time-series forecasting paradigm fits this kind of signal, and why** - a breadth showcase across the field, not a second production candidate. It has its own dashboard tab (**Wind Prediction**, `windward.forwardforecasting.eu`) and its own API routes (`GET /wind-prediction`, `GET /wind-prediction/live-weather`, `GET /wind-prediction/live-forecast` - see §14.5).
 
 ### 14.1 Why this needed its own section: static SCADA vs. live meteorological data
 
@@ -539,6 +539,19 @@ Run `python -m wind_prediction.evaluate` (or `python -m wind_prediction.export` 
 | Seasonal naive (t-24h) | Naive / baseline | 2.606 | 3.437 | -0.205 | 18.1% |
 
 68 windows, 1,632 evaluated hours, Kelmarsh, 2026-09-17 run.
+
+### 14.5 Live 48h wind-speed forecast, graded against reality
+
+Everything above is a backtest - real data, but historical, with the outcome already known when the "forecast" is made. `wind_prediction/live_forecast.py` is a genuinely different exercise: it predicts real wind speed (m/s, not `output_mw`) for a real future 48h window - the window doesn't exist yet when the prediction is made - using three techniques (seasonal naive, Holt-Winters, Chronos-Bolt-Tiny zero-shot) plus Open-Meteo's own NWP forecast as a fourth independent prediction, then grades all four against the real ERA5 archive once that window has actually passed.
+
+Two different Open-Meteo products are in play, worth being precise about since they're easy to conflate: **`/forecast`** (`fetch_forecast`) is a live NWP-model forecast (ECMWF/GFS/ICON blend) - a genuine independent prediction, scored exactly like this module's own techniques. **`/archive`** (`fetch_historical`) is ERA5 **reanalysis**, not a forecast at all - the closest available approximation to "true" past conditions, and what everything is graded against. Confirmed empirically (not assumed) that the archive lands with only ~1 day of lag, not the 5+ day lag classic ERA5 processing has - so a ~30h buffer past the 48h horizon is enough before grading.
+
+Run daily via cron on the host: grades any prior forecast whose window is now safely past, then records a new one. State lives in `data/wind_forecast_log/<farm_id>.json` (gitignored - real runtime data, not committed, and it starts empty on a fresh checkout: the first graded row only exists after the cron has run for ~4 days). Served at `GET /wind-prediction/live-forecast`, own card on the Wind Prediction dashboard tab (pending forecast chart while a window is in flight, a permanent MAE table once windows are graded).
+
+```bash
+# On the target EC2, once a day:
+python -m wind_prediction.live_forecast
+```
 
 **Reading the comparison:**
 - **Gradient Boosting wins clearly** (MAE 1.26 MW, R² 0.70 - more than 3x the next-best R²), and the *why* is the real lesson: it's the only technique here combining both lag structure (autocorrelation - what just happened) *and* weather features (physics - what's driving output), where every other family gets only one or the other. SARIMA/ETS/UC see their own past values and nothing else; the notebook's production model (`demo_notebook/`) sees weather and nothing else. Combining both isn't a new idea, but the gap here (0.70 vs the next-best 0.30) is a concrete demonstration of why feature combination usually beats a purer, more "principled" single-paradigm model in practice.

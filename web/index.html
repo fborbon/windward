@@ -847,6 +847,19 @@ function renderWindPrediction(panel, data){
         <div class="legend"><span><span class="swatch" style="background:${GOLD}"></span>Wind speed (m/s), next 48h</span></div>
         <button class="btn-gold" id="wp-live-refresh" style="margin-top:12px;">Refresh live forecast</button>
       </div>
+
+      <div class="card">
+        <h2>Real 48h wind-speed forecast, graded against reality</h2>
+        <div class="desc">
+          A different exercise from the backtest on the left: this predicts real wind speed
+          (not production) for a genuine future 48h window - the window doesn't exist yet when
+          the forecast is made - using three techniques plus Open-Meteo's own NWP forecast as a
+          fourth. Run daily via cron (<code>wind_prediction/live_forecast.py</code>); once a
+          window is ~30h past, it's graded against the real ERA5 archive and the error becomes
+          permanent history below.
+        </div>
+        <div id="wp-live-forecast-body"><div class="skeleton"><span class="spinner"></span> Loading…</div></div>
+      </div>
     </div>
   </div>`;
 
@@ -867,6 +880,67 @@ function renderWindPrediction(panel, data){
 
   loadWindPredictionLiveWeather(data.farm_id);
   document.getElementById("wp-live-refresh").addEventListener("click", () => loadWindPredictionLiveWeather(data.farm_id));
+  loadWindForecastLog(data.farm_id);
+}
+
+const WFL_TECHNIQUE_LABELS = {
+  seasonal_naive: "Seasonal naive", holt_winters: "Holt-Winters",
+  chronos_bolt_tiny: "Chronos-Bolt (zero-shot)", open_meteo_forecast: "Open-Meteo NWP forecast",
+};
+
+async function loadWindForecastLog(farmId){
+  const body = document.getElementById("wp-live-forecast-body");
+  if(!body) return;
+  const res = await fetch(`${API}/wind-prediction/live-forecast?farm_id=${farmId}`);
+  if(ACTIVE_FARM !== WIND_PREDICTION_TAB_ID) return;
+  if(!res.ok){ body.innerHTML = `<div class="desc">No live-forecast log yet - the daily cron hasn't run.</div>`; return; }
+  const log = await res.json();
+  if(!log.length){ body.innerHTML = `<div class="desc">Log is empty.</div>`; return; }
+
+  const pending = [...log].reverse().find(r => !r.graded);
+  const graded = log.filter(r => r.graded).reverse();
+
+  let html = "";
+  if(pending){
+    html += `<div class="desc mono">Pending forecast, generated ${new Date(pending.generated_at).toLocaleString()} · window ${new Date(pending.target_timestamps[0]).toLocaleString()} &rarr; ${new Date(pending.target_timestamps[pending.target_timestamps.length-1]).toLocaleString()}</div>
+    <div class="chart-wrap"><canvas id="chart-wfl-pending"></canvas></div>
+    <div class="legend" id="wfl-pending-legend"></div>`;
+  } else {
+    html += `<div class="desc">No pending forecast in flight.</div>`;
+  }
+
+  if(graded.length){
+    html += `<h3 style="margin:18px 0 8px; font-size:14px; color:var(--text-dim);">Graded history (${graded.length})</h3>
+    <table>
+      <thead><tr><th>Window start</th><th class="num">Seasonal naive</th><th class="num">Holt-Winters</th><th class="num">Chronos-Bolt</th><th class="num">Open-Meteo NWP</th></tr></thead>
+      <tbody>
+        ${graded.map(r => `
+          <tr>
+            <td class="mono">${new Date(r.target_timestamps[0]).toLocaleDateString()}</td>
+            <td class="num">${fmt(r.errors_mae.seasonal_naive,2)}</td>
+            <td class="num">${fmt(r.errors_mae.holt_winters,2)}</td>
+            <td class="num">${fmt(r.errors_mae.chronos_bolt_tiny,2)}</td>
+            <td class="num">${fmt(r.errors_mae.open_meteo_forecast,2)}</td>
+          </tr>`).join("")}
+      </tbody>
+    </table>
+    <div class="desc" style="margin-top:8px;">MAE in m/s, lower is better - real, not simulated: each row is graded against the real ERA5 archive once that window actually passed.</div>`;
+  } else {
+    html += `<div class="desc" style="margin-top:12px;">No graded forecasts yet - the first window needs ~78h (48h horizon + grading buffer) to complete.</div>`;
+  }
+
+  body.innerHTML = html;
+
+  if(pending){
+    const names = ["seasonal_naive", "holt_winters", "chronos_bolt_tiny", "open_meteo_forecast"];
+    const series = [pending.techniques.seasonal_naive, pending.techniques.holt_winters, pending.techniques.chronos_bolt_tiny, pending.open_meteo_forecast_ms];
+    document.getElementById("wfl-pending-legend").innerHTML = names.map((n,i) => `<span><span class="swatch" style="background:${WP_COLORS[i%WP_COLORS.length]}"></span>${WFL_TECHNIQUE_LABELS[n]}</span>`).join("");
+    drawLineChart(
+      document.getElementById("chart-wfl-pending"),
+      series.map((s,i) => ({data: s, color: WP_COLORS[i%WP_COLORS.length]})),
+      {height: 220, labelFmt: v => v.toFixed(1), yUnit: "Wind speed (m/s)", xUnit: "Hours ahead"},
+    );
+  }
 }
 
 async function loadWindPredictionLiveWeather(farmId){

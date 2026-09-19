@@ -92,6 +92,22 @@ def wind_prediction_live_weather(farm_id: str = "kelmarsh"):
     }
 
 
+WIND_FORECAST_LOG_DIR = Path(__file__).resolve().parent.parent / "data" / "wind_forecast_log"
+
+
+@app.get("/wind-prediction/live-forecast")
+def wind_prediction_live_forecast(farm_id: str = "kelmarsh"):
+    """Real, genuinely forward-looking 48h wind-speed forecast log (wind_prediction/
+    live_forecast.py, run daily via cron) - each record's techniques + Open-Meteo's own NWP
+    forecast for a real future window, graded against the real ERA5 archive once that window
+    has actually passed. Different from /wind-prediction (a historical backtest) and from
+    /wind-prediction/live-weather (today's forecast only, not graded)."""
+    path = WIND_FORECAST_LOG_DIR / f"{farm_id}.json"
+    if not path.exists():
+        raise HTTPException(404, f"no live-forecast log yet for '{farm_id}' - run `python -m wind_prediction.live_forecast`")
+    return json.loads(path.read_text())
+
+
 def _clean(v):
     """Round-trip pandas/numpy scalars through plain python + drop NaN so FastAPI's default
     JSON encoder (which chokes on numpy types and produces invalid `NaN` tokens) never sees them."""
