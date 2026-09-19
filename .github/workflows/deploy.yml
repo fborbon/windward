@@ -88,4 +88,9 @@ jobs:
       - name: Verify the live site picked it up
         run: |
           sleep 15
-          curl -sf https://windward.forwardforecasting.eu/health
+          for i in $(seq 1 5); do
+            if curl -sf https://windward.forwardforecasting.eu/health; then exit 0; fi
+            echo "health check failed (attempt $i/5) - retrying in 10s"
+            sleep 10
+          done
+          exit 1
