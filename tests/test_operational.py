@@ -59,3 +59,8 @@ def test_resolve_turbine_id_accepts_common_spellings():
     assert resolve_turbine_id("penmanshiel", "T05") == "Penmanshiel_05"
     assert resolve_turbine_id("penmanshiel", "3") is None  # Penmanshiel has no turbine 03
     assert resolve_turbine_id("kelmarsh", "9") is None
+
+
+def test_compact_summary_adds_aep_interval():
+    op = {"aep": {"monthly_linear": {"p50_gwh": 31.687, "mean_gwh": 31.687, "std_gwh": 0.371}}}
+    assert compact_summary(op)["aep"]["monthly_linear"]["interval_95pct_gwh"] == [30.96, 32.41]

@@ -109,7 +109,8 @@ _SYSTEM_PROMPT = (
     "for a question about one specific turbine, rank_turbines for best/worst/most-affected "
     "comparisons across turbines, several if the question "
     "needs both, or neither for a general question you can already answer. Keep the final "
-    "answer under 120 words, plain English, technical but non-specialist."
+    "answer under 120 words, plain English, technical but non-specialist. Quote numbers exactly "
+    "as the tools return them; never compute new statistics (intervals, percentages) yourself."
 )
 
 

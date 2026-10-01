@@ -84,6 +84,15 @@ def compact_summary(operational: dict | None) -> dict | None:
     if not operational:
         return None
     out = {k: v for k, v in operational.items() if k not in ("wake_losses", "yaw_misalignment", "references")}
+    # Give the LLM the interval ready-made: asked for "uncertainty", it otherwise does its own
+    # (wrong) arithmetic from the coefficient of variation.
+    aep = dict(operational.get("aep") or {})
+    for method in ("monthly_linear", "daily_gam_temperature"):
+        m = aep.get(method)
+        if m and m.get("p50_gwh") is not None and m.get("std_gwh") is not None:
+            aep[method] = {**m, "interval_95pct_gwh": [round(m["mean_gwh"] - 1.96 * m["std_gwh"], 2),
+                                                        round(m["mean_gwh"] + 1.96 * m["std_gwh"], 2)]}
+    out["aep"] = aep
     wl = operational.get("wake_losses") or {}
     out["wake_losses"] = {k: v for k, v in wl.items() if k != "by_direction"}
     ym = operational.get("yaw_misalignment") or {}
