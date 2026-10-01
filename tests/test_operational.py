@@ -64,3 +64,14 @@ def test_resolve_turbine_id_accepts_common_spellings():
 def test_compact_summary_adds_aep_interval():
     op = {"aep": {"monthly_linear": {"p50_gwh": 31.687, "mean_gwh": 31.687, "std_gwh": 0.371}}}
     assert compact_summary(op)["aep"]["monthly_linear"]["interval_95pct_gwh"] == [30.96, 32.41]
+
+
+def test_union_hours_counts_concurrent_alarms_once():
+    import pandas as pd
+    from agents.turbine_tools import _union_hours
+
+    ev = pd.DataFrame({
+        "start": pd.to_datetime(["2016-01-01 00:00", "2016-01-01 00:00", "2016-01-01 01:00", "2016-01-02 00:00"]),
+        "end": pd.to_datetime(["2016-01-01 02:00", "2016-01-01 02:00", "2016-01-01 03:00", "2016-01-02 01:00"]),
+    })
+    assert _union_hours(ev) == 4.0  # 00:00-03:00 merged, plus one separate hour

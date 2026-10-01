@@ -82,6 +82,24 @@ def _event_record(row) -> dict:
     }
 
 
+def _union_hours(events: pd.DataFrame) -> float:
+    """Downtime hours with overlapping events counted once: one stop is often logged as several
+    concurrent alarms (Kelmarsh_1's three 'Overload generator fan 1/2/3' events are the same
+    218.5 h), so a plain sum would triple-count it."""
+    spans = events.dropna(subset=["start", "end"]).sort_values("start")[["start", "end"]].values
+    total, cur_start, cur_end = 0.0, None, None
+    for start, end in spans:
+        if cur_end is None or start > cur_end:
+            if cur_end is not None:
+                total += (cur_end - cur_start) / pd.Timedelta(hours=1)
+            cur_start, cur_end = start, end
+        else:
+            cur_end = max(cur_end, end)
+    if cur_end is not None:
+        total += (cur_end - cur_start) / pd.Timedelta(hours=1)
+    return round(float(total), 1)
+
+
 def _maintenance_stats(farm_id: str, turbine_id: str) -> dict:
     ev = _events(farm_id)
     t = ev[ev["turbine_id"] == turbine_id]
@@ -92,10 +110,11 @@ def _maintenance_stats(farm_id: str, turbine_id: str) -> dict:
     return {
         "log_period": f"{ev['start'].min():%Y-%m-%d} to {ev['start'].max():%Y-%m-%d}",
         "maintenance_events": int(len(maint)),
-        "maintenance_hours": round(float(maint["hours"].sum()), 1),
+        "maintenance_hours": _union_hours(maint),
         "last_maintenance": _event_record(maint.iloc[-1]) if len(maint) else None,
         "forced_outage_events": int(len(forced)) if outages_known else None,
-        "forced_outage_hours": round(float(forced["hours"].sum()), 1) if outages_known else None,
+        "forced_outage_hours": _union_hours(forced) if outages_known else None,
+        "note": "hours count overlapping events once; per-cause hours can overlap each other (one stop often raises several alarms), so don't add them up",
         "top_forced_outage_causes": [
             {"message": msg or "(no description in this export)", "events": int(r["count"]), "hours": round(float(r["sum"]), 1)}
             for msg, r in top_faults.iterrows()
