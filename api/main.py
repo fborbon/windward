@@ -108,6 +108,22 @@ def wind_prediction_live_forecast(farm_id: str = "kelmarsh"):
     return json.loads(path.read_text())
 
 
+@app.get("/operational/{farm_id}")
+def operational(farm_id: str):
+    """Offline OpenOA operational assessment (electrical losses, long-term AEP with Monte Carlo
+    uncertainty, wake losses, static yaw misalignment) for one farm, precomputed by
+    operational_assessment/run_openoa.py in an isolated venv and served static, like
+    /wind-prediction."""
+    from operational_assessment.payload import farm_operational, yaw_flags, yaw_statuses
+
+    if farm_id not in FARMS:
+        raise HTTPException(404, f"unknown farm_id '{farm_id}'")
+    result = farm_operational(farm_id)
+    if result is None:
+        raise HTTPException(404, "operational payload not exported yet - see operational_assessment/run_openoa.py")
+    return {**result, "yaw_flags": yaw_flags(result), "yaw_status": yaw_statuses(result)}
+
+
 def _clean(v):
     """Round-trip pandas/numpy scalars through plain python + drop NaN so FastAPI's default
     JSON encoder (which chokes on numpy types and produces invalid `NaN` tokens) never sees them."""
@@ -183,6 +199,7 @@ def _run_analysis(farm_id: str) -> dict:
         ],
         "wind_speed_distribution": result["wind_speed_distribution"],
         "anomalies": result["anomalies"],
+        "qc_summary": result.get("qc_summary"),
         "recommendation": result["recommendation"],
         "explanation": result["explanation"],
         "inspection_results": result["inspection_results"],

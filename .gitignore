@@ -14,3 +14,4 @@ data/rag_index/
 data/llamaindex/
 data/wind_forecast_log/
 .ipynb_checkpoints/
+data/operational_cache/

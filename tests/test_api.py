@@ -52,3 +52,12 @@ def test_wind_prediction_payload():
     if resp.status_code == 200:
         body = resp.json()
         assert "results" in body and "taxonomy" in body
+
+
+def test_operational_payload():
+    resp = client.get("/operational/kelmarsh")
+    assert resp.status_code in (200, 404)
+    if resp.status_code == 200:
+        body = resp.json()
+        assert "electrical_losses" in body and "yaw_status" in body
+    assert client.get("/operational/not-a-farm").status_code == 404

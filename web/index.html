@@ -69,6 +69,8 @@
     padding:20px 22px; margin-bottom:20px;
   }
   .card h2{font-size:20px; color:var(--text); margin-bottom:4px;}
+  .card h3{font-size:15px; color:var(--text); margin-bottom:6px;}
+  .sources a{color:inherit;}
   .card .desc{color:var(--text-dim); font-size:13px; margin-bottom:14px;}
   .card-row{display:flex; gap:20px; flex-wrap:wrap;}
 
@@ -482,6 +484,85 @@ async function selectFarm(farmId){
   const a = await res.json();
   if(ACTIVE_FARM !== farmId) return; // a later click won
   renderAnalysis(panel, farmId, a);
+}
+
+// ---------- Operational assessment: offline NREL/NLR OpenOA results (operational_assessment/) ----------
+const OPENOA_PAPERS = [
+  ["Perr-Sauer et al. 2021, JOSS", "https://doi.org/10.21105/joss.02171"],
+  ["WP3 Benchmark Phase 1, NREL/TP-5000-78715", "https://www.nlr.gov/docs/fy22osti/78715.pdf"],
+  ["Bodini et al. 2021, Wind Energy", "https://doi.org/10.1002/we.2645"],
+  ["Bodini & Optis 2020, WES", "https://doi.org/10.5194/wes-5-1435-2020"],
+];
+const UNCERTAINTY_LABELS = {
+  regression: "Regression (bootstrap)", revenue_meter: "Revenue meter (0.5%)", reported_losses: "Reported losses (5%)",
+  windiness_lt_period: "Long-term period (10-20 yr)", loss_threshold: "Loss-month threshold (10-20%)",
+  outlier_threshold: "Outlier threshold (Huber t 1-3)", reanalysis_product: "Reanalysis product (ERA5 / CERRA)",
+};
+
+async function loadOperational(farmId){
+  const card = document.getElementById("operational-card");
+  if(!card) return;
+  const res = await fetch(`${API}/operational/${farmId}`);
+  if(ACTIVE_FARM !== farmId) return;
+  if(!res.ok){ card.innerHTML = `<h2>Operational assessment (OpenOA)</h2><div class="desc">Not exported for this farm yet.</div>`; return; }
+  renderOperational(card, await res.json());
+}
+
+function renderOperational(card, o){
+  const el = o.electrical_losses || {}, aep = o.aep || {}, wl = o.wake_losses || {}, ym = o.yaw_misalignment || {};
+  const m = aep.monthly_linear || {}, d = aep.daily_gam_temperature || {};
+  const yawStatus = o.yaw_status || {};
+  const YAW_PILL = {flag:'<span class="pill flag">check vane</span>', ok:'<span class="pill ok">ok</span>', inconclusive:'<span class="pill">inconclusive</span>'};
+  const turbines = Object.keys({...(wl.turbines||{}), ...(ym.turbines||{})}).sort();
+  const comps = aep.uncertainty_components_pct || {};
+  card.innerHTML = `
+    <h2>Operational assessment (OpenOA)</h2>
+    <div class="desc">NREL/NLR's open-source OpenOA (v${o.openoa_version}) run offline on the full multi-year SCADA and substation-meter data, with ${(o.reanalysis_products||[]).map(p=>p.toUpperCase()).join(" + ")} reanalysis via Open-Meteo. Generated ${(o.generated_at||"").slice(0,10)}.</div>
+    <div class="kpis">
+      <div class="kpi"><div class="v">${el.error ? "—" : fmt(el.mean_pct,2)+"%"}</div><div class="l">Electrical losses${el.std_pct!=null ? " (±"+fmt(el.std_pct,2)+")" : ""}</div></div>
+      <div class="kpi"><div class="v">${m.p50_gwh!=null ? fmt(m.p50_gwh,1)+" GWh" : "—"}</div><div class="l">Long-term AEP P50</div></div>
+      <div class="kpi"><div class="v">${m.p90_gwh!=null ? fmt(m.p90_gwh,1)+" GWh" : "—"}</div><div class="l">AEP P90</div></div>
+      <div class="kpi"><div class="v">${wl.plant_lt_pct!=null ? fmt(wl.plant_lt_pct,1)+"%" : "—"}</div><div class="l">Farm wake losses (long-term)</div></div>
+    </div>
+    ${el.period_start ? `<div class="desc">Electrical losses: summed turbine energy vs the substation meter over ${el.n_days} full-data days (${el.period_start} to ${el.period_end}), ${fmt(el.turbine_energy_gwh,1)} GWh at the turbines vs ${fmt(el.meter_energy_gwh,1)} GWh metered; Monte Carlo over 0.5% meter and SCADA uncertainty.</div>` : ""}
+    ${aep.skipped ? `<div class="desc">AEP not computed: ${aep.skipped}</div>` : m.p50_gwh!=null ? `
+      <h3 style="margin-top:14px;">Long-term AEP: two power-curve regressions</h3>
+      <table>
+        <thead><tr><th>Method</th><th class="num">P50 (GWh/yr)</th><th class="num">P90</th><th class="num">Uncertainty</th><th class="num">R²</th></tr></thead>
+        <tbody>
+          <tr><td>Monthly linear (industry standard)</td><td class="num">${fmt(m.p50_gwh,2)}</td><td class="num">${fmt(m.p90_gwh,2)}</td><td class="num">${fmt(m.uncertainty_pct,2)}%</td><td class="num">${fmt(m.r2_mean,3)}</td></tr>
+          ${d.p50_gwh!=null ? `<tr><td>Daily GAM + temperature</td><td class="num">${fmt(d.p50_gwh,2)}</td><td class="num">${fmt(d.p90_gwh,2)}</td><td class="num">${fmt(d.uncertainty_pct,2)}%</td><td class="num">${fmt(d.r2_mean,3)}</td></tr>` : ""}
+        </tbody>
+      </table>
+      <div class="desc">Period of record ${aep.por_start} to ${aep.por_end}; availability losses ${fmt(m.avail_loss_pct,2)}%, curtailment ${fmt(m.curt_loss_pct,2)}%. Bodini et al. 2021 found a daily/hourly GAM cuts regression uncertainty versus the monthly linear standard; this shows whether that holds here.</div>
+      <h3 style="margin-top:14px;">AEP uncertainty by component (monthly linear)</h3>
+      <table>
+        <thead><tr><th>Component</th><th class="num">Contribution</th></tr></thead>
+        <tbody>
+          ${Object.entries(comps).map(([k,v])=>`<tr><td>${UNCERTAINTY_LABELS[k]||k}</td><td class="num">${fmt(v,2)}%</td></tr>`).join("")}
+          <tr><td><b>Root-sum-of-squares (assumes uncorrelated)</b></td><td class="num"><b>${fmt(aep.rss_uncorrelated_total_pct,2)}%</b></td></tr>
+          <tr><td><b>Full Monte Carlo (correlations included)</b></td><td class="num"><b>${fmt(aep.monte_carlo_total_pct,2)}%</b></td></tr>
+        </tbody>
+      </table>
+      <div class="desc">Bodini &amp; Optis 2020 showed the industry's sum-of-squares shortcut underestimates operational AEP uncertainty (by ~0.1% on average across 470 US plants) because the components are correlated.</div>` : `<div class="desc">AEP: ${aep.error || "not available"}</div>`}
+    ${turbines.length ? `
+      <h3 style="margin-top:14px;">Per-turbine wake losses and static yaw misalignment</h3>
+      <table>
+        <thead><tr><th>Turbine</th><th class="num">Wake loss (LT)</th><th class="num">Yaw offset</th><th class="num">95% CI</th><th>Status</th></tr></thead>
+        <tbody>
+          ${turbines.map(t=>{ const w=(wl.turbines||{})[t]||{}, y=(ym.turbines||{})[t]||{}; const ci=y.ci95_deg||[];
+            return `<tr><td>${t}</td><td class="num">${w.lt_pct!=null ? fmt(w.lt_pct,1)+"%" : "—"}</td><td class="num">${y.mean_deg!=null ? (y.mean_deg>0?"+":"")+fmt(y.mean_deg,1)+"°" : "—"}</td><td class="num">${ci.length===2 && ci[0]!=null ? fmt(ci[0],1)+" to "+fmt(ci[1],1) : "—"}</td><td>${YAW_PILL[yawStatus[t]] || "—"}</td></tr>`; }).join("")}
+        </tbody>
+      </table>
+      <div class="desc">Wake loss = energy lost relative to freestream turbines for each wind direction, long-term corrected. No terrain speed-up correction is applied (OpenOA needs a flow-model speed-up map for that), so on rolling sites turbine elevation differences are mixed into these numbers; a negative value means a turbine out-produced the freestream average. Yaw: estimated separately at 5, 6, 7 and 8 m/s; marked inconclusive when those estimates disagree by more than 10° (the cosine peak isn't identifiable from the data), flagged only when the offset is at least 3° and its 95% interval excludes zero. ${ym.caveat || ""}</div>` : ""}
+    ${(wl.by_direction||[]).length ? `
+      <div class="chart-wrap"><canvas id="chart-wake-wd"></canvas></div>
+      <div class="legend"><span><span class="swatch" style="background:${GOLD}"></span>Farm wake loss by wind direction (period of record), 0° to 355° in 5° bins</span></div>` : ""}
+    <div class="sources">Papers: ${OPENOA_PAPERS.map(([t,u])=>`<a href="${u}" target="_blank" rel="noopener">${t}</a>`).join(" · ")}</div>`;
+  if((wl.by_direction||[]).length){
+    drawLineChart(document.getElementById("chart-wake-wd"), [{data: wl.by_direction.map(b=>b.plant_por_pct), color:GOLD}],
+      {labelFmt:v=>v.toFixed(0), yUnit:"Wake loss (%)", xUnit:"Wind direction (0° to 355°)"});
+  }
 }
 
 // ---------- EDP Wind Farm A: real labeled fault case studies, diagnosis/RAG only ----------
@@ -1016,7 +1097,7 @@ function renderAnalysis(panel, farmId, a){
 
       <div class="card">
         <h2>Turbine efficiency vs. the Betz limit</h2>
-        <div class="desc">Peak power coefficient (Cₚ) per turbine — the theoretical ceiling on wind-energy extraction is 16/27 ≈ 0.593 (Betz's law). A peak above that line means the anemometer, not the turbine, is lying.</div>
+        <div class="desc">Peak power coefficient (Cₚ) per turbine — the theoretical ceiling on wind-energy extraction is 16/27 ≈ 0.593 (Betz's law). A peak above that line means the anemometer, not the turbine, is lying.${a.qc_summary ? ` Power curves and peak Cₚ use QC-cleaned hours (OpenOA filters): ${pct(a.qc_summary.farm.qc_flag)} of hours removed (turbine stopped in productive wind ${pct(a.qc_summary.farm.stopped)}, power-curve outliers such as derating ${pct(a.qc_summary.farm.power_curve_outlier)}, frozen anemometer ${pct(a.qc_summary.farm.frozen)}). Capacity factor still counts every hour.` : ""}</div>
         <table>
           <thead><tr><th>Turbine</th><th class="num">Capacity factor</th><th class="num">Peak Cₚ</th><th>Status</th></tr></thead>
           <tbody>
@@ -1038,10 +1119,15 @@ function renderAnalysis(panel, farmId, a){
             <div class="anomaly"><span class="dot"></span><span>
               ${an.type==="farm_forecast_deviation"
                 ? `Farm-level output deviated &gt;50% from model prediction in ${an.count} of ${a.comparison_summary.hours_analyzed} hours (${pct(an.pct_of_hours)}).`
-                : `<b>${an.turbine_id}</b>: ${an.detail}`}
+                : an.turbine_id ? `<b>${an.turbine_id}</b>: ${an.detail}` : an.detail}
             </span></div>`).join("")
             : '<div class="anomaly"><span class="dot" style="background:'+GOOD+'"></span>No anomalies flagged.</div>'}
         </div>
+      </div>
+
+      <div class="card" id="operational-card">
+        <h2>Operational assessment (OpenOA)</h2>
+        <div class="skeleton"><span class="spinner"></span> Loading…</div>
       </div>
     </div>
 
@@ -1051,6 +1137,7 @@ function renderAnalysis(panel, farmId, a){
         <div class="recommend">
           <div class="action">${a.recommendation.action}</div>
           <div class="rationale">${a.recommendation.rationale}</div>
+          ${(a.recommendation.follow_up_actions||[]).length ? `<div class="rationale" style="margin-top:8px;">Follow-ups:<ul style="margin:4px 0 0 18px;">${a.recommendation.follow_up_actions.map(x=>`<li>${x}</li>`).join("")}</ul></div>` : ""}
         </div>
         ${a.recommendation.supporting_sources && a.recommendation.supporting_sources.length ? `<div class="sources">Sources: ${a.recommendation.supporting_sources.join(", ")}</div>` : ""}
       </div>
@@ -1077,9 +1164,9 @@ function renderAnalysis(panel, farmId, a){
 
       <div class="card">
         <h2>Ask the agent</h2>
-        <div class="desc">Grounded in this farm's real analysis above — answered live, on this box.</div>
+        <div class="desc">Grounded in this farm's real analysis above — answered live, on this box. Ask about the whole farm or about one turbine: its performance rank, wake loss, yaw, or its real maintenance and outage history.</div>
         <div class="ask">
-          <input id="ask-input" type="text" maxlength="500" placeholder="e.g. why is the recommendation about ${a.recommendation.action.replace('Prioritize inspection of ','')}?">
+          <input id="ask-input" type="text" maxlength="500" placeholder="e.g. which turbine performs best? when was ${a.efficiency_summary.length ? a.efficiency_summary[0].turbine_id.replace('_',' ') : 'turbine 1'} last maintained? which turbine loses most to wakes?">
           <button id="ask-btn">Ask</button>
         </div>
         <div class="ask-answer" id="ask-answer"></div>
@@ -1101,12 +1188,13 @@ function renderAnalysis(panel, farmId, a){
     {color:GOOD, xFmt:v=>v.toFixed(0), yFmt:v=>pct(v), yUnit:"Share of rated capacity (%)", xUnit:"Wind speed (m/s)"}
   );
   drawWindRose(document.getElementById("chart-wind-rose"), a.wind_rose);
+  loadOperational(farmId);
 
   const askBtn = document.getElementById("ask-btn");
   const askInput = document.getElementById("ask-input");
   const askAnswer = document.getElementById("ask-answer");
   const askSources = document.getElementById("ask-sources");
-  const SOURCE_LABELS = {"maintenance-docs":"maintenance docs (RAG)", "current-analysis":"current analysis"};
+  const SOURCE_LABELS = {"maintenance-docs":"maintenance docs (RAG)", "current-analysis":"current analysis", "operational-assessment":"OpenOA operational assessment", "turbine-details":"turbine details + status log", "turbine-ranking":"turbine ranking"};
   async function submitAsk(){
     const q = askInput.value.trim();
     if(!q) return;

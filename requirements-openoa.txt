@@ -1,0 +1,2 @@
+openoa==3.2
+requests

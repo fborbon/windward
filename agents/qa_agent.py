@@ -14,11 +14,12 @@ MCP client are grounded by the same retrieval pipeline, not two divergent implem
 import json
 
 from agents.llm_router import complete
+from agents.turbine_tools import RANK_METRICS, rank_turbines, turbine_details
 from mcp_server.tools import query_maintenance_docs
 
 MAX_TOOL_ROUNDS = 3
 
-_ANALYSIS_KEYS = ("comparison_summary", "efficiency_summary", "anomalies", "recommendation")
+_ANALYSIS_KEYS = ("comparison_summary", "efficiency_summary", "qc_summary", "anomalies", "recommendation")
 
 _TOOLS_SCHEMA = [
     {
@@ -50,12 +51,63 @@ _TOOLS_SCHEMA = [
             "parameters": {"type": "object", "properties": {}},
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_operational_assessment",
+            "description": (
+                "Get this farm's long-term operational assessment from NREL/NLR's OpenOA, run on "
+                "the full multi-year data: electrical losses (turbines vs substation meter), "
+                "long-term annual energy production (P50/P90) and its uncertainty components, "
+                "per-turbine wake losses, and static yaw misalignment estimates. Use for questions "
+                "about AEP, energy yield, losses, wakes, yaw, or uncertainty."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_turbine_details",
+            "description": (
+                "Everything known about ONE turbine: capacity factor and its rank in the fleet, "
+                "peak Cp, QC-removed hours, its anomalies, OpenOA wake loss and yaw misalignment, "
+                "and its real status log (last maintenance stop, maintenance count, forced-outage "
+                "hours and top causes). Use for any question about a specific turbine."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {"turbine": {"type": "string", "description": "turbine name or number, e.g. 'Kelmarsh 3' or '3'"}},
+                "required": ["turbine"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "rank_turbines",
+            "description": (
+                "Rank this farm's turbines by one metric, to answer best/worst/most/least "
+                "questions across turbines. capacity_factor and peak_cp: higher is better; the "
+                "others (wake_loss_lt_pct, abs_yaw_misalignment_deg, qc_removed_share, "
+                "forced_outage_hours, maintenance_events) are listed highest first."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {"metric": {"type": "string", "enum": list(RANK_METRICS)}},
+                "required": ["metric"],
+            },
+        },
+    },
 ]
 
 _SYSTEM_PROMPT = (
     "You are the Windward analysis agent for farm '{farm_id}'. Answer the visitor's question "
     "using the tools available: call search_maintenance_docs for fault/downtime/history "
-    "questions, get_current_analysis for numeric/performance questions, both if the question "
+    "questions, get_current_analysis for numeric/performance questions, "
+    "get_operational_assessment for long-term yield/loss/wake/yaw questions, get_turbine_details "
+    "for a question about one specific turbine, rank_turbines for best/worst/most-affected "
+    "comparisons across turbines, several if the question "
     "needs both, or neither for a general question you can already answer. Keep the final "
     "answer under 120 words, plain English, technical but non-specialist."
 )
@@ -68,6 +120,17 @@ def _run_tool(name: str, args: dict, farm_id: str, analysis: dict, sources: list
     if name == "get_current_analysis":
         sources.append("current-analysis")
         return {k: analysis[k] for k in _ANALYSIS_KEYS if k in analysis}
+    if name == "get_operational_assessment":
+        from operational_assessment.payload import compact_summary, farm_operational
+
+        sources.append("operational-assessment")
+        return compact_summary(farm_operational(farm_id)) or "no operational assessment exported for this farm"
+    if name == "get_turbine_details":
+        sources.append("turbine-details")
+        return turbine_details(farm_id, args.get("turbine") or "", analysis)
+    if name == "rank_turbines":
+        sources.append("turbine-ranking")
+        return rank_turbines(farm_id, args.get("metric") or "", analysis)
     return f"unknown tool {name!r}"
 
 

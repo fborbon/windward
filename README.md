@@ -26,6 +26,7 @@
 12. [Roadmap](#12-roadmap)
 13. [Cost & Resource Consumption](#13-cost--resource-consumption)
 14. [Wind Prediction: Time-Series Forecasting Showcase](#14-wind-prediction-time-series-forecasting-showcase)
+15. [Operational Assessment (OpenOA)](#15-operational-assessment-openoa)
 
 ---
 
@@ -54,6 +55,8 @@ The split is deliberate: forecasting is a numerical ML problem (best solved with
 | Multimodal | `multimodal/blade_inspection.py` — real vision-LLM pass (Bedrock Nova, Converse API) on a real inspection photo |
 | Semantic Search | `rag/semantic_search.py` — nearest-neighbor search over the real incident corpus |
 | MLflow | `forecasting/train.py`, `forecasting/registry.py` — self-hosted tracking server + registry, S3 artifact store |
+| Wind plant operational assessment (NREL/NLR OpenOA) | `operational_assessment/` - electrical losses, Monte Carlo long-term AEP, wake losses, static yaw misalignment, run offline on the full multi-year data (§15); `analysis/qc.py` - OpenOA's SCADA filters ported into the live `diagnose` step |
+| Per-turbine Q&A | `agents/turbine_tools.py` - `get_turbine_details` / `rank_turbines` tools for the `/ask` agent (§15.6) |
 | Time-series forecasting breadth (classical statistical, state-space, DL, attention, foundation models) | `wind_prediction/` - naive to Chronos foundation-model showcase, separate from the production regression model (§14) |
 
 ## 3. Architecture & Data Flow
@@ -151,6 +154,8 @@ flowchart LR
 
 ### 4.1 `diagnose` in detail — real power-curve-correction methods, not a first pass
 
+Before any of them run, every turbine's hourly series goes through **OpenOA-style SCADA QC** (`analysis/qc.py`, §15.2): hours with a frozen anemometer, the turbine stopped in productive wind, or a power-binned wind-speed outlier (derating/curtailment) are removed from everything power-curve-shaped (binned + AMK curves, the displacement fit, peak Cp). Capacity factor and the neighbor check still see every hour, since downtime is exactly what they measure. On Kelmarsh 2016 that removes 5.0% of hours, and lifts the binned curve by up to ~800 kW at 13-16 m/s, where stopped hours (including the pre-commissioning months before the April 2016 COD) had been averaged in. It also settles Kelmarsh 5's Betz-limit reading below: with QC its peak Cp is 0.585, under the 0.593 limit, so the anemometer-suspect anomaly no longer fires for it.
+
 The four techniques below (in `analysis/efficiency.py`) are standard practice in real offshore/onshore wind farm SCADA analysis — not something built from scratch, adapted from prior renewable-energy-sector power-curve-correction work — applied here to Windward's own real open datasets:
 
 - **Real per-hour air density.** Cp/Betz-limit physics is density-dependent (`P_wind = 0.5 * rho * A * v^3`); `air_density_kg_m3()` computes it from the farm's real hourly temperature/pressure (ideal gas law) instead of assuming the 1.225 kg/m3 sea-level constant. This alone moved Kelmarsh 5's peak Cp from 0.611 (above the Betz limit) to 0.594 (right at it) — most of the originally "impossible" reading was the density assumption, not the sensor.
@@ -204,6 +209,9 @@ rm /tmp/dswe1.zip
 | Meteorological (wind speed/direction, pressure, temp) | Open-Meteo — live forecast API + ERA5 historical archive, free, no key | **Real, live.** Historical archive feeds training (`fetch_historical`) for the same period as the SCADA data, at the farm's real coordinates — deliberately independent of the turbines' own anemometers, since that's what's actually available at forecast time. API defaults to km/h — explicitly requested in m/s to match the schema. |
 | Day-ahead energy price | ENTSO-E Transparency Platform | Synthetic day/night curve — GB's post-Brexit price data doesn't map cleanly onto ENTSO-E's EU day-ahead product this client targets, and it isn't load-bearing for the forecasting demo. `entsoe-py` client is implemented and works for EU bidding zones if `ENTSOE_API_TOKEN` is set. |
 | Turbine spec metadata (LlamaIndex corpus) | Same datasets' `*_WT_static.csv` files — manufacturer, model, hub height, exact per-turbine coordinates, commercial-ops date. Parsed via `load_turbine_static`. | **Real.** |
+| Substation meter (OpenOA electrical losses + AEP) | Kelmarsh/Penmanshiel: each dataset's `*_PMU_*.zip` (substation power-management unit, `GMS Energy Export (kWh)`, 10-min). Hill of Towie: `tblGrid` station 91's cumulative `ActivePowerExport` counter in the same yearly zip. Parsed by `operational_assessment/plant_builder.py`. The datasets' separate "Grid Meter" device was checked and rejected, see §15.1 | **Real.** |
+| Multi-year SCADA (OpenOA only) | Kelmarsh 2016-2021 and Penmanshiel 2016-2021 SCADA zips, ~5.5 GB, used only by the offline OpenOA run, never by the live service | **Real.** |
+| Long-term reanalysis (OpenOA AEP/wake) | Open-Meteo archive, hourly 100 m wind + temperature + surface pressure, 2001-2021: ERA5 and CERRA (Copernicus European regional reanalysis) | **Real.** |
 | Blade inspection photo (multimodal demo) | One real photo, [Wikimedia Commons, CC BY-SA 3.0](https://commons.wikimedia.org/wiki/File:Begutachtung_eines_Rotorblattes.JPG) — a rope-access technician inspecting a turbine blade. Not a live drone feed (not sourced yet), but a real photo run through a real vision-LLM call, not a placeholder. | **Real (single sample).** |
 
 To reproduce:
@@ -214,6 +222,14 @@ curl -L -o data/penmanshiel/Penmanshiel_SCADA_2016_WT11-15.zip "https://zenodo.o
 curl -L -o data/hill_of_towie/2024.zip "https://zenodo.org/api/records/14870023/files/2024.zip/content"
 curl -L -o data/hill_of_towie/Hill_of_Towie_turbine_metadata.csv "https://zenodo.org/api/records/14870023/files/Hill_of_Towie_turbine_metadata.csv/content"
 curl -L -o data/hill_of_towie/Hill_of_Towie_alarms_description.csv "https://zenodo.org/api/records/14870023/files/Hill_of_Towie_alarms_description.csv/content"
+```
+
+Extra files only the offline OpenOA run needs (§15):
+```bash
+for f in Kelmarsh_PMU_3089.zip Kelmarsh_Grid_3088.zip Kelmarsh_SCADA_2017_3083.zip Kelmarsh_SCADA_2018_3084.zip Kelmarsh_SCADA_2019_3085.zip Kelmarsh_SCADA_2020_3086.zip Kelmarsh_SCADA_2021_3087.zip; do
+  curl -sL -o data/kelmarsh/$f "https://zenodo.org/api/records/5841834/files/$f/content"; done
+for f in Penmanshiel_PMU_3152.zip Penmanshiel_Grid_3153.zip Penmanshiel_SCADA_20{17_WT01-10_3114,17_WT11-15_3115,18_WT01-10_3113,18_WT11-15_3116,19_WT01-10_3112,19_WT11-15_3117,20_WT01-10_3109,20_WT11-15_3118,21_WT01-10_3108,21_WT11-15_3108}.zip; do
+  curl -sL -o data/penmanshiel/$f "https://zenodo.org/api/records/5946808/files/$f/content"; done
 ```
 
 ## 6. Data Processing Pipeline
@@ -253,7 +269,7 @@ Grouped by the AI capability each one supports — only libraries actually used 
 - **Amazon Nova Lite** (via LiteLLM/Bedrock) — the generation model behind `explain_node`'s field report. Invoked as `bedrock/eu.amazon.nova-lite-v1:0`, an EU cross-region *inference profile* — a real gotcha hit during development: bare Bedrock model IDs aren't invocable on-demand in `eu-west-1` for this model family, only via a region-prefixed inference profile.
 - **Amazon Nova Lite, multimodal** (`multimodal/blade_inspection.py`, direct Bedrock Converse API) — the same model family, called with an image content block instead of text-only, for the blade-inspection vision pass.
 - **MCP (Model Context Protocol)** — the open protocol/SDK for exposing tools to LLM clients (Claude and others) in a standard way. `mcp_server/` exposes `get_forecast`, `get_recommendation`, and `query_maintenance_docs` over MCP, so an external agent can operate Windward's capabilities directly rather than only via a bespoke REST call.
-- **Amazon Nova Lite, tool-calling agent** (`agents/qa_agent.py`, via LiteLLM/Bedrock) - powers the dashboard's "Ask the agent" box (`POST /analysis/{farm_id}/ask`). The LLM decides per question whether it needs `search_maintenance_docs` (the RAG retriever), `get_current_analysis` (the farm's precomputed numbers), both, or neither, instead of one stuffed prompt. This replaced an earlier design that used Claude's `sample` capability from a client-side Claude Artifact (billed to the *viewer's* own Claude account, no AWS cost) - once the dashboard moved off Artifacts onto a real self-hosted frontend (§10/§13), routing the chat through Windward's own Bedrock backend like everything else made more sense than requiring visitors to have a Claude account.
+- **Amazon Nova Lite, tool-calling agent** (`agents/qa_agent.py`, via LiteLLM/Bedrock) - powers the dashboard's "Ask the agent" box (`POST /analysis/{farm_id}/ask`). The LLM decides per question which tools it needs: `search_maintenance_docs` (the RAG retriever), `get_current_analysis` (the farm's precomputed numbers), `get_operational_assessment` (the OpenOA results, §15), and the per-turbine `get_turbine_details` / `rank_turbines` (§15.6), or none, instead of one stuffed prompt. This replaced an earlier design that used Claude's `sample` capability from a client-side Claude Artifact (billed to the *viewer's* own Claude account, no AWS cost) - once the dashboard moved off Artifacts onto a real self-hosted frontend (§10/§13), routing the chat through Windward's own Bedrock backend like everything else made more sense than requiring visitors to have a Claude account.
 
 **Observability**
 - **Langfuse** (`observability/tracing.py`) - **live and working**, tracing every LLM/agent call end to end: both `explain_node`'s narration inside `agents/graph.py` and `agents/qa_agent.py`'s tool-calling `/ask` loop show up as real traces in the Langfuse dashboard, auto-activating whenever `LANGFUSE_PUBLIC_KEY`/`SECRET_KEY` are set (no-op otherwise). Two coverage paths, because Windward has two different call shapes to trace: `get_handler()` returns a `langfuse.langchain.CallbackHandler` for the LangGraph run (`agents.graph.run()` passes it in as a LangChain callback); `wrap_completion()` wraps `agents/llm_router.py`'s raw `litellm.completion()` calls with a manual Langfuse generation span, for the `/ask` loop's direct calls that don't go through a LangChain `Runnable` at all. The manual path is deliberate, not incidental: litellm's own built-in `success_callback=["langfuse"]` hook is broken against the current Langfuse v4 SDK (`AttributeError: module 'langfuse' has no attribute 'version'`, still true on litellm 1.101.0 as of this writing) and - because litellm swallows that error as "non-blocking" while it actually aborts the completion - was silently degrading every `/ask` question to its stuffed-prompt fallback before this was caught. `wrap_completion()`'s direct `langfuse.get_client().start_as_current_observation()` call sidesteps that broken litellm code path entirely, so it isn't exposed to whichever litellm version happens to be installed.
@@ -261,6 +277,9 @@ Grouped by the AI capability each one supports — only libraries actually used 
 **MLOps**
 - **MLflow** — the open-source experiment-tracking/model-registry standard. Self-hosted here: a small systemd service on the same EC2 as the app, SQLite backend store, S3 artifact store. Every training run's params/metrics/model artifact is logged and versioned, per farm.
 - **boto3** — used both for the MLflow server's S3 artifact access and for every AWS call the app makes (Bedrock, DynamoDB). Auth throughout is the EC2 instance's IAM role, picked up automatically from instance metadata — no static keys anywhere.
+
+**Wind plant operational analysis**
+- **OpenOA** (NREL/NLR, BSD-3-Clause; [Perr-Sauer et al. 2021](https://doi.org/10.21105/joss.02171)) - the open-source reference implementation of the operational assessment methods the wind industry otherwise buys from commercial secondary-SCADA vendors: long-term corrected AEP with Monte Carlo uncertainty, electrical losses, wake losses, static yaw misalignment, all built on a common `PlantData` model with an IEC 61400-25 tag schema. Run **offline in its own venv** (`requirements-openoa.txt`), never imported by the live service, because OpenOA 3.2 pins `scikit-learn<1.7` and its `pygam` dependency pins `scipy<1.17`: installing it into the service would downgrade both and risk the registered MLflow models (trained under scikit-learn 1.9) no longer unpickling. Its results ship as a static JSON payload, the same pattern as `wind_prediction/`. Three of its small SCADA filters are ported into `analysis/qc.py` instead, and verified flag-for-flag identical to OpenOA's own on a 3,000-point test series (`operational_assessment/check_filter_parity.py`). See §15.
 
 **Classic ML & data**
 - **scikit-learn** — supplies `GradientBoostingRegressor` for production forecasting (§8), plus the train/test split and MAE/R² metrics.
@@ -408,6 +427,7 @@ windward/
 ├── storage/                       # DynamoDB session store
 ├── dashboard/                      # legacy static-payload export (§6) - superseded by the live GET /analysis/{farm_id}
 ├── wind_prediction/                 # naive -> foundation-model time-series showcase (§14), separate from forecasting/
+├── operational_assessment/           # offline OpenOA runner (own venv) + the service-side payload reader (§15)
 ├── Dockerfile / docker-compose.prod.yml  # the persistent deployment (§13)
 ├── web/                               # static dashboard served by the FastAPI app at windward.forwardforecasting.eu
 ├── infra/
@@ -423,6 +443,13 @@ windward/
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # fill in AWS region / MLflow tracking URI
+```
+
+The OpenOA operational assessment (§15) runs offline in a separate venv, then its JSON payload is committed:
+```bash
+python3 -m venv .venv-openoa && .venv-openoa/bin/pip install -r requirements-openoa.txt
+.venv-openoa/bin/python -m operational_assessment.run_openoa            # all farms, or name one
+.venv-openoa/bin/python -m operational_assessment.run_openoa --merge    # fold per-farm results into the payload
 ```
 
 Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `http://127.0.0.1:5000`) and picks up AWS credentials from the environment — an EC2 instance role in production, or your own AWS CLI profile locally.
@@ -456,6 +483,8 @@ Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `ht
 - [x] **`wind_prediction/`** - naive to time-series-foundation-model forecasting showcase (§14), one genuinely-executed representative technique per family (SARIMA, Holt-Winters, Kalman-filtered structural time series, VAR, Gradient Boosting, LSTM, a compact Transformer encoder, zero-shot Amazon Chronos-Bolt, and a statistical+ML hybrid), scored on an identical sliding-window backtest; own dashboard tab plus a genuinely live-refreshing Open-Meteo panel
 - [x] **Real CI/CD** (`.github/workflows/deploy.yml`, `infra/aws/README.md`) - `pytest` on every push to `master`, deploy only on green, no SSH keys anywhere (GitHub OIDC to a tightly-scoped AWS IAM role, deploy runs over SSM rather than a direct connection to the host). Added after several features (Wind Prediction, this very tab) sat pushed-but-not-deployed for a while with no automated signal that the live site was stale
 - [x] **`smooth_power_curve` — AMK kernel regression** (`analysis/efficiency.py`, `dswe` package, MIT license, from Yu Ding's *Data Science for Wind Energy*) — a continuous, non-parametric power curve alongside the existing discrete IEC binning, evaluated at the same bin centers so the two overlay directly. Wired into `diagnose_node` for all three real farms and into the EDP Wind Farm A case-study endpoint/dashboard chart. The rest of the same package was evaluated and NOT used: `ComparePCurve`/`FunGP` (would've upgraded `fit_power_curve_displacement`'s bare least-squares shift with a real significance test) hit a real, reproducible `TypeError` in `_GPMethods.compute_loglike_GP` against current numpy/scipy — confirmed by running both directly against real Kelmarsh data, not just reading the source; `TempGP` ran without crashing but was slow (28s to fit 500 rows) and produced questionable predictions on a quick test, not vetted enough to ship. AMK itself also needed one real fix: its default `bw="dpi"` (data-adaptive plug-in bandwidth) took 5.7s on one specific real turbine (Kelmarsh_1) vs <50ms on every other turbine across all three farms — reproducible in `diagnose_node`'s actual per-turbine loop, not just a one-off. Switched to a fixed 0.5 m/s bandwidth (matching `binned_power_curve`'s own bin width), verified uniformly fast (<50ms/turbine, all three farms) and visually indistinguishable in output from the adaptive one
+- [x] **OpenOA operational assessment** (§15) - NREL/NLR's OpenOA run offline in its own venv on the full multi-year data: electrical losses for all three farms (turbines vs the substation PMU / grid station; the datasets' "Grid Meter" channel rejected as non-physical), Monte Carlo long-term AEP for Kelmarsh/Penmanshiel by both the benchmark's monthly linear method and Bodini et al. 2021's daily GAM with temperature, a one-component-at-a-time uncertainty breakdown against the root-sum-of-squares shortcut (Bodini & Optis 2020), wake losses, and static yaw misalignment with a consistency gate that marks unstable estimates inconclusive. Wake results feed `diagnose` (neighbor-underperformance flags now say whether wake explains the gap) and `recommend` (the lowest-capacity-factor turbine's rationale notes its wake loss). OpenOA's SCADA filters ported into the live diagnosis (`analysis/qc.py`), verified identical to OpenOA's own output
+- [x] **Per-turbine questions in "Ask the agent"** (§15.6) - `get_turbine_details` and `rank_turbines` tools: best/worst turbine by any of seven metrics, last maintenance stop and forced-outage history from the real status logs, wake loss and yaw per turbine
 - [x] **DSWE Inland-Offshore Wind Farm Dataset1** — a fifth, non-`FARMS` example (six real turbines, three real on-site met masts, Zenodo 10.5281/zenodo.5516552, CC BY 4.0, from *Data Science for Wind Energy* Ch. 5), same diagnosis/RAG-only reasoning as EDP Wind Farm A (§5) but adding a real **Measure-Correlate-Predict** ratio (`analysis.efficiency.measure_correlate_predict`) against live Open-Meteo ERA5 at a caller-chosen reference location — the dataset has real turbine+mast data and a real documented date range, but no per-row timestamps and no disclosed coordinates, so a ratio-of-means MCP (not full timestamp-paired regression) is what the data actually supports. Own loader, RAG corpus/retriever, `/dswe/*` routes, dashboard tab with an editable reference-location control. Verified live against real ERA5: switching the reference point from the illustrative default (Texas Panhandle) to New York moves WT1's ratio from 1.62× to 2.51×, demonstrating rather than hiding how much the choice of reference matters
 
 ## 13. Cost & Resource Consumption
@@ -471,6 +500,9 @@ Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `ht
 | **Connectivity** | nginx + Let's Encrypt SSL for `windward.forwardforecasting.eu` | $0 — reuses the existing domain/cert infrastructure |
 | **AI services** | Amazon Nova Lite (`explain_node` narration + multimodal vision) | <$0.01/mo at current call volume ($0.06/$0.24 per MTok in/out) |
 | **AI services** | Amazon Titan Embeddings v2 (RAG index build, one-time per farm unless the corpus changes) | <$0.001 one-time per farm |
+| **Compute** | OpenOA operational assessment (§15) | $0 - run offline on a laptop, roughly an hour for all three farms; the service only serves the resulting static JSON (~tens of KB) |
+| **Data** | Open-Meteo ERA5/CERRA reanalysis for OpenOA | $0 - free archive API, fetched once and cached locally |
+| **AI services** | `/ask` per-turbine tools (§15.6) | No new model calls: the same Nova Lite tool-calling loop, two more tools whose results are computed locally; at most one or two extra round trips per question, well under a cent a month at current volume |
 | **AI services** | DynamoDB `windward-agent-sessions` (on-demand billing) | $0 — within the AWS always-free tier (25GB + 25 RCU/WCU) at this scale |
 
 **Estimated total: under $0.10/month, indefinitely.** Auth throughout is the EC2 instance's IAM role, scoped by an inline policy (`windward-app-access`) to exactly this S3 bucket, this DynamoDB table, and the two Bedrock models used — no static AWS keys anywhere in the codebase or on the server.
@@ -566,3 +598,82 @@ This is a demonstrative breadth showcase, not a second production system, and it
 - The classical models' `.append(refit=False)` update is a lighter-weight stand-in for a full walk-forward retrain (§14.3).
 - The DL/Transformer models are small and trained briefly (CPU, a few dozen epochs) - sized for one farm-year of data and a live demo, not tuned for a leaderboard.
 - Chronos runs zero-shot by design - no farm-specific fine-tuning was attempted, which is the whole point of including it, not a shortcut.
+
+## 15. Operational Assessment (OpenOA)
+
+[OpenOA](https://www.nlr.gov/wind/openoa) is the National Laboratory of the Rockies' (formerly NREL) open-source Python library for operational analysis of wind plants. Windward runs four of its analysis methods on the three real farms, ports three of its SCADA filters into the live diagnosis, and borrows its uncertainty methodology from the lab's own publications. Everything below was run on the real data; the numbers are the actual outputs, not illustrations.
+
+**Architecture.** OpenOA 3.2 pins `scikit-learn<1.7` and (through `pygam`) `scipy<1.17`. The service runs scikit-learn 1.9 / scipy 1.18, and its registered MLflow models were trained under them, so OpenOA lives in its own venv (`requirements-openoa.txt`) and runs **offline**: `operational_assessment/plant_builder.py` maps the raw Greenbyte / RES exports onto OpenOA's `PlantData` (IEC 61400-25 tags), `operational_assessment/run_openoa.py` runs the analyses and writes `dashboard/data/operational_payload.json`, and the service only reads that file (`operational_assessment/payload.py`, `GET /operational/{farm_id}`), the same static-payload pattern as `wind_prediction/`.
+
+```mermaid
+flowchart LR
+    Z[Zenodo SCADA zips<br/>2016-2021 / 2024] --> PB[plant_builder.py<br/>IEC 61400-25 tags]
+    PMU[Substation PMU / tblGrid meter] --> PB
+    OM[Open-Meteo ERA5 + CERRA<br/>100 m, 2001-2021] --> PB
+    PB --> PD[OpenOA PlantData]
+    PD --> EL[ElectricalLosses]
+    PD --> AEP[MonteCarloAEP<br/>monthly linear + daily GAM]
+    PD --> WL[WakeLosses]
+    PD --> YM[StaticYawMisalignment]
+    EL & AEP & WL & YM --> J[(operational_payload.json)]
+    J --> API[GET /operational/farm_id]
+    J --> DG[diagnose / recommend / explain nodes]
+    J --> QA["/ask agent tools"]
+```
+
+### 15.1 Electrical losses, and which meter to trust
+
+Electrical losses are the gap between what the turbines export and what the substation meter records. Both Greenbyte datasets ship two candidate meters. Over Kelmarsh's full-coverage 2016 period the **"Grid Meter"** device summed to 16.578 GWh against 16.563 GWh of summed turbine export: more energy at the grid than the turbines produced, which a real meter can't do, so it behaves like a derived/allocated channel and is not used. The substation **PMU** summed to 16.404 GWh, a plausible ~1% loss, and is the meter OpenOA gets. For Hill of Towie, `tblGrid` station 91 covers the whole farm (it peaks at 47.6 MW for a 48.3 MW farm, r = 0.99 against summed turbine power); its cumulative `ActivePowerExport` counter is differenced into 10-minute energy.
+
+### 15.2 SCADA QC in the live diagnosis
+
+`analysis/qc.py` ports OpenOA's `unresponsive_flag` and `bin_filter` plus its window-range "stopped in wind" check, with the thresholds OpenOA's examples use, and applies them before any power curve is fit (§4.1). The port is checked flag-for-flag against OpenOA itself (`operational_assessment/check_filter_parity.py`: 9/9 frozen-sensor flags and 56/56 bin-filter flags identical on a 3,000-point series). Binning by **power** rather than wind speed is the key choice: a derated or curtailed turbine produces a power level that normally needs much less wind, so it shows up as a wind-speed outlier within its power bin.
+
+### 15.3 Results
+
+Generated by OpenOA 3.2 (`dashboard/data/operational_payload.json`). Monte Carlo sizes: 5,000 (electrical losses), 2,000 per monthly AEP configuration, 300 (daily GAM), 30 (wake), 50 per turbine (yaw).
+
+| | Kelmarsh (6 x 2.05 MW) | Penmanshiel (14 x 2.05 MW) | Hill of Towie (21 x 2.3 MW) |
+|---|---|---|---|
+| **Electrical losses** | **0.86% ± 0.70%** (1,723 days, May 2016 - Jun 2021; 150.2 GWh turbines vs 147.8 GWh metered) | **1.32% ± 0.70%** (1,048 days, Apr 2018 - Jun 2021) | **0.30% ± 0.71%** (178 days, Jan - Aug 2024) |
+| **Long-term AEP P50**, monthly linear | **31.69 GWh/yr** (P90 31.20, ±1.17%, R² 0.985) | **76.33 GWh/yr** (P90 74.76, ±1.51%, R² 0.968) | not computed (§15.5) |
+| **Long-term AEP P50**, daily GAM + temperature | 31.71 GWh/yr (P90 31.37, **±0.95%**) | 76.62 GWh/yr (P90 75.67, **±1.10%**) | - |
+| Availability losses (long-term) | 2.90% | 4.25% | - |
+| AEP uncertainty: root-sum-of-squares vs full Monte Carlo | 1.10% vs **1.17%** | 1.55% vs **1.51%** | - |
+| **Wake losses**, long-term (period of record) | **7.8% ± 0.7%** (8.3%) | **6.4% ± 0.8%** (6.9%) | **0.9% ± 1.4%** (1.7%) |
+| Per-turbine wake loss range | -3.5% (Kelmarsh_2) to 21.7% (Kelmarsh_6) | -2.6% (Penmanshiel_12) to 18.8% (Penmanshiel_10) | -23.0% (HillOfTowie_13) to 22.2% (HillOfTowie_18) |
+| **Static yaw misalignment** (flag / ok / inconclusive) | 0 / 0 / 6 | 3 / 1 / 10: Penmanshiel_04 +3.7°, _05 +4.1°, _12 +4.7° | 1 / 1 / 19 (4 fits didn't converge): HillOfTowie_03 -6.6° (95% CI -14.9 to -1.9) |
+
+What the numbers say:
+- **Electrical losses are low**, 0.3-1.3%, at the bottom of the typical 1-3% range, which fits small onshore farms with short collection cables. The ±0.7% spread is mostly the assumed 0.5% meter + 0.5% SCADA uncertainty, which is why Kelmarsh's and Hill of Towie's 5-95% ranges cross zero.
+- **The daily GAM cut AEP uncertainty on both farms** (Kelmarsh 1.17% → 0.95%, Penmanshiel 1.51% → 1.10%) with P50s within 0.4% of the monthly method: Bodini et al. 2021's finding reproduces on these two UK farms.
+- **The root-sum-of-squares shortcut isn't reliably conservative or anti-conservative.** It understated Kelmarsh's uncertainty (1.10% vs 1.17%, the direction Bodini & Optis 2020 found on average) but slightly overstated Penmanshiel's (1.55% vs 1.51%), meaning Penmanshiel's components are on net a little negatively correlated, which that paper also observed for some component pairs. The point stands either way: the Monte Carlo total, not the sum of squares, is the number to quote. Regression and reanalysis-product choice dominate both farms' uncertainty; the loss-threshold and outlier-threshold components were too small to separate from Monte Carlo noise at 2,000 draws and show as 0.
+- **Wakes: Kelmarsh and Penmanshiel sit right around the benchmark report's 6.75% consultant median.** Hill of Towie's farm-level 0.9% comes with per-turbine values from -23% to +22% on a hilly site, i.e. terrain speed-up dominates and the farm number is not a reliable wake estimate (§15.5).
+- **The wake result changed the agent's diagnosis.** Kelmarsh_6 was the agent's inspection pick (lowest capacity factor, under its neighbors 15% of the time); OpenOA attributes 21.7% long-term wake loss to it against 7.8% farm-wide, so `diagnose` and `recommend` now say that part of its shortfall is its position in the layout, and point to its forced-outage history before assuming damage.
+
+### 15.4 What the OpenOA publications contributed
+
+The [OpenOA page](https://www.nlr.gov/wind/openoa) lists four publications. Three were read in full; for the 2021 Wind Energy paper only the abstract was reachable (the lab's own PDF host didn't resolve, and the publisher copy is paywalled), and it's cited only for what the abstract states.
+
+1. **Perr-Sauer et al. (2021), "OpenOA: An Open-Source Codebase For Operational Analysis of Wind Farms", *JOSS* 6(58), 2171, [doi:10.21105/joss.02171](https://doi.org/10.21105/joss.02171).** OpenOA's design: a `PlantData` model on the IEC 61400-25 tag schema, analysis classes with a common interface, and Monte Carlo uncertainty in every analysis. It also states the gap OpenOA fills: there was no industry-standard, open method for long-term corrected AEP from operational data, only commercial secondary-SCADA tools. *Used for:* the `PlantData` mapping in `plant_builder.py` and the decision to report every number with a Monte Carlo spread rather than a point value.
+2. **Fields et al. (2021), "Wind Plant Performance Prediction Benchmark Phase 1 Technical Report", NREL/TP-5000-78715, [PDF](https://www.nlr.gov/docs/fy22osti/78715.pdf).** §2.3.4 spells out the operational AEP method this project runs: monthly revenue-meter energy normalised to 30-day months, availability/curtailment added back to get gross energy, a regression against density-corrected reanalysis wind, and a long-term correction, with Monte Carlo sampling of 0.5% meter uncertainty, 5% reported-loss uncertainty, a 10-20% combined-loss exclusion threshold, Huber-t outlier detection, and a 10-20 year long-term window. *Used for:* every parameter of the monthly AEP run, and the choice of two reanalysis products so product choice is itself sampled. Its findings also frame the results above: across 10 plants, consultants' wake loss estimates had a median of 6.75% (Kelmarsh: 7.8%) and electrical losses were the category consultants agreed on most (IQR 0.71%), while wake and turbine-performance losses were among the least agreed-on. That is why this project measures wakes from data instead of assuming them.
+3. **Bodini, Optis, Perr-Sauer, Simley & Fields (2021), "Lowering post-construction yield assessment uncertainty through better wind plant power curves", *Wind Energy*, [doi:10.1002/we.2645](https://doi.org/10.1002/we.2645)** (abstract only). Across 10 plants, a univariate GAM at daily or hourly resolution cut regression uncertainty by up to 1.0 / 1.2 percentage points versus the industry's monthly linear regression, and adding temperature as an input helped further for plants with strong seasonality. *Used for:* the second AEP run (daily GAM with temperature, `MonteCarloAEP(time_resolution="D", reg_model="gam", reg_temperature=True)`), shown side by side with the monthly standard so the claim is tested on these farms rather than assumed.
+4. **Bodini & Optis (2020), "Operational-based annual energy production uncertainty: are its components actually uncorrelated?", *Wind Energy Science* 5, 1435-1448, [doi:10.5194/wes-5-1435-2020](https://doi.org/10.5194/wes-5-1435-2020).** Industry practice adds AEP uncertainty components as a root-sum-of-squares, which assumes they're uncorrelated. Across 470+ US plants they found real correlations (e.g. between interannual variability and the long-term correction), so the shortcut underestimates total uncertainty by ~0.1% on average and up to 0.5%. *Used for:* the per-component breakdown, computed one component at a time as in their §2.3, with the root-sum-of-squares total shown next to the full Monte Carlo total.
+
+**Where the current code differs from the papers.** OpenOA 3.2 estimates regression uncertainty by **bootstrap-resampling** the regression data each iteration, not by sampling slope and intercept from their covariance as the 2020 paper and the benchmark report describe. So in the breakdown, "regression" is the bootstrap-only baseline (every other component pinned), and each other component's contribution is `sqrt(var_with_it - var_baseline)`. The benchmark also excluded interannual variability from its long-term AEP uncertainty, and so does this project (`apply_iav=False`); IAV is reported separately.
+
+### 15.5 Limits, stated plainly
+
+- **Wake losses mix in terrain.** OpenOA's heterogeneity correction needs a flow-model speed-up map, which these open datasets don't have. On rolling sites, differences in turbine elevation therefore show up as "wake": Kelmarsh_2, the highest turbine (156.6 m), comes out at -3.5%, and Kelmarsh_6, the lowest (135.0 m) and furthest downwind in the prevailing south-westerly, at 21.7%.
+- **Static yaw misalignment is screening-only, and inconclusive on Kelmarsh.** OpenOA itself marks the method unvalidated. On Kelmarsh every turbine came out +9 to +18 degrees, the same sign on all six, with its 5 m/s and 8 m/s bins 14-34 degrees apart. That pattern looks like a method artifact, not six misaligned turbines: the fitted cosine peaks sit at or beyond OpenOA's +/-25 degree vane window, and the `use_power_coeff` option made it worse (+22 to +29 degrees). So a turbine is only flagged when its offset is at least 3 degrees, its 95% interval excludes zero, **and** its per-wind-speed estimates agree within 10 degrees; anything else is reported as inconclusive. About 25% of Kelmarsh's 10-minute rows have no vane reading at all, and OpenOA's plain mean turns those into NaN results, so the yaw run gets only rows with a vane reading. Hill of Towie's export has no vane channel, so its relative wind direction is the absolute direction minus nacelle position.
+- **AEP only where losses are recorded.** Hill of Towie's export has no availability or curtailment-loss channel and only one year of data; without loss correction, downtime would leak into the power-curve regression, so no AEP is reported for it. Kelmarsh's curtailment channel is zero for the whole period, so all its recorded losses are availability.
+- **Period of record follows the meter.** Kelmarsh's PMU starts in May 2016 (after the April 2016 commercial operation date), Penmanshiel's in January 2018; each farm's AEP and electrical-loss periods start there.
+
+### 15.6 Per-turbine questions in "Ask the agent"
+
+The `/ask` box answers questions about single turbines as well as the farm, through two more tools in `agents/turbine_tools.py`:
+
+- **`get_turbine_details(turbine)`**: capacity factor and its rank in the fleet, peak Cp, the share of hours QC removed, the turbine's own anomalies, its OpenOA wake loss and yaw status, and its real **status log**: number of maintenance stops, the last one (start, end, duration, message), forced-outage hours and their top causes. Turbine names are matched loosely ("Kelmarsh 3", "turbine 3", "T03").
+- **`rank_turbines(metric)`**: ranks the fleet by capacity factor, peak Cp, long-term wake loss, yaw offset (inconclusive estimates left out), QC-removed hours, forced-outage hours or maintenance stops, for "best performing" / "most affected" questions.
+
+What counts as maintenance follows what each export actually records. Kelmarsh/Penmanshiel: events in the IEC 61400-26 category "Scheduled Maintenance" (manual on-site stops, manual brake) and "Forced outage" for unplanned stops. Hill of Towie: the alarm lookup names only one maintenance-type stop, 3130 "Pitch lubrication", and every other stopping code it describes is weather or cable untwisting, so forced outages there are reported as *not identifiable from the export*, not as zero.

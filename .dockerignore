@@ -6,4 +6,5 @@ __pycache__/
 data/
 dashboard/data/
 !dashboard/data/wind_prediction_payload.json
+!dashboard/data/operational_payload.json
 .env

@@ -1,0 +1,2122 @@
+{
+ "farms": {
+  "kelmarsh": {
+   "reanalysis_products": [
+    "era5",
+    "cerra"
+   ],
+   "electrical_losses": {
+    "mean_pct": 0.859,
+    "std_pct": 0.704,
+    "p05_pct": -0.312,
+    "p95_pct": 2.013,
+    "n_days": 1723,
+    "period_start": "2016-05-04",
+    "period_end": "2021-06-30",
+    "turbine_energy_gwh": 150.173,
+    "meter_energy_gwh": 147.76,
+    "num_sim": 5000,
+    "uncertainty_meter": 0.005,
+    "uncertainty_scada": 0.005
+   },
+   "aep": {
+    "monthly_linear": {
+     "p50_gwh": 31.687,
+     "mean_gwh": 31.687,
+     "std_gwh": 0.371,
+     "uncertainty_pct": 1.169,
+     "p90_gwh": 31.203,
+     "avail_loss_pct": 2.899,
+     "curt_loss_pct": 0.0,
+     "lt_por_ratio": 1.013,
+     "r2_mean": 0.985,
+     "n_points_mean": 43.4,
+     "iav_pct": 5.232,
+     "num_sim": 2000,
+     "runtime_s": 39.6
+    },
+    "por_start": "2016-06-01",
+    "por_end": "2021-06-01",
+    "daily_gam_temperature": {
+     "p50_gwh": 31.713,
+     "mean_gwh": 31.732,
+     "std_gwh": 0.301,
+     "uncertainty_pct": 0.948,
+     "p90_gwh": 31.367,
+     "avail_loss_pct": 3.218,
+     "curt_loss_pct": 0.0,
+     "lt_por_ratio": 1.006,
+     "r2_mean": 0.97,
+     "n_points_mean": 1585.8,
+     "iav_pct": 5.968,
+     "num_sim": 300,
+     "runtime_s": 164.1
+    },
+    "uncertainty_components_pct": {
+     "regression": 0.702,
+     "revenue_meter": 0.463,
+     "reported_losses": 0.067,
+     "windiness_lt_period": 0.499,
+     "loss_threshold": 0.0,
+     "outlier_threshold": 0.0,
+     "reanalysis_product": 0.508
+    },
+    "rss_uncorrelated_total_pct": 1.104,
+    "monte_carlo_total_pct": 1.169
+   },
+   "wake_losses": {
+    "plant_por_pct": 8.261,
+    "plant_por_std_pct": 0.827,
+    "plant_lt_pct": 7.778,
+    "plant_lt_std_pct": 0.708,
+    "turbines": {
+     "Kelmarsh_1": {
+      "por_pct": 6.233,
+      "lt_pct": 5.838,
+      "lt_std_pct": 0.821
+     },
+     "Kelmarsh_2": {
+      "por_pct": -4.303,
+      "lt_pct": -3.496,
+      "lt_std_pct": 0.902
+     },
+     "Kelmarsh_3": {
+      "por_pct": 10.328,
+      "lt_pct": 8.682,
+      "lt_std_pct": 0.736
+     },
+     "Kelmarsh_4": {
+      "por_pct": 3.561,
+      "lt_pct": 4.032,
+      "lt_std_pct": 0.809
+     },
+     "Kelmarsh_5": {
+      "por_pct": 11.143,
+      "lt_pct": 10.271,
+      "lt_std_pct": 0.679
+     },
+     "Kelmarsh_6": {
+      "por_pct": 22.955,
+      "lt_pct": 21.668,
+      "lt_std_pct": 0.649
+     }
+    },
+    "by_direction": [
+     {
+      "wd_deg": 0.0,
+      "plant_por_pct": 92.598,
+      "energy_share_pct": 0.529
+     },
+     {
+      "wd_deg": 5.0,
+      "plant_por_pct": 91.049,
+      "energy_share_pct": 0.571
+     },
+     {
+      "wd_deg": 10.0,
+      "plant_por_pct": 93.575,
+      "energy_share_pct": 0.624
+     },
+     {
+      "wd_deg": 15.0,
+      "plant_por_pct": 97.345,
+      "energy_share_pct": 0.884
+     },
+     {
+      "wd_deg": 20.0,
+      "plant_por_pct": 97.028,
+      "energy_share_pct": 0.908
+     },
+     {
+      "wd_deg": 25.0,
+      "plant_por_pct": 94.86,
+      "energy_share_pct": 0.719
+     },
+     {
+      "wd_deg": 30.0,
+      "plant_por_pct": 96.827,
+      "energy_share_pct": 0.754
+     },
+     {
+      "wd_deg": 35.0,
+      "plant_por_pct": 102.08,
+      "energy_share_pct": 1.164
+     },
+     {
+      "wd_deg": 40.0,
+      "plant_por_pct": 106.369,
+      "energy_share_pct": 1.587
+     },
+     {
+      "wd_deg": 45.0,
+      "plant_por_pct": 107.843,
+      "energy_share_pct": 1.337
+     },
+     {
+      "wd_deg": 50.0,
+      "plant_por_pct": 102.897,
+      "energy_share_pct": 0.932
+     },
+     {
+      "wd_deg": 55.0,
+      "plant_por_pct": 95.121,
+      "energy_share_pct": 0.719
+     },
+     {
+      "wd_deg": 60.0,
+      "plant_por_pct": 89.796,
+      "energy_share_pct": 0.594
+     },
+     {
+      "wd_deg": 65.0,
+      "plant_por_pct": 90.009,
+      "energy_share_pct": 0.612
+     },
+     {
+      "wd_deg": 70.0,
+      "plant_por_pct": 95.838,
+      "energy_share_pct": 0.695
+     },
+     {
+      "wd_deg": 75.0,
+      "plant_por_pct": 112.095,
+      "energy_share_pct": 0.624
+     },
+     {
+      "wd_deg": 80.0,
+      "plant_por_pct": 120.496,
+      "energy_share_pct": 0.546
+     },
+     {
+      "wd_deg": 85.0,
+      "plant_por_pct": 112.669,
+      "energy_share_pct": 0.396
+     },
+     {
+      "wd_deg": 90.0,
+      "plant_por_pct": 107.834,
+      "energy_share_pct": 0.365
+     },
+     {
+      "wd_deg": 95.0,
+      "plant_por_pct": 110.905,
+      "energy_share_pct": 0.43
+     },
+     {
+      "wd_deg": 100.0,
+      "plant_por_pct": 112.223,
+      "energy_share_pct": 0.34
+     },
+     {
+      "wd_deg": 105.0,
+      "plant_por_pct": 106.441,
+      "energy_share_pct": 0.315
+     },
+     {
+      "wd_deg": 110.0,
+      "plant_por_pct": 91.42,
+      "energy_share_pct": 0.266
+     },
+     {
+      "wd_deg": 115.0,
+      "plant_por_pct": 81.714,
+      "energy_share_pct": 0.238
+     },
+     {
+      "wd_deg": 120.0,
+      "plant_por_pct": 75.141,
+      "energy_share_pct": 0.22
+     },
+     {
+      "wd_deg": 125.0,
+      "plant_por_pct": 74.629,
+      "energy_share_pct": 0.257
+     },
+     {
+      "wd_deg": 130.0,
+      "plant_por_pct": 84.501,
+      "energy_share_pct": 0.405
+     },
+     {
+      "wd_deg": 135.0,
+      "plant_por_pct": 95.473,
+      "energy_share_pct": 0.503
+     },
+     {
+      "wd_deg": 140.0,
+      "plant_por_pct": 97.509,
+      "energy_share_pct": 0.514
+     },
+     {
+      "wd_deg": 145.0,
+      "plant_por_pct": 97.446,
+      "energy_share_pct": 0.411
+     },
+     {
+      "wd_deg": 150.0,
+      "plant_por_pct": 98.521,
+      "energy_share_pct": 0.479
+     },
+     {
+      "wd_deg": 155.0,
+      "plant_por_pct": 99.233,
+      "energy_share_pct": 0.601
+     },
+     {
+      "wd_deg": 160.0,
+      "plant_por_pct": 102.142,
+      "energy_share_pct": 0.707
+     },
+     {
+      "wd_deg": 165.0,
+      "plant_por_pct": 111.412,
+      "energy_share_pct": 0.976
+     },
+     {
+      "wd_deg": 170.0,
+      "plant_por_pct": 111.348,
+      "energy_share_pct": 1.179
+     },
+     {
+      "wd_deg": 175.0,
+      "plant_por_pct": 104.986,
+      "energy_share_pct": 1.347
+     },
+     {
+      "wd_deg": 180.0,
+      "plant_por_pct": 97.844,
+      "energy_share_pct": 1.258
+     },
+     {
+      "wd_deg": 185.0,
+      "plant_por_pct": 97.385,
+      "energy_share_pct": 1.816
+     },
+     {
+      "wd_deg": 190.0,
+      "plant_por_pct": 95.375,
+      "energy_share_pct": 2.432
+     },
+     {
+      "wd_deg": 195.0,
+      "plant_por_pct": 98.504,
+      "energy_share_pct": 3.04
+     },
+     {
+      "wd_deg": 200.0,
+      "plant_por_pct": 96.741,
+      "energy_share_pct": 3.301
+     },
+     {
+      "wd_deg": 205.0,
+      "plant_por_pct": 93.85,
+      "energy_share_pct": 3.456
+     },
+     {
+      "wd_deg": 210.0,
+      "plant_por_pct": 91.938,
+      "energy_share_pct": 3.599
+     },
+     {
+      "wd_deg": 215.0,
+      "plant_por_pct": 94.021,
+      "energy_share_pct": 3.872
+     },
+     {
+      "wd_deg": 220.0,
+      "plant_por_pct": 96.906,
+      "energy_share_pct": 3.59
+     },
+     {
+      "wd_deg": 225.0,
+      "plant_por_pct": 96.053,
+      "energy_share_pct": 3.544
+     },
+     {
+      "wd_deg": 230.0,
+      "plant_por_pct": 93.363,
+      "energy_share_pct": 3.81
+     },
+     {
+      "wd_deg": 235.0,
+      "plant_por_pct": 89.335,
+      "energy_share_pct": 3.819
+     },
+     {
+      "wd_deg": 240.0,
+      "plant_por_pct": 84.537,
+      "energy_share_pct": 3.371
+     },
+     {
+      "wd_deg": 245.0,
+      "plant_por_pct": 81.866,
+      "energy_share_pct": 3.582
+     },
+     {
+      "wd_deg": 250.0,
+      "plant_por_pct": 84.422,
+      "energy_share_pct": 4.138
+     },
+     {
+      "wd_deg": 255.0,
+      "plant_por_pct": 90.794,
+      "energy_share_pct": 4.087
+     },
+     {
+      "wd_deg": 260.0,
+      "plant_por_pct": 94.419,
+      "energy_share_pct": 2.854
+     },
+     {
+      "wd_deg": 265.0,
+      "plant_por_pct": 91.002,
+      "energy_share_pct": 1.848
+     },
+     {
+      "wd_deg": 270.0,
+      "plant_por_pct": 87.671,
+      "energy_share_pct": 1.601
+     },
+     {
+      "wd_deg": 275.0,
+      "plant_por_pct": 87.587,
+      "energy_share_pct": 1.686
+     },
+     {
+      "wd_deg": 280.0,
+      "plant_por_pct": 86.139,
+      "energy_share_pct": 1.551
+     },
+     {
+      "wd_deg": 285.0,
+      "plant_por_pct": 82.569,
+      "energy_share_pct": 1.582
+     },
+     {
+      "wd_deg": 290.0,
+      "plant_por_pct": 79.174,
+      "energy_share_pct": 1.34
+     },
+     {
+      "wd_deg": 295.0,
+      "plant_por_pct": 75.733,
+      "energy_share_pct": 1.183
+     },
+     {
+      "wd_deg": 300.0,
+      "plant_por_pct": 73.284,
+      "energy_share_pct": 1.219
+     },
+     {
+      "wd_deg": 305.0,
+      "plant_por_pct": 72.529,
+      "energy_share_pct": 1.136
+     },
+     {
+      "wd_deg": 310.0,
+      "plant_por_pct": 77.033,
+      "energy_share_pct": 1.378
+     },
+     {
+      "wd_deg": 315.0,
+      "plant_por_pct": 82.818,
+      "energy_share_pct": 1.066
+     },
+     {
+      "wd_deg": 320.0,
+      "plant_por_pct": 85.334,
+      "energy_share_pct": 0.749
+     },
+     {
+      "wd_deg": 325.0,
+      "plant_por_pct": 87.715,
+      "energy_share_pct": 0.614
+     },
+     {
+      "wd_deg": 330.0,
+      "plant_por_pct": 89.809,
+      "energy_share_pct": 0.603
+     },
+     {
+      "wd_deg": 335.0,
+      "plant_por_pct": 90.227,
+      "energy_share_pct": 0.574
+     },
+     {
+      "wd_deg": 340.0,
+      "plant_por_pct": 92.842,
+      "energy_share_pct": 0.6
+     },
+     {
+      "wd_deg": 345.0,
+      "plant_por_pct": 96.886,
+      "energy_share_pct": 0.677
+     },
+     {
+      "wd_deg": 350.0,
+      "plant_por_pct": 98.387,
+      "energy_share_pct": 0.71
+     },
+     {
+      "wd_deg": 355.0,
+      "plant_por_pct": 96.322,
+      "energy_share_pct": 0.567
+     }
+    ],
+    "num_sim": 30
+   },
+   "yaw_misalignment": {
+    "turbines": {
+     "Kelmarsh_1": {
+      "mean_deg": 11.79,
+      "std_deg": 1.99,
+      "ci95_deg": [
+       9.1,
+       16.97
+      ],
+      "mean_vane_deg": -0.26,
+      "by_ws_deg": {
+       "5.0": 22.53,
+       "6.0": 5.76,
+       "7.0": 5.13,
+       "8.0": 13.72
+      },
+      "by_ws_spread_deg": 17.4
+     },
+     "Kelmarsh_2": {
+      "mean_deg": 17.79,
+      "std_deg": 2.56,
+      "ci95_deg": [
+       14.95,
+       25.46
+      ],
+      "mean_vane_deg": -0.26,
+      "by_ws_deg": {
+       "5.0": 38.83,
+       "6.0": 8.25,
+       "7.0": 5.87,
+       "8.0": 18.21
+      },
+      "by_ws_spread_deg": 32.96
+     },
+     "Kelmarsh_3": {
+      "mean_deg": 17.13,
+      "std_deg": 1.45,
+      "ci95_deg": [
+       14.58,
+       19.81
+      ],
+      "mean_vane_deg": -0.45,
+      "by_ws_deg": {
+       "5.0": 36.14,
+       "6.0": 6.98,
+       "7.0": 8.39,
+       "8.0": 17.02
+      },
+      "by_ws_spread_deg": 29.17
+     },
+     "Kelmarsh_4": {
+      "mean_deg": 18.47,
+      "std_deg": 3.67,
+      "ci95_deg": [
+       15.43,
+       29.67
+      ],
+      "mean_vane_deg": -0.29,
+      "by_ws_deg": {
+       "5.0": 39.1,
+       "6.0": 6.56,
+       "7.0": 5.14,
+       "8.0": 23.07
+      },
+      "by_ws_spread_deg": 33.96
+     },
+     "Kelmarsh_5": {
+      "mean_deg": 8.66,
+      "std_deg": 2.0,
+      "ci95_deg": [
+       6.96,
+       11.01
+      ],
+      "mean_vane_deg": -0.21,
+      "by_ws_deg": {
+       "5.0": 17.42,
+       "6.0": 5.15,
+       "7.0": 3.53,
+       "8.0": 8.55
+      },
+      "by_ws_spread_deg": 13.88
+     },
+     "Kelmarsh_6": {
+      "mean_deg": 13.38,
+      "std_deg": 1.36,
+      "ci95_deg": [
+       11.21,
+       15.98
+      ],
+      "mean_vane_deg": -0.27,
+      "by_ws_deg": {
+       "5.0": 27.29,
+       "6.0": 6.58,
+       "7.0": 6.35,
+       "8.0": 13.31
+      },
+      "by_ws_spread_deg": 20.94
+     }
+    },
+    "ws_bins_ms": [
+     5.0,
+     6.0,
+     7.0,
+     8.0
+    ],
+    "num_sim": 50,
+    "caveat": "OpenOA's StaticYawMisalignment is not yet validated against turbines with known static yaw misalignment; it relies on nacelle wind speed, which itself is affected by yaw misalignment. Treat as a screening indicator, not a calibration value."
+   }
+  },
+  "hill_of_towie": {
+   "reanalysis_products": [
+    "era5"
+   ],
+   "aep": {
+    "skipped": "No availability/curtailment-loss channel in this SCADA export, and only one year of data; an operational AEP without loss correction would mix downtime into the power curve regression."
+   },
+   "electrical_losses": {
+    "mean_pct": 0.298,
+    "std_pct": 0.708,
+    "p05_pct": -0.879,
+    "p95_pct": 1.459,
+    "n_days": 178,
+    "period_start": "2024-01-02",
+    "period_end": "2024-08-31",
+    "turbine_energy_gwh": 53.385,
+    "meter_energy_gwh": 52.825,
+    "num_sim": 5000,
+    "uncertainty_meter": 0.005,
+    "uncertainty_scada": 0.005
+   },
+   "wake_losses": {
+    "plant_por_pct": 1.681,
+    "plant_por_std_pct": 1.847,
+    "plant_lt_pct": 0.918,
+    "plant_lt_std_pct": 1.428,
+    "turbines": {
+     "HillOfTowie_01": {
+      "por_pct": -1.288,
+      "lt_pct": -2.143,
+      "lt_std_pct": 1.5
+     },
+     "HillOfTowie_02": {
+      "por_pct": 10.026,
+      "lt_pct": 6.756,
+      "lt_std_pct": 1.414
+     },
+     "HillOfTowie_03": {
+      "por_pct": -8.887,
+      "lt_pct": -8.105,
+      "lt_std_pct": 1.548
+     },
+     "HillOfTowie_04": {
+      "por_pct": -5.028,
+      "lt_pct": -3.547,
+      "lt_std_pct": 1.503
+     },
+     "HillOfTowie_05": {
+      "por_pct": 6.169,
+      "lt_pct": 4.608,
+      "lt_std_pct": 1.436
+     },
+     "HillOfTowie_06": {
+      "por_pct": 25.764,
+      "lt_pct": 18.741,
+      "lt_std_pct": 1.369
+     },
+     "HillOfTowie_07": {
+      "por_pct": -15.94,
+      "lt_pct": -12.457,
+      "lt_std_pct": 1.572
+     },
+     "HillOfTowie_08": {
+      "por_pct": 1.608,
+      "lt_pct": 1.34,
+      "lt_std_pct": 1.446
+     },
+     "HillOfTowie_09": {
+      "por_pct": -11.108,
+      "lt_pct": -8.211,
+      "lt_std_pct": 1.538
+     },
+     "HillOfTowie_10": {
+      "por_pct": 27.657,
+      "lt_pct": 20.866,
+      "lt_std_pct": 1.357
+     },
+     "HillOfTowie_11": {
+      "por_pct": -18.459,
+      "lt_pct": -14.526,
+      "lt_std_pct": 1.592
+     },
+     "HillOfTowie_12": {
+      "por_pct": -19.48,
+      "lt_pct": -15.516,
+      "lt_std_pct": 1.662
+     },
+     "HillOfTowie_13": {
+      "por_pct": -30.403,
+      "lt_pct": -22.996,
+      "lt_std_pct": 1.794
+     },
+     "HillOfTowie_14": {
+      "por_pct": -16.054,
+      "lt_pct": -13.898,
+      "lt_std_pct": 1.616
+     },
+     "HillOfTowie_15": {
+      "por_pct": 25.818,
+      "lt_pct": 21.568,
+      "lt_std_pct": 1.301
+     },
+     "HillOfTowie_16": {
+      "por_pct": 23.707,
+      "lt_pct": 19.268,
+      "lt_std_pct": 1.262
+     },
+     "HillOfTowie_17": {
+      "por_pct": 16.506,
+      "lt_pct": 10.944,
+      "lt_std_pct": 1.346
+     },
+     "HillOfTowie_18": {
+      "por_pct": 27.168,
+      "lt_pct": 22.172,
+      "lt_std_pct": 1.188
+     },
+     "HillOfTowie_19": {
+      "por_pct": -1.487,
+      "lt_pct": -3.093,
+      "lt_std_pct": 1.478
+     },
+     "HillOfTowie_20": {
+      "por_pct": 0.527,
+      "lt_pct": -0.456,
+      "lt_std_pct": 1.453
+     },
+     "HillOfTowie_21": {
+      "por_pct": -4.993,
+      "lt_pct": -4.442,
+      "lt_std_pct": 1.681
+     }
+    },
+    "by_direction": [
+     {
+      "wd_deg": 0.0,
+      "plant_por_pct": 83.796,
+      "energy_share_pct": 0.369
+     },
+     {
+      "wd_deg": 5.0,
+      "plant_por_pct": 78.332,
+      "energy_share_pct": 0.323
+     },
+     {
+      "wd_deg": 10.0,
+      "plant_por_pct": 78.59,
+      "energy_share_pct": 0.178
+     },
+     {
+      "wd_deg": 15.0,
+      "plant_por_pct": 82.185,
+      "energy_share_pct": 0.14
+     },
+     {
+      "wd_deg": 20.0,
+      "plant_por_pct": 83.995,
+      "energy_share_pct": 0.108
+     },
+     {
+      "wd_deg": 25.0,
+      "plant_por_pct": 88.797,
+      "energy_share_pct": 0.093
+     },
+     {
+      "wd_deg": 30.0,
+      "plant_por_pct": 82.194,
+      "energy_share_pct": 0.04
+     },
+     {
+      "wd_deg": 35.0,
+      "plant_por_pct": 76.613,
+      "energy_share_pct": 0.047
+     },
+     {
+      "wd_deg": 40.0,
+      "plant_por_pct": 83.438,
+      "energy_share_pct": 0.049
+     },
+     {
+      "wd_deg": 45.0,
+      "plant_por_pct": 96.38,
+      "energy_share_pct": 0.092
+     },
+     {
+      "wd_deg": 50.0,
+      "plant_por_pct": 102.91,
+      "energy_share_pct": 0.192
+     },
+     {
+      "wd_deg": 55.0,
+      "plant_por_pct": 132.081,
+      "energy_share_pct": 0.182
+     },
+     {
+      "wd_deg": 60.0,
+      "plant_por_pct": 138.652,
+      "energy_share_pct": 0.275
+     },
+     {
+      "wd_deg": 65.0,
+      "plant_por_pct": 148.796,
+      "energy_share_pct": 0.219
+     },
+     {
+      "wd_deg": 70.0,
+      "plant_por_pct": 172.241,
+      "energy_share_pct": 0.176
+     },
+     {
+      "wd_deg": 75.0,
+      "plant_por_pct": 205.287,
+      "energy_share_pct": 0.201
+     },
+     {
+      "wd_deg": 80.0,
+      "plant_por_pct": 205.546,
+      "energy_share_pct": 0.126
+     },
+     {
+      "wd_deg": 85.0,
+      "plant_por_pct": 164.31,
+      "energy_share_pct": 0.235
+     },
+     {
+      "wd_deg": 90.0,
+      "plant_por_pct": 165.962,
+      "energy_share_pct": 0.315
+     },
+     {
+      "wd_deg": 95.0,
+      "plant_por_pct": 146.141,
+      "energy_share_pct": 0.619
+     },
+     {
+      "wd_deg": 100.0,
+      "plant_por_pct": 117.036,
+      "energy_share_pct": 1.525
+     },
+     {
+      "wd_deg": 105.0,
+      "plant_por_pct": 113.361,
+      "energy_share_pct": 0.695
+     },
+     {
+      "wd_deg": 110.0,
+      "plant_por_pct": 117.664,
+      "energy_share_pct": 0.802
+     },
+     {
+      "wd_deg": 115.0,
+      "plant_por_pct": 120.842,
+      "energy_share_pct": 0.817
+     },
+     {
+      "wd_deg": 120.0,
+      "plant_por_pct": 137.245,
+      "energy_share_pct": 0.902
+     },
+     {
+      "wd_deg": 125.0,
+      "plant_por_pct": 128.823,
+      "energy_share_pct": 0.748
+     },
+     {
+      "wd_deg": 130.0,
+      "plant_por_pct": 129.719,
+      "energy_share_pct": 0.67
+     },
+     {
+      "wd_deg": 135.0,
+      "plant_por_pct": 131.282,
+      "energy_share_pct": 0.975
+     },
+     {
+      "wd_deg": 140.0,
+      "plant_por_pct": 129.635,
+      "energy_share_pct": 1.431
+     },
+     {
+      "wd_deg": 145.0,
+      "plant_por_pct": 125.474,
+      "energy_share_pct": 1.434
+     },
+     {
+      "wd_deg": 150.0,
+      "plant_por_pct": 132.539,
+      "energy_share_pct": 1.154
+     },
+     {
+      "wd_deg": 155.0,
+      "plant_por_pct": 127.862,
+      "energy_share_pct": 1.838
+     },
+     {
+      "wd_deg": 160.0,
+      "plant_por_pct": 126.203,
+      "energy_share_pct": 2.022
+     },
+     {
+      "wd_deg": 165.0,
+      "plant_por_pct": 136.34,
+      "energy_share_pct": 1.534
+     },
+     {
+      "wd_deg": 170.0,
+      "plant_por_pct": 134.951,
+      "energy_share_pct": 1.391
+     },
+     {
+      "wd_deg": 175.0,
+      "plant_por_pct": 127.946,
+      "energy_share_pct": 1.456
+     },
+     {
+      "wd_deg": 180.0,
+      "plant_por_pct": 127.873,
+      "energy_share_pct": 1.257
+     },
+     {
+      "wd_deg": 185.0,
+      "plant_por_pct": 118.61,
+      "energy_share_pct": 1.316
+     },
+     {
+      "wd_deg": 190.0,
+      "plant_por_pct": 123.871,
+      "energy_share_pct": 1.114
+     },
+     {
+      "wd_deg": 195.0,
+      "plant_por_pct": 115.527,
+      "energy_share_pct": 1.57
+     },
+     {
+      "wd_deg": 200.0,
+      "plant_por_pct": 105.995,
+      "energy_share_pct": 1.823
+     },
+     {
+      "wd_deg": 205.0,
+      "plant_por_pct": 104.615,
+      "energy_share_pct": 1.873
+     },
+     {
+      "wd_deg": 210.0,
+      "plant_por_pct": 101.758,
+      "energy_share_pct": 1.584
+     },
+     {
+      "wd_deg": 215.0,
+      "plant_por_pct": 101.044,
+      "energy_share_pct": 1.05
+     },
+     {
+      "wd_deg": 220.0,
+      "plant_por_pct": 101.216,
+      "energy_share_pct": 0.986
+     },
+     {
+      "wd_deg": 225.0,
+      "plant_por_pct": 103.024,
+      "energy_share_pct": 1.405
+     },
+     {
+      "wd_deg": 230.0,
+      "plant_por_pct": 98.402,
+      "energy_share_pct": 2.924
+     },
+     {
+      "wd_deg": 235.0,
+      "plant_por_pct": 100.621,
+      "energy_share_pct": 3.28
+     },
+     {
+      "wd_deg": 240.0,
+      "plant_por_pct": 101.23,
+      "energy_share_pct": 4.133
+     },
+     {
+      "wd_deg": 245.0,
+      "plant_por_pct": 94.201,
+      "energy_share_pct": 4.084
+     },
+     {
+      "wd_deg": 250.0,
+      "plant_por_pct": 93.595,
+      "energy_share_pct": 5.174
+     },
+     {
+      "wd_deg": 255.0,
+      "plant_por_pct": 90.122,
+      "energy_share_pct": 5.817
+     },
+     {
+      "wd_deg": 260.0,
+      "plant_por_pct": 89.827,
+      "energy_share_pct": 5.579
+     },
+     {
+      "wd_deg": 265.0,
+      "plant_por_pct": 88.699,
+      "energy_share_pct": 4.697
+     },
+     {
+      "wd_deg": 270.0,
+      "plant_por_pct": 85.929,
+      "energy_share_pct": 3.266
+     },
+     {
+      "wd_deg": 275.0,
+      "plant_por_pct": 83.045,
+      "energy_share_pct": 2.57
+     },
+     {
+      "wd_deg": 280.0,
+      "plant_por_pct": 85.063,
+      "energy_share_pct": 2.234
+     },
+     {
+      "wd_deg": 285.0,
+      "plant_por_pct": 85.027,
+      "energy_share_pct": 1.49
+     },
+     {
+      "wd_deg": 290.0,
+      "plant_por_pct": 84.413,
+      "energy_share_pct": 1.338
+     },
+     {
+      "wd_deg": 295.0,
+      "plant_por_pct": 86.001,
+      "energy_share_pct": 1.132
+     },
+     {
+      "wd_deg": 300.0,
+      "plant_por_pct": 88.629,
+      "energy_share_pct": 1.556
+     },
+     {
+      "wd_deg": 305.0,
+      "plant_por_pct": 88.117,
+      "energy_share_pct": 1.96
+     },
+     {
+      "wd_deg": 310.0,
+      "plant_por_pct": 88.15,
+      "energy_share_pct": 1.704
+     },
+     {
+      "wd_deg": 315.0,
+      "plant_por_pct": 88.973,
+      "energy_share_pct": 1.539
+     },
+     {
+      "wd_deg": 320.0,
+      "plant_por_pct": 87.558,
+      "energy_share_pct": 1.503
+     },
+     {
+      "wd_deg": 325.0,
+      "plant_por_pct": 82.479,
+      "energy_share_pct": 1.293
+     },
+     {
+      "wd_deg": 330.0,
+      "plant_por_pct": 79.763,
+      "energy_share_pct": 0.941
+     },
+     {
+      "wd_deg": 335.0,
+      "plant_por_pct": 80.724,
+      "energy_share_pct": 0.902
+     },
+     {
+      "wd_deg": 340.0,
+      "plant_por_pct": 85.148,
+      "energy_share_pct": 1.07
+     },
+     {
+      "wd_deg": 345.0,
+      "plant_por_pct": 88.781,
+      "energy_share_pct": 0.934
+     },
+     {
+      "wd_deg": 350.0,
+      "plant_por_pct": 85.277,
+      "energy_share_pct": 0.935
+     },
+     {
+      "wd_deg": 355.0,
+      "plant_por_pct": 87.729,
+      "energy_share_pct": 0.592
+     }
+    ],
+    "num_sim": 30
+   },
+   "yaw_misalignment": {
+    "turbines": {
+     "HillOfTowie_01": {
+      "mean_deg": -12.3,
+      "std_deg": 6.87,
+      "ci95_deg": [
+       -23.72,
+       -2.46
+      ],
+      "mean_vane_deg": -0.02,
+      "by_ws_deg": {
+       "5.0": -9.11,
+       "6.0": -2.19,
+       "7.0": -33.67,
+       "8.0": -4.25
+      },
+      "by_ws_spread_deg": 31.48
+     },
+     "HillOfTowie_02": {
+      "error": "RuntimeError: Optimal parameters not found: Number of calls to function has reached maxfev = 800."
+     },
+     "HillOfTowie_03": {
+      "mean_deg": -6.61,
+      "std_deg": 4.62,
+      "ci95_deg": [
+       -14.89,
+       -1.89
+      ],
+      "mean_vane_deg": -0.04,
+      "by_ws_deg": {
+       "5.0": -6.43,
+       "6.0": -7.42,
+       "7.0": -10.94,
+       "8.0": -1.65
+      },
+      "by_ws_spread_deg": 9.3
+     },
+     "HillOfTowie_04": {
+      "error": "RuntimeError: Optimal parameters not found: Number of calls to function has reached maxfev = 800."
+     },
+     "HillOfTowie_05": {
+      "mean_deg": -20.12,
+      "std_deg": 4.58,
+      "ci95_deg": [
+       -23.84,
+       -11.89
+      ],
+      "mean_vane_deg": -0.04,
+      "by_ws_deg": {
+       "5.0": -0.74,
+       "6.0": -2.22,
+       "7.0": -35.63,
+       "8.0": -41.91
+      },
+      "by_ws_spread_deg": 41.17
+     },
+     "HillOfTowie_06": {
+      "mean_deg": -12.68,
+      "std_deg": 8.1,
+      "ci95_deg": [
+       -24.07,
+       -1.65
+      ],
+      "mean_vane_deg": 0.01,
+      "by_ws_deg": {
+       "5.0": -1.9,
+       "6.0": -2.15,
+       "7.0": -22.1,
+       "8.0": -24.58
+      },
+      "by_ws_spread_deg": 22.68
+     },
+     "HillOfTowie_07": {
+      "mean_deg": -13.09,
+      "std_deg": 7.79,
+      "ci95_deg": [
+       -24.7,
+       -1.61
+      ],
+      "mean_vane_deg": -0.04,
+      "by_ws_deg": {
+       "5.0": -1.1,
+       "6.0": -2.79,
+       "7.0": -24.75,
+       "8.0": -23.7
+      },
+      "by_ws_spread_deg": 23.65
+     },
+     "HillOfTowie_08": {
+      "mean_deg": -3.2,
+      "std_deg": 6.19,
+      "ci95_deg": [
+       -13.29,
+       6.96
+      ],
+      "mean_vane_deg": -0.09,
+      "by_ws_deg": {
+       "5.0": -1.33,
+       "6.0": -4.8,
+       "7.0": -8.47,
+       "8.0": 1.79
+      },
+      "by_ws_spread_deg": 10.26
+     },
+     "HillOfTowie_09": {
+      "mean_deg": -20.73,
+      "std_deg": 8.34,
+      "ci95_deg": [
+       -35.89,
+       -5.6
+      ],
+      "mean_vane_deg": -0.04,
+      "by_ws_deg": {
+       "5.0": -14.42,
+       "6.0": -6.73,
+       "7.0": -34.02,
+       "8.0": -27.73
+      },
+      "by_ws_spread_deg": 27.29
+     },
+     "HillOfTowie_10": {
+      "mean_deg": -9.13,
+      "std_deg": 6.74,
+      "ci95_deg": [
+       -23.33,
+       -0.98
+      ],
+      "mean_vane_deg": -0.03,
+      "by_ws_deg": {
+       "5.0": -1.24,
+       "6.0": -2.74,
+       "7.0": -17.43,
+       "8.0": -15.11
+      },
+      "by_ws_spread_deg": 16.19
+     },
+     "HillOfTowie_11": {
+      "mean_deg": -21.06,
+      "std_deg": 8.6,
+      "ci95_deg": [
+       -36.85,
+       -6.08
+      ],
+      "mean_vane_deg": -0.11,
+      "by_ws_deg": {
+       "5.0": -1.7,
+       "6.0": -28.65,
+       "7.0": -38.28,
+       "8.0": -15.6
+      },
+      "by_ws_spread_deg": 36.58
+     },
+     "HillOfTowie_12": {
+      "mean_deg": -15.03,
+      "std_deg": 5.1,
+      "ci95_deg": [
+       -24.01,
+       -5.59
+      ],
+      "mean_vane_deg": -0.06,
+      "by_ws_deg": {
+       "5.0": -1.26,
+       "6.0": -1.73,
+       "7.0": -15.7,
+       "8.0": -41.42
+      },
+      "by_ws_spread_deg": 40.16
+     },
+     "HillOfTowie_13": {
+      "mean_deg": -10.69,
+      "std_deg": 7.03,
+      "ci95_deg": [
+       -23.2,
+       -0.81
+      ],
+      "mean_vane_deg": -0.08,
+      "by_ws_deg": {
+       "5.0": -0.97,
+       "6.0": -0.33,
+       "7.0": -24.77,
+       "8.0": -16.71
+      },
+      "by_ws_spread_deg": 24.44
+     },
+     "HillOfTowie_14": {
+      "error": "RuntimeError: Optimal parameters not found: Number of calls to function has reached maxfev = 800."
+     },
+     "HillOfTowie_15": {
+      "mean_deg": -24.96,
+      "std_deg": 8.77,
+      "ci95_deg": [
+       -39.51,
+       -12.67
+      ],
+      "mean_vane_deg": -0.06,
+      "by_ws_deg": {
+       "5.0": -8.81,
+       "6.0": -18.64,
+       "7.0": -42.99,
+       "8.0": -29.41
+      },
+      "by_ws_spread_deg": 34.19
+     },
+     "HillOfTowie_16": {
+      "mean_deg": -12.44,
+      "std_deg": 6.11,
+      "ci95_deg": [
+       -26.46,
+       -2.35
+      ],
+      "mean_vane_deg": -0.06,
+      "by_ws_deg": {
+       "5.0": -5.72,
+       "6.0": -34.33,
+       "7.0": -8.69,
+       "8.0": -1.02
+      },
+      "by_ws_spread_deg": 33.32
+     },
+     "HillOfTowie_17": {
+      "mean_deg": -1.9,
+      "std_deg": 5.22,
+      "ci95_deg": [
+       -19.08,
+       0.23
+      ],
+      "mean_vane_deg": -0.13,
+      "by_ws_deg": {
+       "5.0": -0.42,
+       "6.0": -3.61,
+       "7.0": -2.83,
+       "8.0": -0.74
+      },
+      "by_ws_spread_deg": 3.19
+     },
+     "HillOfTowie_18": {
+      "mean_deg": -16.45,
+      "std_deg": 9.83,
+      "ci95_deg": [
+       -33.84,
+       -0.15
+      ],
+      "mean_vane_deg": -0.15,
+      "by_ws_deg": {
+       "5.0": -1.17,
+       "6.0": -13.01,
+       "7.0": -18.88,
+       "8.0": -32.74
+      },
+      "by_ws_spread_deg": 31.57
+     },
+     "HillOfTowie_19": {
+      "mean_deg": -9.25,
+      "std_deg": 6.79,
+      "ci95_deg": [
+       -22.64,
+       0.45
+      ],
+      "mean_vane_deg": -0.04,
+      "by_ws_deg": {
+       "5.0": 3.18,
+       "6.0": 0.08,
+       "7.0": -16.45,
+       "8.0": -23.83
+      },
+      "by_ws_spread_deg": 27.01
+     },
+     "HillOfTowie_20": {
+      "mean_deg": -26.27,
+      "std_deg": 7.86,
+      "ci95_deg": [
+       -39.58,
+       -13.65
+      ],
+      "mean_vane_deg": -0.07,
+      "by_ws_deg": {
+       "5.0": -5.09,
+       "6.0": -22.59,
+       "7.0": -41.91,
+       "8.0": -35.5
+      },
+      "by_ws_spread_deg": 36.82
+     },
+     "HillOfTowie_21": {
+      "error": "RuntimeError: Optimal parameters not found: Number of calls to function has reached maxfev = 800."
+     }
+    },
+    "ws_bins_ms": [
+     5.0,
+     6.0,
+     7.0,
+     8.0
+    ],
+    "num_sim": 50,
+    "caveat": "OpenOA's StaticYawMisalignment is not yet validated against turbines with known static yaw misalignment; it relies on nacelle wind speed, which itself is affected by yaw misalignment. Treat as a screening indicator, not a calibration value."
+   }
+  },
+  "penmanshiel": {
+   "reanalysis_products": [
+    "era5",
+    "cerra"
+   ],
+   "electrical_losses": {
+    "mean_pct": 1.318,
+    "std_pct": 0.701,
+    "p05_pct": 0.153,
+    "p95_pct": 2.467,
+    "n_days": 1048,
+    "period_start": "2018-04-06",
+    "period_end": "2021-06-30",
+    "turbine_energy_gwh": 221.552,
+    "meter_energy_gwh": 216.983,
+    "num_sim": 5000,
+    "uncertainty_meter": 0.005,
+    "uncertainty_scada": 0.005
+   },
+   "aep": {
+    "monthly_linear": {
+     "p50_gwh": 76.326,
+     "mean_gwh": 76.297,
+     "std_gwh": 1.15,
+     "uncertainty_pct": 1.507,
+     "p90_gwh": 74.761,
+     "avail_loss_pct": 4.247,
+     "curt_loss_pct": 0.0,
+     "lt_por_ratio": 0.998,
+     "r2_mean": 0.968,
+     "n_points_mean": 30.8,
+     "iav_pct": 4.334,
+     "num_sim": 2000,
+     "runtime_s": 47.5
+    },
+    "por_start": "2018-05-01",
+    "por_end": "2021-06-01",
+    "daily_gam_temperature": {
+     "p50_gwh": 76.623,
+     "mean_gwh": 76.693,
+     "std_gwh": 0.841,
+     "uncertainty_pct": 1.096,
+     "p90_gwh": 75.67,
+     "avail_loss_pct": 3.953,
+     "curt_loss_pct": 0.0,
+     "lt_por_ratio": 0.987,
+     "r2_mean": 0.915,
+     "n_points_mean": 1075.1,
+     "iav_pct": 5.427,
+     "num_sim": 300,
+     "runtime_s": 137.2
+    },
+    "uncertainty_components_pct": {
+     "regression": 1.11,
+     "revenue_meter": 0.455,
+     "reported_losses": 0.055,
+     "windiness_lt_period": 0.414,
+     "loss_threshold": 0.0,
+     "outlier_threshold": 0.0,
+     "reanalysis_product": 0.879
+    },
+    "rss_uncorrelated_total_pct": 1.545,
+    "monte_carlo_total_pct": 1.507
+   },
+   "wake_losses": {
+    "plant_por_pct": 6.943,
+    "plant_por_std_pct": 0.98,
+    "plant_lt_pct": 6.447,
+    "plant_lt_std_pct": 0.822,
+    "turbines": {
+     "Penmanshiel_01": {
+      "por_pct": 0.762,
+      "lt_pct": 0.657,
+      "lt_std_pct": 0.838
+     },
+     "Penmanshiel_02": {
+      "por_pct": 6.322,
+      "lt_pct": 5.352,
+      "lt_std_pct": 0.807
+     },
+     "Penmanshiel_04": {
+      "por_pct": 3.406,
+      "lt_pct": 2.908,
+      "lt_std_pct": 0.892
+     },
+     "Penmanshiel_05": {
+      "por_pct": 9.573,
+      "lt_pct": 7.753,
+      "lt_std_pct": 0.814
+     },
+     "Penmanshiel_06": {
+      "por_pct": 7.743,
+      "lt_pct": 6.98,
+      "lt_std_pct": 0.84
+     },
+     "Penmanshiel_07": {
+      "por_pct": 17.634,
+      "lt_pct": 15.652,
+      "lt_std_pct": 0.871
+     },
+     "Penmanshiel_08": {
+      "por_pct": 9.478,
+      "lt_pct": 8.99,
+      "lt_std_pct": 0.864
+     },
+     "Penmanshiel_09": {
+      "por_pct": 21.254,
+      "lt_pct": 18.487,
+      "lt_std_pct": 0.818
+     },
+     "Penmanshiel_10": {
+      "por_pct": 21.672,
+      "lt_pct": 18.824,
+      "lt_std_pct": 0.752
+     },
+     "Penmanshiel_11": {
+      "por_pct": 6.896,
+      "lt_pct": 6.966,
+      "lt_std_pct": 0.815
+     },
+     "Penmanshiel_12": {
+      "por_pct": -3.85,
+      "lt_pct": -2.555,
+      "lt_std_pct": 1.105
+     },
+     "Penmanshiel_13": {
+      "por_pct": -2.485,
+      "lt_pct": -1.148,
+      "lt_std_pct": 0.915
+     },
+     "Penmanshiel_14": {
+      "por_pct": 0.484,
+      "lt_pct": 1.207,
+      "lt_std_pct": 0.904
+     },
+     "Penmanshiel_15": {
+      "por_pct": -1.837,
+      "lt_pct": -0.048,
+      "lt_std_pct": 1.046
+     }
+    },
+    "by_direction": [
+     {
+      "wd_deg": 0.0,
+      "plant_por_pct": 90.625,
+      "energy_share_pct": 0.932
+     },
+     {
+      "wd_deg": 5.0,
+      "plant_por_pct": 89.219,
+      "energy_share_pct": 0.978
+     },
+     {
+      "wd_deg": 10.0,
+      "plant_por_pct": 89.389,
+      "energy_share_pct": 1.08
+     },
+     {
+      "wd_deg": 15.0,
+      "plant_por_pct": 90.49,
+      "energy_share_pct": 0.902
+     },
+     {
+      "wd_deg": 20.0,
+      "plant_por_pct": 90.598,
+      "energy_share_pct": 0.72
+     },
+     {
+      "wd_deg": 25.0,
+      "plant_por_pct": 89.277,
+      "energy_share_pct": 0.58
+     },
+     {
+      "wd_deg": 30.0,
+      "plant_por_pct": 90.399,
+      "energy_share_pct": 0.449
+     },
+     {
+      "wd_deg": 35.0,
+      "plant_por_pct": 91.176,
+      "energy_share_pct": 0.374
+     },
+     {
+      "wd_deg": 40.0,
+      "plant_por_pct": 87.648,
+      "energy_share_pct": 0.276
+     },
+     {
+      "wd_deg": 45.0,
+      "plant_por_pct": 83.09,
+      "energy_share_pct": 0.208
+     },
+     {
+      "wd_deg": 50.0,
+      "plant_por_pct": 79.882,
+      "energy_share_pct": 0.2
+     },
+     {
+      "wd_deg": 55.0,
+      "plant_por_pct": 75.387,
+      "energy_share_pct": 0.179
+     },
+     {
+      "wd_deg": 60.0,
+      "plant_por_pct": 76.239,
+      "energy_share_pct": 0.22
+     },
+     {
+      "wd_deg": 65.0,
+      "plant_por_pct": 80.6,
+      "energy_share_pct": 0.288
+     },
+     {
+      "wd_deg": 70.0,
+      "plant_por_pct": 82.822,
+      "energy_share_pct": 0.254
+     },
+     {
+      "wd_deg": 75.0,
+      "plant_por_pct": 86.297,
+      "energy_share_pct": 0.293
+     },
+     {
+      "wd_deg": 80.0,
+      "plant_por_pct": 89.094,
+      "energy_share_pct": 0.376
+     },
+     {
+      "wd_deg": 85.0,
+      "plant_por_pct": 88.677,
+      "energy_share_pct": 0.381
+     },
+     {
+      "wd_deg": 90.0,
+      "plant_por_pct": 88.868,
+      "energy_share_pct": 0.309
+     },
+     {
+      "wd_deg": 95.0,
+      "plant_por_pct": 86.313,
+      "energy_share_pct": 0.305
+     },
+     {
+      "wd_deg": 100.0,
+      "plant_por_pct": 84.864,
+      "energy_share_pct": 0.346
+     },
+     {
+      "wd_deg": 105.0,
+      "plant_por_pct": 92.722,
+      "energy_share_pct": 0.392
+     },
+     {
+      "wd_deg": 110.0,
+      "plant_por_pct": 96.22,
+      "energy_share_pct": 0.56
+     },
+     {
+      "wd_deg": 115.0,
+      "plant_por_pct": 89.731,
+      "energy_share_pct": 0.547
+     },
+     {
+      "wd_deg": 120.0,
+      "plant_por_pct": 81.553,
+      "energy_share_pct": 0.532
+     },
+     {
+      "wd_deg": 125.0,
+      "plant_por_pct": 75.435,
+      "energy_share_pct": 0.556
+     },
+     {
+      "wd_deg": 130.0,
+      "plant_por_pct": 75.92,
+      "energy_share_pct": 0.772
+     },
+     {
+      "wd_deg": 135.0,
+      "plant_por_pct": 87.312,
+      "energy_share_pct": 1.364
+     },
+     {
+      "wd_deg": 140.0,
+      "plant_por_pct": 96.515,
+      "energy_share_pct": 1.681
+     },
+     {
+      "wd_deg": 145.0,
+      "plant_por_pct": 98.924,
+      "energy_share_pct": 2.073
+     },
+     {
+      "wd_deg": 150.0,
+      "plant_por_pct": 100.755,
+      "energy_share_pct": 2.049
+     },
+     {
+      "wd_deg": 155.0,
+      "plant_por_pct": 100.411,
+      "energy_share_pct": 1.769
+     },
+     {
+      "wd_deg": 160.0,
+      "plant_por_pct": 101.536,
+      "energy_share_pct": 1.239
+     },
+     {
+      "wd_deg": 165.0,
+      "plant_por_pct": 102.263,
+      "energy_share_pct": 1.115
+     },
+     {
+      "wd_deg": 170.0,
+      "plant_por_pct": 102.237,
+      "energy_share_pct": 1.339
+     },
+     {
+      "wd_deg": 175.0,
+      "plant_por_pct": 98.573,
+      "energy_share_pct": 1.509
+     },
+     {
+      "wd_deg": 180.0,
+      "plant_por_pct": 94.981,
+      "energy_share_pct": 1.847
+     },
+     {
+      "wd_deg": 185.0,
+      "plant_por_pct": 94.625,
+      "energy_share_pct": 2.154
+     },
+     {
+      "wd_deg": 190.0,
+      "plant_por_pct": 94.324,
+      "energy_share_pct": 2.63
+     },
+     {
+      "wd_deg": 195.0,
+      "plant_por_pct": 96.567,
+      "energy_share_pct": 3.795
+     },
+     {
+      "wd_deg": 200.0,
+      "plant_por_pct": 98.507,
+      "energy_share_pct": 4.56
+     },
+     {
+      "wd_deg": 205.0,
+      "plant_por_pct": 99.374,
+      "energy_share_pct": 4.73
+     },
+     {
+      "wd_deg": 210.0,
+      "plant_por_pct": 99.364,
+      "energy_share_pct": 4.068
+     },
+     {
+      "wd_deg": 215.0,
+      "plant_por_pct": 100.237,
+      "energy_share_pct": 3.41
+     },
+     {
+      "wd_deg": 220.0,
+      "plant_por_pct": 99.269,
+      "energy_share_pct": 2.376
+     },
+     {
+      "wd_deg": 225.0,
+      "plant_por_pct": 96.204,
+      "energy_share_pct": 1.857
+     },
+     {
+      "wd_deg": 230.0,
+      "plant_por_pct": 92.51,
+      "energy_share_pct": 1.867
+     },
+     {
+      "wd_deg": 235.0,
+      "plant_por_pct": 88.95,
+      "energy_share_pct": 1.933
+     },
+     {
+      "wd_deg": 240.0,
+      "plant_por_pct": 87.708,
+      "energy_share_pct": 2.408
+     },
+     {
+      "wd_deg": 245.0,
+      "plant_por_pct": 89.848,
+      "energy_share_pct": 2.978
+     },
+     {
+      "wd_deg": 250.0,
+      "plant_por_pct": 89.117,
+      "energy_share_pct": 3.077
+     },
+     {
+      "wd_deg": 255.0,
+      "plant_por_pct": 88.414,
+      "energy_share_pct": 3.074
+     },
+     {
+      "wd_deg": 260.0,
+      "plant_por_pct": 88.818,
+      "energy_share_pct": 2.734
+     },
+     {
+      "wd_deg": 265.0,
+      "plant_por_pct": 87.315,
+      "energy_share_pct": 2.382
+     },
+     {
+      "wd_deg": 270.0,
+      "plant_por_pct": 87.22,
+      "energy_share_pct": 2.357
+     },
+     {
+      "wd_deg": 275.0,
+      "plant_por_pct": 90.238,
+      "energy_share_pct": 2.488
+     },
+     {
+      "wd_deg": 280.0,
+      "plant_por_pct": 94.704,
+      "energy_share_pct": 2.5
+     },
+     {
+      "wd_deg": 285.0,
+      "plant_por_pct": 97.695,
+      "energy_share_pct": 1.908
+     },
+     {
+      "wd_deg": 290.0,
+      "plant_por_pct": 94.011,
+      "energy_share_pct": 1.374
+     },
+     {
+      "wd_deg": 295.0,
+      "plant_por_pct": 87.498,
+      "energy_share_pct": 0.84
+     },
+     {
+      "wd_deg": 300.0,
+      "plant_por_pct": 80.485,
+      "energy_share_pct": 0.68
+     },
+     {
+      "wd_deg": 305.0,
+      "plant_por_pct": 78.297,
+      "energy_share_pct": 0.688
+     },
+     {
+      "wd_deg": 310.0,
+      "plant_por_pct": 83.446,
+      "energy_share_pct": 0.719
+     },
+     {
+      "wd_deg": 315.0,
+      "plant_por_pct": 93.8,
+      "energy_share_pct": 0.934
+     },
+     {
+      "wd_deg": 320.0,
+      "plant_por_pct": 98.03,
+      "energy_share_pct": 0.767
+     },
+     {
+      "wd_deg": 325.0,
+      "plant_por_pct": 98.584,
+      "energy_share_pct": 0.736
+     },
+     {
+      "wd_deg": 330.0,
+      "plant_por_pct": 97.881,
+      "energy_share_pct": 0.738
+     },
+     {
+      "wd_deg": 335.0,
+      "plant_por_pct": 97.194,
+      "energy_share_pct": 0.906
+     },
+     {
+      "wd_deg": 340.0,
+      "plant_por_pct": 97.52,
+      "energy_share_pct": 0.889
+     },
+     {
+      "wd_deg": 345.0,
+      "plant_por_pct": 96.876,
+      "energy_share_pct": 0.803
+     },
+     {
+      "wd_deg": 350.0,
+      "plant_por_pct": 94.762,
+      "energy_share_pct": 0.823
+     },
+     {
+      "wd_deg": 355.0,
+      "plant_por_pct": 92.342,
+      "energy_share_pct": 0.823
+     }
+    ],
+    "num_sim": 30
+   },
+   "yaw_misalignment": {
+    "turbines": {
+     "Penmanshiel_01": {
+      "mean_deg": 12.45,
+      "std_deg": 1.9,
+      "ci95_deg": [
+       8.18,
+       14.38
+      ],
+      "mean_vane_deg": 0.54,
+      "by_ws_deg": {
+       "5.0": 3.52,
+       "6.0": 2.67,
+       "7.0": 3.74,
+       "8.0": 39.86
+      },
+      "by_ws_spread_deg": 37.2
+     },
+     "Penmanshiel_02": {
+      "mean_deg": 14.41,
+      "std_deg": 2.04,
+      "ci95_deg": [
+       9.06,
+       17.6
+      ],
+      "mean_vane_deg": 0.83,
+      "by_ws_deg": {
+       "5.0": 5.06,
+       "6.0": 3.47,
+       "7.0": 5.02,
+       "8.0": 44.1
+      },
+      "by_ws_spread_deg": 40.63
+     },
+     "Penmanshiel_04": {
+      "mean_deg": 3.7,
+      "std_deg": 0.38,
+      "ci95_deg": [
+       3.03,
+       4.42
+      ],
+      "mean_vane_deg": 0.33,
+      "by_ws_deg": {
+       "5.0": 3.01,
+       "6.0": 1.92,
+       "7.0": 2.53,
+       "8.0": 7.36
+      },
+      "by_ws_spread_deg": 5.45
+     },
+     "Penmanshiel_05": {
+      "mean_deg": 4.14,
+      "std_deg": 0.56,
+      "ci95_deg": [
+       3.37,
+       5.4
+      ],
+      "mean_vane_deg": 0.49,
+      "by_ws_deg": {
+       "5.0": 3.13,
+       "6.0": 1.9,
+       "7.0": 2.73,
+       "8.0": 8.8
+      },
+      "by_ws_spread_deg": 6.9
+     },
+     "Penmanshiel_06": {
+      "mean_deg": 7.05,
+      "std_deg": 2.58,
+      "ci95_deg": [
+       5.04,
+       14.58
+      ],
+      "mean_vane_deg": 0.62,
+      "by_ws_deg": {
+       "5.0": 4.27,
+       "6.0": 2.46,
+       "7.0": 4.71,
+       "8.0": 16.77
+      },
+      "by_ws_spread_deg": 14.31
+     },
+     "Penmanshiel_07": {
+      "mean_deg": 5.84,
+      "std_deg": 1.96,
+      "ci95_deg": [
+       4.61,
+       7.85
+      ],
+      "mean_vane_deg": 0.45,
+      "by_ws_deg": {
+       "5.0": 3.55,
+       "6.0": 2.42,
+       "7.0": 3.91,
+       "8.0": 13.51
+      },
+      "by_ws_spread_deg": 11.09
+     },
+     "Penmanshiel_08": {
+      "mean_deg": 3.5,
+      "std_deg": 4.07,
+      "ci95_deg": [
+       -1.76,
+       10.77
+      ],
+      "mean_vane_deg": -0.05,
+      "by_ws_deg": {
+       "5.0": 1.34,
+       "6.0": -0.03,
+       "7.0": 0.67,
+       "8.0": 12.02
+      },
+      "by_ws_spread_deg": 12.05
+     },
+     "Penmanshiel_09": {
+      "mean_deg": 9.61,
+      "std_deg": 3.26,
+      "ci95_deg": [
+       5.05,
+       13.84
+      ],
+      "mean_vane_deg": 0.1,
+      "by_ws_deg": {
+       "5.0": 2.74,
+       "6.0": 1.86,
+       "7.0": 2.3,
+       "8.0": 31.55
+      },
+      "by_ws_spread_deg": 29.69
+     },
+     "Penmanshiel_10": {
+      "mean_deg": 6.46,
+      "std_deg": 2.65,
+      "ci95_deg": [
+       4.26,
+       14.69
+      ],
+      "mean_vane_deg": 0.35,
+      "by_ws_deg": {
+       "5.0": 2.33,
+       "6.0": 2.05,
+       "7.0": 3.34,
+       "8.0": 18.12
+      },
+      "by_ws_spread_deg": 16.07
+     },
+     "Penmanshiel_11": {
+      "mean_deg": 11.73,
+      "std_deg": 4.18,
+      "ci95_deg": [
+       6.17,
+       19.01
+      ],
+      "mean_vane_deg": 0.61,
+      "by_ws_deg": {
+       "5.0": 4.79,
+       "6.0": 2.91,
+       "7.0": 4.54,
+       "8.0": 34.68
+      },
+      "by_ws_spread_deg": 31.77
+     },
+     "Penmanshiel_12": {
+      "mean_deg": 4.71,
+      "std_deg": 0.69,
+      "ci95_deg": [
+       3.67,
+       6.34
+      ],
+      "mean_vane_deg": 0.4,
+      "by_ws_deg": {
+       "5.0": 3.25,
+       "6.0": 2.33,
+       "7.0": 2.91,
+       "8.0": 10.35
+      },
+      "by_ws_spread_deg": 8.02
+     },
+     "Penmanshiel_13": {
+      "mean_deg": 2.07,
+      "std_deg": 0.46,
+      "ci95_deg": [
+       1.54,
+       3.05
+      ],
+      "mean_vane_deg": 0.27,
+      "by_ws_deg": {
+       "5.0": 0.92,
+       "6.0": 0.99,
+       "7.0": 1.66,
+       "8.0": 4.73
+      },
+      "by_ws_spread_deg": 3.82
+     },
+     "Penmanshiel_14": {
+      "mean_deg": 8.88,
+      "std_deg": 2.81,
+      "ci95_deg": [
+       5.38,
+       15.55
+      ],
+      "mean_vane_deg": 0.65,
+      "by_ws_deg": {
+       "5.0": 3.1,
+       "6.0": 3.19,
+       "7.0": 4.0,
+       "8.0": 25.25
+      },
+      "by_ws_spread_deg": 22.14
+     },
+     "Penmanshiel_15": {
+      "mean_deg": 8.03,
+      "std_deg": 1.86,
+      "ci95_deg": [
+       6.57,
+       11.57
+      ],
+      "mean_vane_deg": 0.57,
+      "by_ws_deg": {
+       "5.0": 5.82,
+       "6.0": 4.09,
+       "7.0": 4.37,
+       "8.0": 17.86
+      },
+      "by_ws_spread_deg": 13.76
+     }
+    },
+    "ws_bins_ms": [
+     5.0,
+     6.0,
+     7.0,
+     8.0
+    ],
+    "num_sim": 50,
+    "caveat": "OpenOA's StaticYawMisalignment is not yet validated against turbines with known static yaw misalignment; it relies on nacelle wind speed, which itself is affected by yaw misalignment. Treat as a screening indicator, not a calibration value."
+   }
+  }
+ },
+ "generated_at": "2026-10-01T03:39:07+00:00",
+ "openoa_version": "3.2",
+ "references": {
+  "openoa_joss_2021": "Perr-Sauer et al. 2021, OpenOA: An Open-Source Codebase For Operational Analysis of Wind Farms, JOSS 6(58), 2171, doi:10.21105/joss.02171",
+  "wp3_benchmark_2021": "Fields et al. 2021, Wind Plant Performance Prediction Benchmark Phase 1 Technical Report, NREL/TP-5000-78715",
+  "bodini_2021_power_curves": "Bodini et al. 2021, Lowering post-construction yield assessment uncertainty through better wind plant power curves, Wind Energy, doi:10.1002/we.2645",
+  "bodini_optis_2020_uncertainty": "Bodini & Optis 2020, Operational-based annual energy production uncertainty: are its components actually uncorrelated?, Wind Energ. Sci. 5, 1435-1448, doi:10.5194/wes-5-1435-2020"
+ }
+}

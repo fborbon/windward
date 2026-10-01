@@ -21,6 +21,7 @@ import pandas as pd
 from langgraph.graph import END, StateGraph
 
 from agents.llm_router import complete
+from analysis.qc import qc_summary, scada_qc_flags
 from analysis.efficiency import (
     actual_vs_predicted,
     air_density_kg_m3,
@@ -38,6 +39,7 @@ from forecasting.features import FEATURE_COLUMNS, TARGET_COLUMN
 from forecasting.pipeline import build_training_frame
 from forecasting.registry import load_latest_model
 from forecasting.train import model_name
+from operational_assessment.payload import farm_operational, turbine_wake_loss_pct, yaw_flags
 
 # Demo-scale thresholds for the retrain decision: the last week's mean absolute pct error
 # would need to run at least 25% hotter than the full analysis period's average, AND the
@@ -60,6 +62,8 @@ class WindwardState(TypedDict, total=False):
     power_curves: dict
     smooth_power_curves: dict
     efficiency_summary: pd.DataFrame
+    qc_summary: dict
+    operational: dict
     anomalies: list
     data_quality: dict
     wind_rose: pd.DataFrame
@@ -91,21 +95,32 @@ def diagnose_node(state: WindwardState) -> dict:
     turbine_hourly = state["turbine_hourly"]
     feature_frame = state["feature_frame"]
 
+    # OpenOA-style SCADA QC (analysis/qc.py) before anything power-curve-shaped is fit: hours
+    # with a frozen anemometer, the turbine stopped in productive wind, or a power-binned wind
+    # speed outlier (derating/curtailment) would otherwise drag the curves down.
+    flagged = scada_qc_flags(turbine_hourly, farm.rated_power_kw)
+    clean = flagged[~flagged["qc_flag"]]
+
     power_curves = {}
     smooth_power_curves = {}
-    for turbine_id, g in turbine_hourly.groupby("turbine_id"):
+    for turbine_id, g in clean.groupby("turbine_id"):
         curve = binned_power_curve(g)
         power_curves[turbine_id] = curve
         smooth_power_curves[turbine_id] = smooth_power_curve(g, curve.index.values)
-    farm_mean_curve = binned_power_curve(turbine_hourly)  # pooled across all turbines — the displacement-fit reference
+    farm_mean_curve = binned_power_curve(clean)  # pooled across all turbines — the displacement-fit reference
 
     # Real per-hour air density (ideal gas law on the farm's actual weather) rather than the
     # sea-level constant — a real UK-winter farm can genuinely diverge from 1.225 kg/m3
     # enough to matter for Cp/Betz-limit readings.
     air_density = air_density_kg_m3(feature_frame["temperature_c"], feature_frame["pressure_hpa"])
+    # Capacity factor counts every hour (downtime is real lost production); peak Cp is a
+    # power-curve quantity, so it comes from the QC-cleaned hours.
     efficiency_summary = turbine_efficiency_summary(
         turbine_hourly, farm.rated_power_kw, farm.rotor_diameter_m, air_density_by_timestamp=air_density
     )
+    efficiency_summary["peak_cp"] = turbine_efficiency_summary(
+        clean, farm.rated_power_kw, farm.rotor_diameter_m, air_density_by_timestamp=air_density
+    )["peak_cp"]
 
     comparison = state["comparison"]
     bad_hours = comparison[(comparison["pct_of_predicted"] < 0.5) | (comparison["pct_of_predicted"] > 1.5)]
@@ -115,7 +130,7 @@ def diagnose_node(state: WindwardState) -> dict:
 
     over_betz = efficiency_summary[efficiency_summary["peak_cp"] > efficiency_summary["betz_limit"]]
     for turbine_id in over_betz.index:
-        t = turbine_hourly[turbine_hourly["turbine_id"] == turbine_id]
+        t = clean[clean["turbine_id"] == turbine_id]
         displacement_ms = fit_power_curve_displacement(farm_mean_curve, t["wind_speed_ms"], t["power_kw"])
         anomalies.append({
             "type": "anemometer_calibration_suspect", "turbine_id": turbine_id,
@@ -132,14 +147,38 @@ def diagnose_node(state: WindwardState) -> dict:
     static = loader_for(farm).load_turbine_static(farm.farm_id)
     neighbor_flags = neighbor_underperformance(turbine_hourly, static)
     total_hours = turbine_hourly["timestamp"].nunique()
+    # Offline OpenOA results (operational_assessment/run_openoa.py): per-turbine long-term wake
+    # losses put a neighbor-underperformance flag in context (a turbine that sits in its
+    # neighbors' wake will under-produce them without anything being wrong with it), and the
+    # static yaw misalignment estimates become their own anomaly type.
+    operational = farm_operational(farm.farm_id)
+    farm_wake = ((operational or {}).get("wake_losses") or {}).get("plant_lt_pct")
     for turbine_id, flagged_hours in neighbor_flags.items():
         pct = flagged_hours / total_hours if total_hours else 0
         if pct > NEIGHBOR_UNDERPERFORMANCE_PCT_THRESHOLD:
-            anomalies.append({
+            anomaly = {
                 "type": "underperforms_neighbors", "turbine_id": turbine_id,
                 "flagged_hours": flagged_hours, "pct_of_hours": round(pct, 4),
                 "detail": f"produced meaningfully less than its nearest neighbor turbines in {flagged_hours} hours ({pct:.1%}) while those neighbors were themselves producing",
-            })
+            }
+            wake = turbine_wake_loss_pct(operational, turbine_id)
+            if wake is not None and farm_wake is not None:
+                anomaly["wake_loss_lt_pct"] = wake
+                anomaly["detail"] += (
+                    f"; OpenOA puts this turbine's long-term wake loss at {wake:.1f}% vs {farm_wake:.1f}% farm-wide"
+                    + (", so part of the gap is likely wake, not a fault" if wake > farm_wake else ", so wake doesn't explain the gap")
+                )
+            anomalies.append(anomaly)
+
+    for flag in yaw_flags(operational):
+        anomalies.append({
+            "type": "static_yaw_misalignment", **flag,
+            "detail": (
+                f"OpenOA StaticYawMisalignment estimates a {flag['yaw_misalignment_deg']:+.1f} deg static yaw offset "
+                f"(95% CI {flag['ci95_deg'][0]:+.1f} to {flag['ci95_deg'][1]:+.1f}), roughly {flag['approx_below_rated_loss_pct']:.1f}% "
+                f"of below-rated power by the cos^2 rule of thumb; a screening estimate (OpenOA marks the method unvalidated), worth a nacelle-vane calibration check"
+            ),
+        })
 
     # Cross-reference the turbine SCADA anemometers against an independent source (Open-Meteo
     # reanalysis) — a real QC pattern (compare on-site sensor vs. an independent reference),
@@ -159,6 +198,7 @@ def diagnose_node(state: WindwardState) -> dict:
     return {
         "power_curves": power_curves, "smooth_power_curves": smooth_power_curves,
         "efficiency_summary": efficiency_summary,
+        "qc_summary": qc_summary(flagged), "operational": operational,
         "anomalies": anomalies, "data_quality": data_quality,
         "wind_rose": wind_rose, "wind_speed_distribution": wind_speed_distribution,
     }
@@ -221,17 +261,36 @@ def _route_after_investigation(state: WindwardState) -> str:
 def recommend_node(state: WindwardState) -> dict:
     eff = state["efficiency_summary"]
     worst = eff["capacity_factor"].idxmin()
+    rationale = (
+        f"{worst} has the lowest capacity factor in the fleet "
+        f"({eff.loc[worst, 'capacity_factor']:.1%} vs fleet mean {eff['capacity_factor'].mean():.1%})."
+    )
+    # A turbine deep in its neighbors' wakes is the lowest producer without anything being
+    # broken; say so, so the inspection starts from its fault log rather than assuming damage.
+    operational = state.get("operational")
+    wake = turbine_wake_loss_pct(operational, worst)
+    farm_wake = ((operational or {}).get("wake_losses") or {}).get("plant_lt_pct")
+    if wake is not None and farm_wake is not None and wake > farm_wake:
+        rationale += (
+            f" OpenOA attributes {wake:.1f}% long-term wake loss to it vs {farm_wake:.1f}% farm-wide, so part of the "
+            f"shortfall is its position in the layout; check its forced-outage history before assuming damage."
+        )
     return {
         "recommendation": {
             "farm_id": state["farm_id"],
             "action": f"Prioritize inspection of {worst}",
-            "rationale": (
-                f"{worst} has the lowest capacity factor in the fleet "
-                f"({eff.loc[worst, 'capacity_factor']:.1%} vs fleet mean {eff['capacity_factor'].mean():.1%})."
-            ),
+            "rationale": rationale,
+            "follow_up_actions": _yaw_follow_ups(state),
             "supporting_sources": [c["source"] for c in state.get("rag_context", [])],
         }
     }
+
+
+def _yaw_follow_ups(state: WindwardState) -> list[str]:
+    return [
+        f"Check the nacelle wind-vane calibration on {a['turbine_id']} (estimated static yaw offset {a['yaw_misalignment_deg']:+.1f} deg)"
+        for a in state.get("anomalies", []) if a["type"] == "static_yaw_misalignment"
+    ]
 
 
 def recommend_retrain_node(state: WindwardState) -> dict:
@@ -247,6 +306,7 @@ def recommend_retrain_node(state: WindwardState) -> dict:
                 f"(v{inv['model_version']}) is {inv['model_age_days']} days old — past the "
                 f"{RETRAIN_AGE_DAYS_THRESHOLD}-day point where retraining on more recent data is worth checking."
             ),
+            "follow_up_actions": _yaw_follow_ups(state),
             "supporting_sources": [c["source"] for c in state.get("rag_context", [])],
         }
     }
@@ -264,6 +324,9 @@ def explain_node(state: WindwardState) -> dict:
         f"registered model v{inv['model_version']}, {inv['model_age_days']} days old"
         if inv else "(not computed)"
     )
+    op = state.get("operational") or {}
+    operational_block = _operational_prompt_block(op) if op else "(not computed for this farm)"
+    qc = state.get("qc_summary") or {}
     prompt = f"""You are a wind farm performance analyst. Write a concise (under 170 words) plain-English
 summary of this farm's performance for a technical but non-specialist stakeholder.
 
@@ -274,9 +337,11 @@ Per-turbine capacity factor and peak power coefficient (Cp, real per-hour air de
 {eff[['capacity_factor', 'peak_cp']].round(3).to_string()}
 Anomalies detected: {state['anomalies']}
 Data quality — farm SCADA wind speed vs. independent Open-Meteo reanalysis: {state.get('data_quality')}
+SCADA QC before power-curve fitting (share of hours removed): {qc.get('farm')}
+Operational assessment (NREL/NLR OpenOA methods, run offline on the full multi-year data): {operational_block}
 Model-health investigation: {investigation_block}
 Blade inspection (vision-LLM pass on the worst-performing turbine's most recent available photo): {state.get('inspection_results')}
-Recommendation already decided: {state['recommendation']['action']} — {state['recommendation']['rationale']}
+Recommendation already decided: {state['recommendation']['action']} — {state['recommendation']['rationale']} Follow-ups: {state['recommendation'].get('follow_up_actions') or 'none'}
 Retrieved reference context (cite it by name if you use it, otherwise ignore):
 {rag_block}
 
@@ -284,6 +349,24 @@ Explain what these numbers mean for wind-resource-extraction efficiency, and bac
 
     response = complete([{"role": "user", "content": prompt}])
     return {"explanation": response.choices[0].message.content}
+
+
+def _operational_prompt_block(op: dict) -> str:
+    parts = []
+    el = op.get("electrical_losses") or {}
+    if el.get("mean_pct") is not None:
+        parts.append(f"electrical losses {el['mean_pct']:.2f}% +/- {el['std_pct']:.2f}% ({el['period_start']} to {el['period_end']})")
+    aep = op.get("aep") or {}
+    if (aep.get("monthly_linear") or {}).get("p50_gwh") is not None:
+        m, d = aep["monthly_linear"], aep.get("daily_gam_temperature") or {}
+        parts.append(
+            f"long-term AEP P50 {m['p50_gwh']:.1f} GWh/yr (P90 {m['p90_gwh']:.1f}, uncertainty {m['uncertainty_pct']:.1f}%, monthly linear)"
+            + (f"; daily GAM+temperature P50 {d['p50_gwh']:.1f} GWh/yr, uncertainty {d['uncertainty_pct']:.1f}%" if d.get("p50_gwh") is not None else "")
+        )
+    wl = op.get("wake_losses") or {}
+    if wl.get("plant_lt_pct") is not None:
+        parts.append(f"farm wake losses {wl['plant_lt_pct']:.1f}% long-term ({wl['plant_por_pct']:.1f}% over the data period)")
+    return "; ".join(parts) or "(no results)"
 
 
 def build_graph():
