@@ -99,6 +99,8 @@ def compact_summary(operational: dict | None) -> dict | None:
     statuses = yaw_statuses(operational)
     out["yaw_misalignment"] = {
         "caveat": ym.get("caveat"),
+        "not_identifiable": ym.get("not_identifiable"),
+        "vane_std_deg": ym.get("vane_std_deg"),
         "turbines": {tid: {"mean_deg": t.get("mean_deg"), "ci95_deg": t.get("ci95_deg"),
                            "by_ws_spread_deg": t.get("by_ws_spread_deg"), "status": statuses.get(tid)}
                      for tid, t in (ym.get("turbines") or {}).items()},

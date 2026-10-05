@@ -571,7 +571,8 @@
      8.0
     ],
     "num_sim": 50,
-    "caveat": "OpenOA's StaticYawMisalignment is not yet validated against turbines with known static yaw misalignment; it relies on nacelle wind speed, which itself is affected by yaw misalignment. Treat as a screening indicator, not a calibration value."
+    "caveat": "OpenOA's StaticYawMisalignment is not yet validated against turbines with known static yaw misalignment; it relies on nacelle wind speed, which itself is affected by yaw misalignment. Treat as a screening indicator, not a calibration value.",
+    "vane_std_deg": 7.11
    }
   },
   "hill_of_towie": {
@@ -1072,300 +1073,10 @@
     "num_sim": 30
    },
    "yaw_misalignment": {
-    "turbines": {
-     "HillOfTowie_01": {
-      "mean_deg": -12.3,
-      "std_deg": 6.87,
-      "ci95_deg": [
-       -23.72,
-       -2.46
-      ],
-      "mean_vane_deg": -0.02,
-      "by_ws_deg": {
-       "5.0": -9.11,
-       "6.0": -2.19,
-       "7.0": -33.67,
-       "8.0": -4.25
-      },
-      "by_ws_spread_deg": 31.48
-     },
-     "HillOfTowie_02": {
-      "error": "RuntimeError: Optimal parameters not found: Number of calls to function has reached maxfev = 800."
-     },
-     "HillOfTowie_03": {
-      "mean_deg": -6.61,
-      "std_deg": 4.62,
-      "ci95_deg": [
-       -14.89,
-       -1.89
-      ],
-      "mean_vane_deg": -0.04,
-      "by_ws_deg": {
-       "5.0": -6.43,
-       "6.0": -7.42,
-       "7.0": -10.94,
-       "8.0": -1.65
-      },
-      "by_ws_spread_deg": 9.3
-     },
-     "HillOfTowie_04": {
-      "error": "RuntimeError: Optimal parameters not found: Number of calls to function has reached maxfev = 800."
-     },
-     "HillOfTowie_05": {
-      "mean_deg": -20.12,
-      "std_deg": 4.58,
-      "ci95_deg": [
-       -23.84,
-       -11.89
-      ],
-      "mean_vane_deg": -0.04,
-      "by_ws_deg": {
-       "5.0": -0.74,
-       "6.0": -2.22,
-       "7.0": -35.63,
-       "8.0": -41.91
-      },
-      "by_ws_spread_deg": 41.17
-     },
-     "HillOfTowie_06": {
-      "mean_deg": -12.68,
-      "std_deg": 8.1,
-      "ci95_deg": [
-       -24.07,
-       -1.65
-      ],
-      "mean_vane_deg": 0.01,
-      "by_ws_deg": {
-       "5.0": -1.9,
-       "6.0": -2.15,
-       "7.0": -22.1,
-       "8.0": -24.58
-      },
-      "by_ws_spread_deg": 22.68
-     },
-     "HillOfTowie_07": {
-      "mean_deg": -13.09,
-      "std_deg": 7.79,
-      "ci95_deg": [
-       -24.7,
-       -1.61
-      ],
-      "mean_vane_deg": -0.04,
-      "by_ws_deg": {
-       "5.0": -1.1,
-       "6.0": -2.79,
-       "7.0": -24.75,
-       "8.0": -23.7
-      },
-      "by_ws_spread_deg": 23.65
-     },
-     "HillOfTowie_08": {
-      "mean_deg": -3.2,
-      "std_deg": 6.19,
-      "ci95_deg": [
-       -13.29,
-       6.96
-      ],
-      "mean_vane_deg": -0.09,
-      "by_ws_deg": {
-       "5.0": -1.33,
-       "6.0": -4.8,
-       "7.0": -8.47,
-       "8.0": 1.79
-      },
-      "by_ws_spread_deg": 10.26
-     },
-     "HillOfTowie_09": {
-      "mean_deg": -20.73,
-      "std_deg": 8.34,
-      "ci95_deg": [
-       -35.89,
-       -5.6
-      ],
-      "mean_vane_deg": -0.04,
-      "by_ws_deg": {
-       "5.0": -14.42,
-       "6.0": -6.73,
-       "7.0": -34.02,
-       "8.0": -27.73
-      },
-      "by_ws_spread_deg": 27.29
-     },
-     "HillOfTowie_10": {
-      "mean_deg": -9.13,
-      "std_deg": 6.74,
-      "ci95_deg": [
-       -23.33,
-       -0.98
-      ],
-      "mean_vane_deg": -0.03,
-      "by_ws_deg": {
-       "5.0": -1.24,
-       "6.0": -2.74,
-       "7.0": -17.43,
-       "8.0": -15.11
-      },
-      "by_ws_spread_deg": 16.19
-     },
-     "HillOfTowie_11": {
-      "mean_deg": -21.06,
-      "std_deg": 8.6,
-      "ci95_deg": [
-       -36.85,
-       -6.08
-      ],
-      "mean_vane_deg": -0.11,
-      "by_ws_deg": {
-       "5.0": -1.7,
-       "6.0": -28.65,
-       "7.0": -38.28,
-       "8.0": -15.6
-      },
-      "by_ws_spread_deg": 36.58
-     },
-     "HillOfTowie_12": {
-      "mean_deg": -15.03,
-      "std_deg": 5.1,
-      "ci95_deg": [
-       -24.01,
-       -5.59
-      ],
-      "mean_vane_deg": -0.06,
-      "by_ws_deg": {
-       "5.0": -1.26,
-       "6.0": -1.73,
-       "7.0": -15.7,
-       "8.0": -41.42
-      },
-      "by_ws_spread_deg": 40.16
-     },
-     "HillOfTowie_13": {
-      "mean_deg": -10.69,
-      "std_deg": 7.03,
-      "ci95_deg": [
-       -23.2,
-       -0.81
-      ],
-      "mean_vane_deg": -0.08,
-      "by_ws_deg": {
-       "5.0": -0.97,
-       "6.0": -0.33,
-       "7.0": -24.77,
-       "8.0": -16.71
-      },
-      "by_ws_spread_deg": 24.44
-     },
-     "HillOfTowie_14": {
-      "error": "RuntimeError: Optimal parameters not found: Number of calls to function has reached maxfev = 800."
-     },
-     "HillOfTowie_15": {
-      "mean_deg": -24.96,
-      "std_deg": 8.77,
-      "ci95_deg": [
-       -39.51,
-       -12.67
-      ],
-      "mean_vane_deg": -0.06,
-      "by_ws_deg": {
-       "5.0": -8.81,
-       "6.0": -18.64,
-       "7.0": -42.99,
-       "8.0": -29.41
-      },
-      "by_ws_spread_deg": 34.19
-     },
-     "HillOfTowie_16": {
-      "mean_deg": -12.44,
-      "std_deg": 6.11,
-      "ci95_deg": [
-       -26.46,
-       -2.35
-      ],
-      "mean_vane_deg": -0.06,
-      "by_ws_deg": {
-       "5.0": -5.72,
-       "6.0": -34.33,
-       "7.0": -8.69,
-       "8.0": -1.02
-      },
-      "by_ws_spread_deg": 33.32
-     },
-     "HillOfTowie_17": {
-      "mean_deg": -1.9,
-      "std_deg": 5.22,
-      "ci95_deg": [
-       -19.08,
-       0.23
-      ],
-      "mean_vane_deg": -0.13,
-      "by_ws_deg": {
-       "5.0": -0.42,
-       "6.0": -3.61,
-       "7.0": -2.83,
-       "8.0": -0.74
-      },
-      "by_ws_spread_deg": 3.19
-     },
-     "HillOfTowie_18": {
-      "mean_deg": -16.45,
-      "std_deg": 9.83,
-      "ci95_deg": [
-       -33.84,
-       -0.15
-      ],
-      "mean_vane_deg": -0.15,
-      "by_ws_deg": {
-       "5.0": -1.17,
-       "6.0": -13.01,
-       "7.0": -18.88,
-       "8.0": -32.74
-      },
-      "by_ws_spread_deg": 31.57
-     },
-     "HillOfTowie_19": {
-      "mean_deg": -9.25,
-      "std_deg": 6.79,
-      "ci95_deg": [
-       -22.64,
-       0.45
-      ],
-      "mean_vane_deg": -0.04,
-      "by_ws_deg": {
-       "5.0": 3.18,
-       "6.0": 0.08,
-       "7.0": -16.45,
-       "8.0": -23.83
-      },
-      "by_ws_spread_deg": 27.01
-     },
-     "HillOfTowie_20": {
-      "mean_deg": -26.27,
-      "std_deg": 7.86,
-      "ci95_deg": [
-       -39.58,
-       -13.65
-      ],
-      "mean_vane_deg": -0.07,
-      "by_ws_deg": {
-       "5.0": -5.09,
-       "6.0": -22.59,
-       "7.0": -41.91,
-       "8.0": -35.5
-      },
-      "by_ws_spread_deg": 36.82
-     },
-     "HillOfTowie_21": {
-      "error": "RuntimeError: Optimal parameters not found: Number of calls to function has reached maxfev = 800."
-     }
-    },
-    "ws_bins_ms": [
-     5.0,
-     6.0,
-     7.0,
-     8.0
-    ],
-    "num_sim": 50,
-    "caveat": "OpenOA's StaticYawMisalignment is not yet validated against turbines with known static yaw misalignment; it relies on nacelle wind speed, which itself is affected by yaw misalignment. Treat as a screening indicator, not a calibration value."
+    "turbines": {},
+    "vane_std_deg": 1.99,
+    "caveat": "OpenOA's StaticYawMisalignment is not yet validated against turbines with known static yaw misalignment; it relies on nacelle wind speed, which itself is affected by yaw misalignment. Treat as a screening indicator, not a calibration value.",
+    "not_identifiable": "The relative wind direction below rated has a standard deviation of only 2.0 deg (minimum 4 deg needed): this export has no vane channel, and the controller's averaged wind direction minus nacelle position barely moves, so OpenOA's cosine fit over +/-25 deg of vane angle has nothing to fit. Static yaw misalignment can't be estimated from this data."
    }
   },
   "penmanshiel": {
@@ -2107,11 +1818,12 @@
      8.0
     ],
     "num_sim": 50,
-    "caveat": "OpenOA's StaticYawMisalignment is not yet validated against turbines with known static yaw misalignment; it relies on nacelle wind speed, which itself is affected by yaw misalignment. Treat as a screening indicator, not a calibration value."
+    "caveat": "OpenOA's StaticYawMisalignment is not yet validated against turbines with known static yaw misalignment; it relies on nacelle wind speed, which itself is affected by yaw misalignment. Treat as a screening indicator, not a calibration value.",
+    "vane_std_deg": 7.44
    }
   }
  },
- "generated_at": "2026-10-01T03:39:07+00:00",
+ "generated_at": "2026-10-05T07:32:19+00:00",
  "openoa_version": "3.2",
  "references": {
   "openoa_joss_2021": "Perr-Sauer et al. 2021, OpenOA: An Open-Source Codebase For Operational Analysis of Wind Farms, JOSS 6(58), 2171, doi:10.21105/joss.02171",

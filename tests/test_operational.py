@@ -75,3 +75,11 @@ def test_union_hours_counts_concurrent_alarms_once():
         "end": pd.to_datetime(["2016-01-01 02:00", "2016-01-01 02:00", "2016-01-01 03:00", "2016-01-02 01:00"]),
     })
     assert _union_hours(ev) == 4.0  # 00:00-03:00 merged, plus one separate hour
+
+
+def test_mcp_server_exposes_operational_and_turbine_tools():
+    import asyncio
+    from mcp_server.server import mcp
+
+    names = {t.name for t in asyncio.run(mcp.list_tools())}
+    assert {"get_operational_assessment", "get_turbine_details", "rank_turbines"} <= names

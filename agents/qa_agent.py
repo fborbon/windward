@@ -29,7 +29,9 @@ _TOOLS_SCHEMA = [
             "description": (
                 "Search this farm's real turbine fault/incident log and reference notes for "
                 "information about faults, downtime causes, curtailment, or turbine specs. "
-                "Use for 'why', 'what caused', or history questions."
+                "Use for 'why', 'what caused', or history questions. Its incidents are individual "
+                "example events (the farm's longest ones), not totals: for a turbine's total "
+                "outage hours, counts or rankings use get_turbine_details / rank_turbines instead."
             ),
             "parameters": {
                 "type": "object",
@@ -109,7 +111,9 @@ _SYSTEM_PROMPT = (
     "for a question about one specific turbine, rank_turbines for best/worst/most-affected "
     "comparisons across turbines, several if the question "
     "needs both, or neither for a general question you can already answer. Keep the final "
-    "answer under 120 words, plain English, technical but non-specialist. Quote numbers exactly "
+    "answer under 120 words, plain English, technical but non-specialist. For totals, counts and "
+    "rankings per turbine, the turbine tools are authoritative; if you also cite a single event from "
+    "the maintenance docs, say it's one event. Quote numbers exactly "
     "as the tools return them; never compute new statistics (intervals, percentages) yourself."
 )
 

@@ -54,6 +54,21 @@ def _events(farm_id: str) -> pd.DataFrame:
     return _events_cache[farm_id]
 
 
+def analysis_from_graph_state(state: dict) -> dict:
+    """The parts of a raw agents.graph run these tools read, in the same shape api.main's
+    /analysis payload already gives them (used by the MCP server, which has no API payload)."""
+    eff = state["efficiency_summary"]
+    return {
+        "efficiency_summary": [
+            {"turbine_id": tid, "capacity_factor": float(r["capacity_factor"]), "peak_cp": float(r["peak_cp"]),
+             "over_betz": bool(r["peak_cp"] > r["betz_limit"])}
+            for tid, r in eff.iterrows()
+        ],
+        "qc_summary": state.get("qc_summary"),
+        "anomalies": state.get("anomalies", []),
+    }
+
+
 def resolve_turbine_id(farm_id: str, text: str) -> str | None:
     """'Kelmarsh 3', 'kelmarsh_3', 'turbine 3', 'T03', '3' -> 'Kelmarsh_3'."""
     ids = FARMS[farm_id].turbine_ids
@@ -105,7 +120,7 @@ def _maintenance_stats(farm_id: str, turbine_id: str) -> dict:
     t = ev[ev["turbine_id"] == turbine_id]
     maint = t[t["is_maintenance"]].sort_values("start")
     forced = t[t["is_forced_outage"]]
-    top_faults = forced.groupby("message")["hours"].agg(["count", "sum"]).sort_values("sum", ascending=False).head(3)
+    top_faults = forced.groupby("message")["hours"].agg(["count", "sum", "max"]).sort_values("sum", ascending=False).head(3)
     outages_known = FARMS[farm_id].data_source != "hill_of_towie"
     return {
         "log_period": f"{ev['start'].min():%Y-%m-%d} to {ev['start'].max():%Y-%m-%d}",
@@ -116,7 +131,8 @@ def _maintenance_stats(farm_id: str, turbine_id: str) -> dict:
         "forced_outage_hours": _union_hours(forced) if outages_known else None,
         "note": "hours count overlapping events once; per-cause hours can overlap each other (one stop often raises several alarms), so don't add them up",
         "top_forced_outage_causes": [
-            {"message": msg or "(no description in this export)", "events": int(r["count"]), "hours": round(float(r["sum"]), 1)}
+            {"message": msg or "(no description in this export)", "events": int(r["count"]),
+             "total_hours_all_events": round(float(r["sum"]), 1), "longest_single_event_hours": round(float(r["max"]), 1)}
             for msg, r in top_faults.iterrows()
         ] if outages_known else "not identifiable from this farm's alarm export",
         "maintenance_definition": "Hill of Towie: alarm 3130 'Pitch lubrication' only (the export doesn't label maintenance)"

@@ -1,4 +1,5 @@
-"""MCP server exposing Windward's forecast/recommendation/RAG tools."""
+"""MCP server exposing Windward's forecast/recommendation/RAG, OpenOA operational assessment
+and per-turbine tools."""
 from mcp.server.mcpserver import MCPServer
 
 from mcp_server import tools
@@ -40,6 +41,32 @@ def query_dswe_reference(question: str) -> str:
     facts and the Measure-Correlate-Predict methodology used to work around its undisclosed
     location."""
     return tools.query_dswe_reference(question)
+
+
+@mcp.tool()
+def get_operational_assessment(farm_id: str) -> dict:
+    """Long-term operational assessment from NREL/NLR's OpenOA, run on the full multi-year
+    data: electrical losses (turbines vs substation meter), long-term AEP P50/P90 with a
+    per-component uncertainty breakdown, wake losses per turbine, and static yaw
+    misalignment estimates with their status (flag / ok / inconclusive)."""
+    return tools.get_operational_assessment(farm_id)
+
+
+@mcp.tool()
+def get_turbine_details(farm_id: str, turbine: str) -> dict | str:
+    """Everything known about one turbine (name or number, e.g. 'Kelmarsh 3' or '3'):
+    capacity factor and fleet rank, peak Cp, QC-removed hours, its anomalies, OpenOA wake loss
+    and yaw status, and its real status log (last maintenance stop, forced-outage hours with
+    overlapping alarms counted once, top causes)."""
+    return tools.get_turbine_details(farm_id, turbine)
+
+
+@mcp.tool()
+def rank_turbines(farm_id: str, metric: str) -> dict | str:
+    """Rank a farm's turbines by one metric, highest first: capacity_factor, peak_cp,
+    wake_loss_lt_pct, abs_yaw_misalignment_deg, qc_removed_share, forced_outage_hours or
+    maintenance_events."""
+    return tools.rank_turbines(farm_id, metric)
 
 
 if __name__ == "__main__":

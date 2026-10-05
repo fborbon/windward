@@ -56,6 +56,11 @@ N_SIM_AEP_DAILY = 300
 N_SIM_ELEC = 5000
 N_SIM_WAKE = 30
 N_SIM_YAW = 50
+# StaticYawMisalignment fits a cosine of power against vane angle over +/-25 deg. If the vane
+# angle barely moves below rated, there's no curve to fit: Hill of Towie's relative direction
+# (absolute wind direction minus nacelle position, its export has no vane channel) has a 2.0 deg
+# standard deviation vs 7.1 deg on Kelmarsh's real vane, so its fits failed or came out noise.
+MIN_VANE_STD_DEG = 4.0
 
 REFERENCES = {
     "openoa_joss_2021": "Perr-Sauer et al. 2021, OpenOA: An Open-Source Codebase For Operational Analysis of Wind Farms, JOSS 6(58), 2171, doi:10.21105/joss.02171",
@@ -234,6 +239,20 @@ def run_yaw(farm_id: str) -> dict:
     turbine (scipy's curve_fit hits maxfev on one Hill of Towie turbine) is recorded for that
     turbine instead of discarding the whole farm's results."""
     plant = build_plant(farm_id, ["StaticYawMisalignment"], require_vane=True)
+    caveat = "OpenOA's StaticYawMisalignment is not yet validated against turbines with known static yaw misalignment; it relies on nacelle wind speed, which itself is affected by yaw misalignment. Treat as a screening indicator, not a calibration value."
+    sc = plant.scada
+    below_rated = sc[(sc["WMET_HorWdSpd"] > 4.5) & (sc["WMET_HorWdSpd"] < 8.5) & (sc["WTUR_W"] > 0)]
+    vane_std = float(below_rated["WMET_HorWdDirRel"].std())
+    if vane_std < MIN_VANE_STD_DEG:
+        return {
+            "turbines": {}, "vane_std_deg": _f(vane_std, 2), "caveat": caveat,
+            "not_identifiable": (
+                f"The relative wind direction below rated has a standard deviation of only {vane_std:.1f} deg "
+                f"(minimum {MIN_VANE_STD_DEG:.0f} deg needed): this export has no vane channel, and the controller's "
+                f"averaged wind direction minus nacelle position barely moves, so OpenOA's cosine fit over "
+                f"+/-25 deg of vane angle has nothing to fit. Static yaw misalignment can't be estimated from this data."
+            ),
+        }
     out = {}
     ws_bins = None
     for tid in plant.turbine_ids:
@@ -258,7 +277,8 @@ def run_yaw(farm_id: str) -> dict:
         "turbines": out,
         "ws_bins_ms": ws_bins,
         "num_sim": N_SIM_YAW,
-        "caveat": "OpenOA's StaticYawMisalignment is not yet validated against turbines with known static yaw misalignment; it relies on nacelle wind speed, which itself is affected by yaw misalignment. Treat as a screening indicator, not a calibration value.",
+        "vane_std_deg": _f(vane_std, 2),
+        "caveat": caveat,
     }
 
 
