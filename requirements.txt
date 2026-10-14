@@ -40,3 +40,7 @@ chronos-forecasting
 
 # AWS (Bedrock LLM calls + DynamoDB session store — existing account)
 boto3
+
+# Serving workers (API recycles its worker every ~100 requests - see Dockerfile)
+gunicorn
+uvicorn-worker

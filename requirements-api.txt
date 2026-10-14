@@ -1,0 +1,31 @@
+# Slim runtime for the API container (Dockerfile). Only what api/main.py's request handlers
+# import - tests/test_slim_imports.py guards it. Training, backtests, the daily live forecast
+# (torch + chronos) and the MLflow model export use requirements.txt via Dockerfile.jobs.
+
+# Serving
+fastapi
+uvicorn[standard]
+gunicorn
+uvicorn-worker
+
+# Agent orchestration + RAG (loaded lazily, on the first agent/ask request)
+langchain
+langchain-core
+langchain-community
+langgraph
+liteLLM
+faiss-cpu
+langfuse  # its langchain CallbackHandler needs the full `langchain` package above
+
+# Data / models (forecast model is a scikit-learn estimator, loaded with joblib)
+pydantic
+pandas
+numpy
+scipy
+scikit-learn
+httpx
+python-dotenv
+entsoe-py
+
+# AWS (Bedrock LLM calls + DynamoDB session store)
+boto3

@@ -13,5 +13,6 @@ data/edp_wind_farm_a/datasets/
 data/rag_index/
 data/llamaindex/
 data/wind_forecast_log/
+data/models/
 .ipynb_checkpoints/
 data/operational_cache/

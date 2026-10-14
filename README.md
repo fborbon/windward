@@ -54,7 +54,7 @@ The split is deliberate: forecasting is a numerical ML problem (best solved with
 | LlamaIndex | `rag/llamaindex_index.py` — second, independent RAG stack over turbine spec metadata |
 | Multimodal | `multimodal/blade_inspection.py` — real vision-LLM pass (Bedrock Nova, Converse API) on a real inspection photo |
 | Semantic Search | `rag/semantic_search.py` — nearest-neighbor search over the real incident corpus |
-| MLflow | `forecasting/train.py`, `forecasting/registry.py` — self-hosted tracking server + registry, S3 artifact store |
+| MLflow | `forecasting/train.py`, `forecasting/export_model.py` — self-hosted tracking server + registry, S3 artifact store; the API itself never imports MLflow, it reads the latest registered model exported to `data/models/` (`forecasting/model_store.py`) |
 | Wind plant operational assessment (NREL/NLR OpenOA) | `operational_assessment/` - electrical losses, Monte Carlo long-term AEP, wake losses, static yaw misalignment, run offline on the full multi-year data (§15); `analysis/qc.py` - OpenOA's SCADA filters ported into the live `diagnose` step |
 | Per-turbine Q&A | `agents/turbine_tools.py` - `get_turbine_details` / `rank_turbines` tools for the `/ask` agent (§15.6) |
 | Time-series forecasting breadth (classical statistical, state-space, DL, attention, foundation models) | `wind_prediction/` - naive to Chronos foundation-model showcase, separate from the production regression model (§14) |
@@ -147,7 +147,7 @@ flowchart LR
 | `diagnose` | Computes per-turbine power curves + efficiency (Cp vs the Betz limit, using each hour's real air density, not a sea-level constant), flags farm-level forecast deviation, quantifies (not just flags) suspected anemometer bias via power-curve-displacement fitting, flags per-turbine/per-hour underperformance against nearest spatial neighbors, and cross-checks farm SCADA wind speed against the independent Open-Meteo reanalysis — see §4.1 and `analysis/efficiency.py` |
 | `rag` | Retrieves the most relevant real fault events + reference notes for this farm from its FAISS index |
 | `multimodal` | Real vision-LLM inspection pass (Amazon Nova Lite, Bedrock Converse API) on the worst-performing turbine's sample photo |
-| `investigate` | Computes the real recent-vs-overall forecast error trend and the registered model's real age (`forecasting.registry.latest_model_info`); decides whether to route to `recommend_retrain` or `recommend` |
+| `investigate` | Computes the real recent-vs-overall forecast error trend and the registered model's real age (`forecasting.model_store.latest_model_info`); decides whether to route to `recommend_retrain` or `recommend` |
 | `recommend` | Rule-based: flags the lowest-capacity-factor turbine, cites the RAG sources used |
 | `recommend_retrain` | Taken when the last week's forecast error has run meaningfully hotter than the full period's average *and* the registered model is older than a demo-scale staleness threshold — recommends retraining instead, citing the real numbers |
 | `explain` | Calls Amazon Nova Lite with the diagnosis + recommendation + investigation + retrieved context, returns a grounded natural-language field report |
@@ -467,7 +467,7 @@ Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `ht
 - [x] MCP server — `get_forecast`, `get_recommendation`, `query_maintenance_docs` all implemented
 - [x] Dashboard — **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)**, served directly by the FastAPI app (`web/`): per-farm tabs, real charts, Betz-limit efficiency table, vision-LLM blade inspection, and a live "ask the agent" box backed by a real tool-calling agent. Started as a Claude Artifact (the only way to get an interactive AI feature inside a sandboxed page that can't call external APIs), moved to a real self-hosted frontend once the project stopped being a portfolio piece and started being a service
 - [x] `/ask` wired to a real tool-calling agent (`agents/qa_agent.py`) instead of one stuffed prompt — the LLM decides per question whether it needs `search_maintenance_docs` (the same LangChain/FAISS RAG retriever the MCP server already used, now also reachable from the public dashboard), `get_current_analysis` (the farm's precomputed numeric analysis), both, or neither; falls back to the old stuffed-prompt behavior if tool-calling ever errors. The dashboard shows which source(s) grounded each answer. Traced to Langfuse via `agents/llm_router.py`'s `wrap_completion()`, applied whenever keys are set
-- [x] `investigate` node + conditional retrain routing — real recent-vs-overall forecast-error trend (from the same `comparison` DataFrame `diagnose` already produces) and the registered model's real age (`forecasting.registry.latest_model_info`, via `MlflowClient.search_model_versions`) decide whether the graph routes to `recommend_retrain` (cites the real MAPE numbers and model age) or the existing `recommend`. Verified against the real compiled graph with both a fresh-model and a stale-model+degraded-error case
+- [x] `investigate` node + conditional retrain routing — real recent-vs-overall forecast-error trend (from the same `comparison` DataFrame `diagnose` already produces) and the registered model's real age (originally `forecasting.registry.latest_model_info` via `MlflowClient.search_model_versions`; since 2026-10-14 `forecasting.model_store.latest_model_info`, reading the version/date `forecasting.export_model` records) decide whether the graph routes to `recommend_retrain` (cites the real MAPE numbers and model age) or the existing `recommend`. Verified against the real compiled graph with both a fresh-model and a stale-model+degraded-error case
 - [x] LlamaIndex — second, independent RAG stack (`rag/llamaindex_index.py`) over real turbine spec metadata (manufacturer, hub height, exact coordinates), a different framework and a different corpus shape from the LangChain/FAISS incident-log stack. Verified: correctly answers "what is the hub height of Kelmarsh 3?" (68.5m, matches the source CSV) and cross-farm elevation comparisons
 - [x] Langfuse tracing — **live**, keys set 2026-09-15. `observability/tracing.py` (updated for the current Langfuse v4 API — `langfuse.langchain.CallbackHandler`, not the old `langfuse.callback` path) wired into every graph run via `agents.graph.run()`, plus `wrap_completion()` for `agents/llm_router.py`'s raw `litellm.completion()` calls (which the `/ask` agent and `explain_node` both go through), applied whenever `LANGFUSE_*` keys are set. Not litellm's own built-in `success_callback=["langfuse"]` — that's broken against Langfuse v4 (`AttributeError: module 'langfuse' has no attribute 'version'`, confirmed still broken on litellm 1.101.0) and was silently degrading every `/ask` call to its stuffed-prompt fallback; caught this live once keys were added, fixed by instrumenting manually via `langfuse.get_client().start_as_current_observation()` instead. Verified: a real `windward-complete` GENERATION trace confirmed via the Langfuse API after a live `/ask` call
 - [x] Multimodal blade-inspection node — real vision-LLM call (Amazon Nova Lite via the Bedrock Converse API) against a real, openly-licensed inspection photo ([Wikimedia Commons, CC BY-SA 3.0](https://commons.wikimedia.org/wiki/File:Begutachtung_eines_Rotorblattes.JPG)), wired into `multimodal_node` and folded into the field-report narrative
@@ -493,7 +493,7 @@ Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `ht
 
 | Category | Resource | Cost |
 |---|---|---|
-| **Compute** | FastAPI + agent service (Docker, host networking, 700MB memory limit) on the existing EC2 | $0 marginal — the box is already running |
+| **Compute** | FastAPI + agent service (Docker, host networking, 512MB memory limit) on the existing EC2 | $0 marginal — the box is already running. Its fair share of the shared host is by RAM: ~21% (≈$2.50 of ~$11.60 EC2 compute, Oct 1–13 2026) at the old ~560MB footprint; see *Memory footprint* below |
 | **Compute** | MLflow tracking server (native systemd service, ~180MB RSS) on the same EC2 | $0 marginal |
 | **Storage** | S3 bucket `windward-mlflow-artifacts-ff` (model artifacts, versioned) | Within the AWS always-free tier (5GB/12mo) at this scale; a few cents/month after |
 | **Storage** | Raw SCADA data, FAISS/LlamaIndex indexes | $0 — local disk on the EC2, not cloud storage. Hill of Towie's one-year sample (~1GB) is ~5x the size of both Greenbyte farms combined, still trivial on disk |
@@ -506,6 +506,15 @@ Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `ht
 | **AI services** | DynamoDB `windward-agent-sessions` (on-demand billing) | $0 — within the AWS always-free tier (25GB + 25 RCU/WCU) at this scale |
 
 **Estimated total: under $0.10/month, indefinitely.** Auth throughout is the EC2 instance's IAM role, scoped by an inline policy (`windward-app-access`) to exactly this S3 bucket, this DynamoDB table, and the two Bedrock models used — no static AWS keys anywhere in the codebase or on the server.
+
+**Memory footprint (2026-10-14 slimming).** The box is CPU-idle; RAM is what sizes it, so this is what Windward actually costs. The API used to sit at 450–560MB of a 700MB limit (hitting the limit 2,676 times in three weeks), out of a single 3.45GB image carrying everything. Now:
+- **Two images.** `Dockerfile` (1.37GB) is the slim API with only what the request handlers import (`requirements-api.txt`); `Dockerfile.jobs`, built on top of it, adds torch/Chronos/statsmodels/MLflow/LlamaIndex for the daily live forecast, model export, training and backtests. `infra/slim_image_smoke.py` imports every request-path module in the new slim image before each deploy swaps it in.
+- **No MLflow in the API** (~90MB). `forecasting/export_model.py` copies the latest registered model to `data/models/` on every deploy; `forecasting/model_store.py` loads it once with joblib instead of re-downloading it through the registry on every `/forecast` call.
+- **No torch in the API** (~200MB). `import dswe` loads its DNN/GP models and with them torch; the API only uses AMK, now vendored (MIT, `analysis/vendor/dswe_amk/`).
+- **Worker recycling.** gunicorn restarts the single uvicorn worker every ~100 requests, so the agent stack (~250MB, loaded on the first `/analysis` call) doesn't stay resident for days at a few real requests/day.
+- **Live forecast in its own container** (`infra/cron/windward` → `/etc/cron.d/windward`, 1GB cap) instead of `docker exec` into the API, so Chronos never lands inside the API's limit.
+
+Measured on the slim image: ~85MB at start, ~160MB after every non-agent endpoint, ~400MB peak after the agent graph.
 
 ## 14. Wind Prediction: Time-Series Forecasting Showcase
 
@@ -581,9 +590,11 @@ Two different Open-Meteo products are in play, worth being precise about since t
 Run daily via cron on the host: grades any prior forecast whose window is now safely past, then records a new one. State lives in `data/wind_forecast_log/<farm_id>.json` (gitignored - real runtime data, not committed, and it starts empty on a fresh checkout: the first graded row only exists after the cron has run for ~4 days). Served at `GET /wind-prediction/live-forecast`, own card on the Wind Prediction dashboard tab (pending forecast chart while a window is in flight, a permanent MAE table once windows are graded).
 
 ```bash
-# On the target EC2, once a day:
-python -m wind_prediction.live_forecast
+# On the target EC2, once a day (installed from infra/cron/windward on every deploy):
+docker run --rm --network host -v $PWD/data:/app/data windward-jobs:latest python -m wind_prediction.live_forecast
 ```
+
+The daily run silently stopped between 2026-09-19 (host migration) and 2026-10-14: its line lived only in the `ubuntu` crontab and redirected output to a root-owned `/var/log` file, so the shell failed before starting the job. It now lives in the repo as a root `/etc/cron.d` entry.
 
 **Reading the comparison:**
 - **Gradient Boosting wins clearly** (MAE 1.26 MW, R² 0.70 - more than 3x the next-best R²), and the *why* is the real lesson: it's the only technique here combining both lag structure (autocorrelation - what just happened) *and* weather features (physics - what's driving output), where every other family gets only one or the other. SARIMA/ETS/UC see their own past values and nothing else; the notebook's production model (`demo_notebook/`) sees weather and nothing else. Combining both isn't a new idea, but the gap here (0.70 vs the next-best 0.30) is a concrete demonstration of why feature combination usually beats a purer, more "principled" single-paradigm model in practice.

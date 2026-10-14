@@ -5,7 +5,7 @@ This is the "architect generative AI workflows" piece — a declarative, checkpo
 machine rather than hand-rolled orchestration (contrast with global-news-agent's custom
 orchestrator). `investigate` is a real LangGraph conditional-routing node: it decides, from
 the farm's actual recent-vs-overall forecast error trend and the registered model's real age
-(forecasting.registry.latest_model_info), whether to recommend retraining or fall through to
+(forecasting.model_store.latest_model_info), whether to recommend retraining or fall through to
 the normal worst-turbine recommendation — not a fixed linear/parallel run every time.
 
 Runs in analysis/backtest mode over each farm's real SCADA period (the only period we have
@@ -37,8 +37,7 @@ from analysis.efficiency import (
 from data_sources.farms import FARMS, loader_for
 from forecasting.features import FEATURE_COLUMNS, TARGET_COLUMN
 from forecasting.pipeline import build_training_frame
-from forecasting.registry import load_latest_model
-from forecasting.train import model_name
+from forecasting.model_store import load_latest_model, model_name
 from operational_assessment.payload import farm_operational, turbine_wake_loss_pct, yaw_flags
 
 # Demo-scale thresholds for the retrain decision: the last week's mean absolute pct error
@@ -231,7 +230,7 @@ def investigate_node(state: WindwardState) -> dict:
     fan-in guarantee the old rag/multimodal -> recommend edges gave recommend_node). Computes
     whether the forecast has gotten measurably worse recently and whether the registered model
     is old enough that retraining is worth flagging — real signals, not a fixed check."""
-    from forecasting.registry import latest_model_info
+    from forecasting.model_store import latest_model_info
 
     comparison = state["comparison"]
     abs_pct_err = (comparison["actual_mw"] - comparison["predicted_mw"]).abs() / comparison["predicted_mw"].replace(0, float("nan"))

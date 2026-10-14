@@ -61,7 +61,8 @@ def smooth_power_curve(
     and FunGP, were evaluated and NOT used — real, reproducible bugs against current numpy/
     scipy, confirmed by running them against real Kelmarsh data (see README roadmap); AMK hit
     neither."""
-    from dswe import AMK
+    # Vendored copy, not `from dswe import AMK`: importing dswe also loads torch (see vendor/dswe_amk).
+    from analysis.vendor.dswe_amk import AMK
 
     clean = df[[wind_col, power_col]].dropna()
     test_x = np.asarray(test_points, dtype=float).reshape(-1, 1)

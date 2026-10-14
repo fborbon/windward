@@ -5,8 +5,7 @@ from data_sources.energy_price_client import synthetic_prices
 from data_sources.farms import FARMS, Farm
 from data_sources.meteo_client import fetch_forecast
 from forecasting.features import FEATURE_COLUMNS, add_derived_features
-from forecasting.registry import load_latest_model
-from forecasting.train import model_name
+from forecasting.model_store import load_latest_model, model_name
 from schemas.models import ForecastResult
 
 

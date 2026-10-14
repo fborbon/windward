@@ -1,0 +1,10 @@
+# Installed to /etc/cron.d/windward by infra/deploy_host.sh on every deploy - edit it here, not
+# on the host (a host-only crontab doesn't survive a host migration: that's how this job silently
+# stopped on 2026-09-19, when its ubuntu-crontab line kept failing to open its root-owned log).
+#
+# Daily live wind forecast in its own short-lived container (Dockerfile.jobs), not via
+# `docker exec` into the API container: Chronos + torch (~400 MB) would otherwise land inside the
+# API's memory limit and could get it OOM-killed. The HuggingFace cache volume keeps the
+# chronos-bolt-tiny weights between runs.
+SHELL=/bin/sh
+30 6 * * * root docker run --rm --network host --memory 1g -v /home/ubuntu/Developments/windward/data:/app/data -v windward_hf_cache:/root/.cache/huggingface --env-file /home/ubuntu/Developments/windward/.env windward-jobs:latest python -m wind_prediction.live_forecast >> /var/log/windward_live_forecast.log 2>&1

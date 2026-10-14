@@ -59,9 +59,7 @@ jobs:
             --parameters commands='[
               "set -e",
               "sudo -u ubuntu git -C /home/ubuntu/Developments/windward pull",
-              "cd /home/ubuntu/Developments/windward",
-              "sudo docker build -t windward-api:latest -f Dockerfile .",
-              "sudo docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans"
+              "bash /home/ubuntu/Developments/windward/infra/deploy_host.sh"
             ]' \
             --query "Command.CommandId" --output text)
 

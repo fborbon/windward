@@ -1,0 +1,17 @@
+# Full image for batch work: the daily live forecast (torch + chronos), exporting the forecast
+# model out of MLflow for the API (forecasting.export_model), training and backtests. Built on
+# top of the API image so it shares its layers and its exact scikit-learn version - the API
+# unpickles the model this image exports, so the two must match.
+ARG BASE_IMAGE=windward-api:latest
+FROM ${BASE_IMAGE}
+
+# torch CPU-only wheel first: the default PyPI build bundles CUDA (multi-GB), wasted weight on
+# this CPU-only EC2 instance. Installing it from the official CPU index before the rest of
+# requirements.txt means pip sees it already satisfied and doesn't pull the CUDA build instead.
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["python", "-m", "wind_prediction.live_forecast"]

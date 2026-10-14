@@ -9,4 +9,6 @@ services:
       - ./data:/app/data
     network_mode: host
     restart: unless-stopped
-    mem_limit: 700m
+    # Measured 2026-10-14 on the slim image: ~85 MB at start, ~400 MB after the heaviest
+    # request (/analysis, agent graph); the worker is recycled every ~100 requests (Dockerfile).
+    mem_limit: 512m

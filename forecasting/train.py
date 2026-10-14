@@ -16,12 +16,9 @@ from sklearn.model_selection import KFold, train_test_split
 
 import config
 from forecasting.features import FEATURE_COLUMNS, TARGET_COLUMN
+from forecasting.model_store import model_name
 
 KFOLD_SPLITS = 5
-
-
-def model_name(farm_id: str) -> str:
-    return f"windward-production-forecast-{farm_id}"
 
 
 def set_tracking():
