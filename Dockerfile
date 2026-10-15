@@ -16,5 +16,5 @@ EXPOSE 8020
 # back, while real traffic is a few requests a day. A fresh worker starts back at the ~190 MB
 # baseline; requests arriving during the ~10s restart wait in the listen backlog, not dropped.
 CMD ["gunicorn", "api.main:app", "-k", "uvicorn_worker.UvicornWorker", "-w", "1", \
-     "-b", "0.0.0.0:8020", "--timeout", "300", \
+     "-b", "127.0.0.1:8020", "--timeout", "300", \
      "--max-requests", "100", "--max-requests-jitter", "20"]
