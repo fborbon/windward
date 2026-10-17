@@ -275,7 +275,7 @@ Grouped by the AI capability each one supports — only libraries actually used 
 - **Langfuse** (`observability/tracing.py`) - **live and working**, tracing every LLM/agent call end to end: both `explain_node`'s narration inside `agents/graph.py` and `agents/qa_agent.py`'s tool-calling `/ask` loop show up as real traces in the Langfuse dashboard, auto-activating whenever `LANGFUSE_PUBLIC_KEY`/`SECRET_KEY` are set (no-op otherwise). Two coverage paths, because Windward has two different call shapes to trace: `get_handler()` returns a `langfuse.langchain.CallbackHandler` for the LangGraph run (`agents.graph.run()` passes it in as a LangChain callback); `wrap_completion()` wraps `agents/llm_router.py`'s raw `litellm.completion()` calls with a manual Langfuse generation span, for the `/ask` loop's direct calls that don't go through a LangChain `Runnable` at all. The manual path is deliberate, not incidental: litellm's own built-in `success_callback=["langfuse"]` hook is broken against the current Langfuse v4 SDK (`AttributeError: module 'langfuse' has no attribute 'version'`, still true on litellm 1.101.0 as of this writing) and - because litellm swallows that error as "non-blocking" while it actually aborts the completion - was silently degrading every `/ask` question to its stuffed-prompt fallback before this was caught. `wrap_completion()`'s direct `langfuse.get_client().start_as_current_observation()` call sidesteps that broken litellm code path entirely, so it isn't exposed to whichever litellm version happens to be installed.
 
 **MLOps**
-- **MLflow** — the open-source experiment-tracking/model-registry standard. Self-hosted here: a small systemd service on the same EC2 as the app, SQLite backend store, S3 artifact store. Every training run's params/metrics/model artifact is logged and versioned, per farm.
+- **MLflow** — the open-source experiment-tracking/model-registry standard. Self-hosted here: a container on the same EC2 as the app (`infra/mlflow/`), SQLite backend store, S3 artifact store. It runs only on demand: `with-mlflow <command>` starts it for a training run or model export and stops it afterwards, since the live API serves models exported to files and never talks to it. Every training run's params/metrics/model artifact is logged and versioned, per farm.
 - **boto3** — used both for the MLflow server's S3 artifact access and for every AWS call the app makes (Bedrock, DynamoDB). Auth throughout is the EC2 instance's IAM role, picked up automatically from instance metadata — no static keys anywhere.
 
 **Wind plant operational analysis**
@@ -452,7 +452,7 @@ python3 -m venv .venv-openoa && .venv-openoa/bin/pip install -r requirements-ope
 .venv-openoa/bin/python -m operational_assessment.run_openoa --merge    # fold per-farm results into the payload
 ```
 
-Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `http://127.0.0.1:5000`) and picks up AWS credentials from the environment — an EC2 instance role in production, or your own AWS CLI profile locally.
+Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `http://127.0.0.1:5000`; on the host, wrap the command in `with-mlflow`, which starts the MLflow container for it and stops it afterwards) and pick up AWS credentials from the environment — an EC2 instance role in production, or your own AWS CLI profile locally.
 
 ## 12. Roadmap
 
@@ -489,12 +489,12 @@ Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `ht
 
 ## 13. Cost & Resource Consumption
 
-**Anthropic** is not called by the running system at all — Claude Code was the *development* tool used to build Windward (a separate, development-time cost, not part of this project's runtime bill); the MCP server exposes tools *to* Claude-compatible clients rather than calling Anthropic's API. Everything below is **AWS**, and it's genuinely marginal: the service runs as one more Docker container + one more systemd service on `forwardforecasting`, an EC2 instance already running other unrelated services and already paid for. Nothing here required provisioning a new host — quite the opposite: this project's prior separate host (`forwardforecasting-dev`) was decommissioned once it moved here, net *reducing* total EC2 spend rather than adding to it.
+**Anthropic** is not called by the running system at all — Claude Code was the *development* tool used to build Windward (a separate, development-time cost, not part of this project's runtime bill); the MCP server exposes tools *to* Claude-compatible clients rather than calling Anthropic's API. Everything below is **AWS**, and it's genuinely marginal: the service runs as Docker containers on `forwardforecasting` (the API, plus MLflow only while a job needs it), an EC2 instance already running other unrelated services and already paid for. Nothing here required provisioning a new host — quite the opposite: this project's prior separate host (`forwardforecasting-dev`) was decommissioned once it moved here, net *reducing* total EC2 spend rather than adding to it.
 
 | Category | Resource | Cost |
 |---|---|---|
 | **Compute** | FastAPI + agent service (Docker, host networking, 512MB memory limit) on the existing EC2 | $0 marginal — the box is already running. Its fair share of the shared host is by RAM: ~21% (≈$2.50 of ~$11.60 EC2 compute, Oct 1–13 2026) at the old ~560MB footprint; see *Memory footprint* below |
-| **Compute** | MLflow tracking server (native systemd service, ~180MB RSS) on the same EC2 | $0 marginal |
+| **Compute** | MLflow tracking server (on-demand container, `infra/mlflow/`; up only during training/model export, 0MB the rest of the time, was a ~180MB always-on systemd service until 2026-10-17) on the same EC2 | $0 marginal |
 | **Storage** | S3 bucket `windward-mlflow-artifacts-ff` (model artifacts, versioned) | Within the AWS always-free tier (5GB/12mo) at this scale; a few cents/month after |
 | **Storage** | Raw SCADA data, FAISS/LlamaIndex indexes | $0 — local disk on the EC2, not cloud storage. Hill of Towie's one-year sample (~1GB) is ~5x the size of both Greenbyte farms combined, still trivial on disk |
 | **Connectivity** | nginx + Let's Encrypt SSL for `windward.forwardforecasting.eu` | $0 — reuses the existing domain/cert infrastructure |
@@ -512,6 +512,7 @@ Runs against a self-hosted MLflow server (`MLFLOW_TRACKING_URI`, defaults to `ht
 - **No MLflow in the API** (~90MB). `forecasting/export_model.py` copies the latest registered model to `data/models/` on every deploy; `forecasting/model_store.py` loads it once with joblib instead of re-downloading it through the registry on every `/forecast` call.
 - **No torch in the API** (~200MB). `import dswe` loads its DNN/GP models and with them torch; the API only uses AMK, now vendored (MIT, `analysis/vendor/dswe_amk/`).
 - **Worker recycling.** gunicorn restarts the single uvicorn worker every ~100 requests, so the agent stack (~250MB, loaded on the first `/analysis` call) doesn't stay resident for days at a few real requests/day.
+- **MLflow on demand** (~150MB). The tracking server is a container started by `with-mlflow` (`infra/mlflow/with-mlflow.sh`) only for the deploy-time model export and manual training runs, instead of a systemd service running around the clock.
 - **Live forecast in its own container** (`infra/cron/windward` → `/etc/cron.d/windward`, 1GB cap) instead of `docker exec` into the API, so Chronos never lands inside the API's limit.
 
 Measured on the slim image: ~85MB at start, ~160MB after every non-agent endpoint, ~400MB peak after the agent graph.

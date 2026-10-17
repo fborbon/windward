@@ -1,0 +1,25 @@
+# Started and stopped by with-mlflow (infra/mlflow/with-mlflow.sh, installed as
+# /usr/local/bin/with-mlflow); `restart: "no"` so it never comes back by itself after a reboot.
+# State lives on the host: the SQLite registry in /home/ubuntu/mlflow-server/mlflow.db, the model
+# artifacts in S3 (credentials from the EC2 instance role through IMDS, hop limit 2).
+name: mlflow
+services:
+  mlflow:
+    build: .
+    image: mlflow-server:2.22.5
+    container_name: mlflow
+    # host network: clients (the jobs containers, also host-networked) use 127.0.0.1:5000,
+    # and the server stays bound to loopback only, as before.
+    network_mode: host
+    user: "1000:1000"
+    environment:
+      AWS_DEFAULT_REGION: eu-west-1
+    volumes:
+      - /home/ubuntu/mlflow-server:/mlflow
+    command: >
+      mlflow server
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root s3://windward-mlflow-artifacts-ff
+      --host 127.0.0.1 --port 5000 --workers 1
+    mem_limit: 768m
+    restart: "no"

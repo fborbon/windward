@@ -9,9 +9,22 @@ docker build -t windward-api:latest -f Dockerfile .
 docker run --rm windward-api:latest python -m infra.slim_image_smoke
 docker build -t windward-jobs:latest -f Dockerfile.jobs .
 
+# MLflow runs on demand as a container (infra/mlflow/), started by with-mlflow only while a job needs
+# it. One-time migration off the old native systemd service; its unit file is kept in
+# ~ubuntu/backups/systemd-units/ for rollback. The SQLite registry stays where it was.
+docker compose -f infra/mlflow/docker-compose.yml build
+install -m 755 infra/mlflow/with-mlflow.sh /usr/local/bin/with-mlflow
+if [ -f /etc/systemd/system/mlflow.service ]; then
+  systemctl disable --now mlflow.service
+  install -d -o ubuntu -g ubuntu -m 700 /home/ubuntu/backups/systemd-units
+  install -m 600 -o ubuntu -g ubuntu /etc/systemd/system/mlflow.service /home/ubuntu/backups/systemd-units/
+  rm /etc/systemd/system/mlflow.service
+  systemctl daemon-reload
+fi
+
 # The API reads the forecast model from data/models/ instead of MLflow (forecasting/model_store.py).
 # Export before swapping the API container, so a failed export leaves the old one running.
-docker run --rm --network host -v "$PWD/data:/app/data" --env-file .env \
+with-mlflow docker run --rm --network host -v "$PWD/data:/app/data" --env-file .env \
   windward-jobs:latest python -m forecasting.export_model
 
 install -m 644 infra/cron/windward /etc/cron.d/windward
