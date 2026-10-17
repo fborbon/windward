@@ -12,6 +12,8 @@ services:
     # and the server stays bound to loopback only, as before.
     network_mode: host
     user: "1000:1000"
+    # tini as PID 1 so `stop` ends the server promptly instead of being SIGKILLed after 10s
+    init: true
     environment:
       AWS_DEFAULT_REGION: eu-west-1
     volumes:

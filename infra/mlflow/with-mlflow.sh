@@ -20,9 +20,9 @@ flock 9
 was_running=$(docker inspect -f '{{.State.Running}}' mlflow 2>/dev/null || echo false)
 if [ "$was_running" != true ]; then
   docker compose -f "$COMPOSE_FILE" up -d --no-build mlflow >/dev/null 2>&1 \
-    || docker compose -f "$COMPOSE_FILE" up -d --build mlflow
+    || docker compose -f "$COMPOSE_FILE" up -d --build mlflow >/dev/null
 fi
-stop() { [ "$was_running" = true ] || docker compose -f "$COMPOSE_FILE" stop mlflow >/dev/null; }
+stop() { [ "$was_running" = true ] || docker compose -f "$COMPOSE_FILE" stop mlflow >/dev/null 2>&1; }
 trap stop EXIT
 
 for _ in $(seq 1 60); do
