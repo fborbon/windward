@@ -519,7 +519,7 @@ Measured on the slim image: ~85MB at start, ~160MB after every non-agent endpoin
 
 ## 14. Wind Prediction: Time-Series Forecasting Showcase
 
-`wind_prediction/` is deliberately separate from `forecasting/`. `forecasting/` answers "what will this farm produce" - a production regression model, tracked/registered/served like any real ML system (§8). `wind_prediction/` answers a different question a lot of energy/wind-sector DS roles specifically screen for: **which time-series forecasting paradigm fits this kind of signal, and why** - a breadth showcase across the field, not a second production candidate. It has its own dashboard tab (**Wind Prediction**, `windward.forwardforecasting.eu`) and its own API routes (`GET /wind-prediction`, `GET /wind-prediction/live-weather`, `GET /wind-prediction/live-forecast` - see §14.5).
+`wind_prediction/` is deliberately separate from `forecasting/`. `forecasting/` answers "what will this farm produce" - a production regression model, tracked/registered/served like any real ML system (§8). `wind_prediction/` answers a different question a lot of energy/wind-sector DS roles specifically screen for: **which time-series forecasting paradigm fits this kind of signal, and why** - a breadth showcase across the field, not a second production candidate. It has its own dashboard tab (**Wind Prediction**, `windward.forwardforecasting.eu`) and its own API routes (`GET /wind-prediction`, `GET /wind-prediction/live-weather`, `GET /wind-prediction/live-forecast` - see §14.5, `GET /wind-prediction/wind-speed` - see §14.6).
 
 ### 14.1 Why this needed its own section: static SCADA vs. live meteorological data
 
@@ -603,7 +603,45 @@ The daily run silently stopped between 2026-09-19 (host migration) and 2026-10-1
 - **The small, briefly-trained DL/Transformer models underperform even simple baselines here** - the Transformer's R² is *negative* (worse than always predicting the test-period mean). This isn't a bug; it's a well-documented, real finding in the time-series literature - small/mid-size deep forecasters routinely lose to much simpler models without substantially more data and tuning than a single-farm demo can offer (see Zeng et al., *"Are Transformers Effective for Time Series Forecasting?"*, AAAI 2023, where a one-layer linear model beats several Transformer variants on comparable benchmarks). Reproducing that finding here, rather than hiding it, is the point of including them.
 - **Chronos, zero-shot and with no farm-specific training at all, still beats the structural TS/ETS/Hybrid/persistence baselines** and lands close to SARIMA/VAR - genuinely interesting less for outright accuracy (a tiny zero-shot model on one specific site's turbine curve isn't its strongest case) than for getting into that range with **zero training**, a real preview of why foundation models are attracting attention in forecasting.
 
-### 14.5 What this doesn't claim
+### 14.6 Time-series models: Kelmarsh wind speed
+
+The wind resource everywhere else in this project is ERA5 reanalysis at 10 m (Open-Meteo archive). As a model demonstration, `wind_prediction/wind_speed.py` forecasts the **wind itself** at one site, Kelmarsh, because it has a reference to grade against: the hub-height anemometers of its 6 turbines in the 2016 SCADA, averaged into one farm wind speed (hours with fewer than 3 turbines reporting are treated as missing; gaps up to 6 h are interpolated for the models but never scored).
+
+Five time-series models, one per paradigm, forecast the next 24 h from the measured history only (univariate, no weather-forecast input), on the same protocol as §14.3: chronological 80/20 split, 67 non-overlapping 24 h windows over the test period (2016-10-23 to 2016-12-31), each window using only data from before it, 1593 measured hours scored.
+
+| Model | Library | MAE (m/s) | RMSE (m/s) | Bias (m/s) | R² |
+|---|---|---|---|---|---|
+| **Gradient boosting (direct, 72 h window)** | scikit-learn | 1.52 | 1.92 | +0.02 | 0.30 |
+| LSTM | TensorFlow / Keras | 1.60 | 2.02 | +0.00 | 0.22 |
+| GRU | PyTorch | 1.65 | 2.11 | +0.16 | 0.15 |
+| Persistence (last value) | Naive / baseline | 1.66 | 2.12 | +0.23 | 0.14 |
+| SARIMA (1,1,1)(1,0,0)[24] | statsmodels | 1.66 | 2.13 | +0.23 | 0.13 |
+| Seasonal naive (24 h) | Naive / baseline | 2.09 | 2.62 | -0.00 | -0.32 |
+
+Model settings: SARIMA (1,1,1)(1,0,0)[24] fitted once and updated with the true values between windows (`.append(refit=False)`); gradient boosting is a direct multi-output `HistGradientBoostingRegressor` (100 iterations, depth 4) on 72 h windows; the GRU (PyTorch) and the LSTM (TensorFlow/Keras) both have 32 units, read 72 h windows and are trained on changes relative to the window's last value rather than absolute levels. Persistence and seasonal naive are the baselines every forecast has to beat.
+
+The current wind source, scored against the same measured hours:
+
+| Reference | Kind | MAE (m/s) | RMSE (m/s) | Bias (m/s) | R² |
+|---|---|---|---|---|---|
+| ERA5 100 m, calibrated on training period | Reanalysis + linear calibration | 0.74 | 0.96 | +0.12 | 0.82 |
+| ERA5 reanalysis, 100 m | Reanalysis | 1.35 | 1.65 | +1.13 | 0.48 |
+| ERA5 reanalysis, 10 m (used by this project) | Reanalysis | 2.05 | 2.32 | -2.02 | -0.03 |
+
+What it shows:
+- **24 h ahead, the wind's own history carries little information.** The best model (gradient boosting) beats persistence by about 9%; SARIMA does not beat it at all. The lead-time curve on the dashboard shows why: every model starts near 0.55 m/s error in the first hour and converges to roughly the same level after 6 to 8 hours.
+- **ERA5 at 10 m reads 2.0 m/s below the hub-height wind** (wind shear between 10 m and the ~79 m hub). The production model is not hurt by it, because it learns the mapping from ERA5 to power, but it is a reason to prefer ERA5 at 100 m as the input if the model is retrained.
+- **ERA5 100 m with a simple linear calibration** on the training period (slope 0.778, intercept 0.581 m/s) reaches 0.74 m/s MAE, far below any 24 h forecast from history alone. ERA5 is reanalysis, produced after the fact, so this is not a fair forecast comparison; the point is that beyond a few hours, wind prediction needs weather-model input (as the live 48 h forecast in §14.5 uses), not just the series' own past.
+
+Run it offline (TensorFlow is used only here, so it has its own environment and stays out of the API and jobs images; the API only serves the resulting `dashboard/data/wind_speed_payload.json` at `GET /wind-prediction/wind-speed`):
+
+```bash
+python3 -m venv .venv-tsdemo
+.venv-tsdemo/bin/pip install -r requirements-tsdemo.txt --extra-index-url https://download.pytorch.org/whl/cpu
+.venv-tsdemo/bin/python -m wind_prediction.wind_speed     # ~3 minutes on a laptop CPU
+```
+
+### 14.7 What this doesn't claim
 
 This is a demonstrative breadth showcase, not a second production system, and it doesn't pretend otherwise:
 - One farm, one year, one train/test split - not the multi-farm, multi-year robustness check `forecasting/` gets before being registered.

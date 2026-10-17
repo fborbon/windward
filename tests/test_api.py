@@ -45,6 +45,16 @@ def test_wind_prediction_payload():
         assert "results" in body and "taxonomy" in body
 
 
+def test_wind_speed_payload():
+    # Kelmarsh wind-speed time-series models vs. measured + ERA5 (wind_prediction/wind_speed.py)
+    resp = client.get("/wind-prediction/wind-speed")
+    assert resp.status_code in (200, 404)
+    if resp.status_code == 200:
+        body = resp.json()
+        assert body["forecasts"] and body["references"]
+        assert all(len(r["mae_by_lead_ms"]) == body["meta"]["horizon_h"] for r in body["forecasts"])
+
+
 def test_operational_payload():
     resp = client.get("/operational/kelmarsh")
     assert resp.status_code in (200, 404)

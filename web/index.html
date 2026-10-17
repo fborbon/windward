@@ -912,6 +912,8 @@ function renderWindPrediction(panel, data){
         <div class="chart-wrap"><canvas id="chart-wp-series"></canvas></div>
         <div class="legend" id="wp-legend"></div>
       </div>
+
+      <div class="card" id="ws-card"><div class="skeleton"><span class="spinner"></span> Loading wind-speed models…</div></div>
     </div>
 
     <div>
@@ -959,9 +961,64 @@ function renderWindPrediction(panel, data){
     {height: 260, labelFmt: v => v.toFixed(1), yUnit: "Production (MW)", xUnit: `Time (last ${data.chart_days} days, hourly)`},
   );
 
+  loadWindSpeedModels();
   loadWindPredictionLiveWeather(data.farm_id);
   document.getElementById("wp-live-refresh").addEventListener("click", () => loadWindPredictionLiveWeather(data.farm_id));
   loadWindForecastLog(data.farm_id);
+}
+
+// ---------- Time-series models: Kelmarsh wind speed vs. measured and ERA5 (README §14.6) ----------
+async function loadWindSpeedModels(){
+  const card = document.getElementById("ws-card");
+  if(!card) return;
+  const res = await fetch(`${API}/wind-prediction/wind-speed`);
+  if(!res.ok){ card.innerHTML = `<h2>Time-series models: wind speed</h2><div class="desc">Not available yet (${res.status}).</div>`; return; }
+  const d = await res.json();
+  const all = [...d.forecasts, ...d.references];
+  const ref = d.references[0];
+  card.innerHTML = `
+    <h2>Time-series models: Kelmarsh wind speed</h2>
+    <div class="desc">
+      The wind resource everywhere else in this project is ERA5 reanalysis at 10 m. As a model demonstration,
+      five time-series models forecast the wind itself, 24 h ahead from the measured history only, and are
+      graded against the reference Kelmarsh has: the hub-height anemometers of its 6 turbines
+      (${d.meta.hours_scored} measured hours, ${d.meta.n_windows} windows, ${d.meta.test_period}).
+      ERA5 is listed next to them as the current source; it is reanalysis made after the fact, not a forecast.
+    </div>
+    <table>
+      <thead><tr><th>Model</th><th>Library</th><th class="num">MAE (m/s)</th><th class="num">RMSE</th><th class="num">Bias</th><th class="num">R&sup2;</th></tr></thead>
+      <tbody>
+        ${d.forecasts.map(r => `<tr><td>${r.name}${r.name===d.best_forecast ? ' <span class="pill ok">best forecast</span>' : ''}</td>
+          <td style="color:var(--text-dim);">${r.library || r.family}</td><td class="num">${fmt(r.mae_ms,2)}</td><td class="num">${fmt(r.rmse_ms,2)}</td>
+          <td class="num">${(r.bias_ms>=0?"+":"")+fmt(r.bias_ms,2)}</td><td class="num">${fmt(r.r2,2)}</td></tr>`).join("")}
+        <tr><td colspan="6" style="color:var(--text-dim);padding-top:10px;">Reference: the wind source this project uses</td></tr>
+        ${d.references.map(r => `<tr><td>${r.name}</td><td style="color:var(--text-dim);">${r.family}</td><td class="num">${fmt(r.mae_ms,2)}</td>
+          <td class="num">${fmt(r.rmse_ms,2)}</td><td class="num">${(r.bias_ms>=0?"+":"")+fmt(r.bias_ms,2)}</td><td class="num">${fmt(r.r2,2)}</td></tr>`).join("")}
+      </tbody>
+    </table>
+    <div class="desc" style="margin-top:12px;">Error by forecast lead time: every model is close to persistence in the first hours, the gap opens later.</div>
+    <div class="chart-wrap"><canvas id="chart-ws-lead"></canvas></div>
+    <div class="legend" id="ws-lead-legend"></div>
+    <div class="desc" style="margin-top:12px;">Last 14 days of the test period.</div>
+    <div class="chart-wrap"><canvas id="chart-ws-series"></canvas></div>
+    <div class="legend" id="ws-series-legend"></div>
+    <div class="desc" style="margin-top:8px;">
+      Reading it: ERA5 at 10 m sits ${fmt(Math.abs(d.references.find(r=>r.name.includes("10 m")).bias_ms),1)} m/s below the hub-height wind
+      (wind shear), which the production model absorbs because it learns the mapping from ERA5 to power. A linear
+      calibration of ERA5 100 m on the training period brings it to ${fmt(ref.mae_ms,2)} m/s MAE, well below any
+      24 h forecast from history alone: beyond a few hours, wind needs weather-model input, not just its own past.
+    </div>`;
+  const leadNames = [...d.forecasts.map(r=>r.name).filter(n => n !== "Seasonal naive (24 h)"), ref.name];
+  const leadRows = leadNames.map(n => all.find(r => r.name === n));
+  document.getElementById("ws-lead-legend").innerHTML = leadRows.map((r,i) => `<span><span class="swatch" style="background:${WP_COLORS[i%WP_COLORS.length]}"></span>${r.name}</span>`).join("");
+  drawLineChart(document.getElementById("chart-ws-lead"),
+    leadRows.map((r,i) => ({data: r.mae_by_lead_ms, color: WP_COLORS[i%WP_COLORS.length]})),
+    {height: 220, labelFmt: v => v.toFixed(1), yUnit: "MAE (m/s)", xUnit: "Lead time (1 to 24 h)"});
+  const sNames = Object.keys(d.chart.series);
+  document.getElementById("ws-series-legend").innerHTML = sNames.map((n,i) => `<span><span class="swatch" style="background:${WP_COLORS[i%WP_COLORS.length]}"></span>${n}</span>`).join("");
+  drawLineChart(document.getElementById("chart-ws-series"),
+    sNames.map((n,i) => ({data: d.chart.series[n], color: WP_COLORS[i%WP_COLORS.length]})),
+    {height: 240, labelFmt: v => v.toFixed(0), yUnit: "Wind speed (m/s)", timestamps: d.chart.timestamps});
 }
 
 const WFL_TECHNIQUE_LABELS = {

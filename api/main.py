@@ -23,6 +23,7 @@ app = FastAPI(title="Windward")
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 INSPECTION_PHOTO = Path(__file__).resolve().parent.parent / "data" / "sample_inspection_photos" / "rotorblatt_inspection.jpg"
 WIND_PREDICTION_PAYLOAD = Path(__file__).resolve().parent.parent / "dashboard" / "data" / "wind_prediction_payload.json"
+WIND_SPEED_PAYLOAD = Path(__file__).resolve().parent.parent / "dashboard" / "data" / "wind_speed_payload.json"
 
 _analysis_cache: dict[str, dict] = {}
 _ANALYSIS_TTL_S = 3600  # SCADA history is static 2016 data; just avoids re-running Bedrock calls on every viewer
@@ -63,6 +64,15 @@ def wind_prediction():
     if not WIND_PREDICTION_PAYLOAD.exists():
         raise HTTPException(404, "wind-prediction payload not exported yet - run `python -m wind_prediction.export`")
     return json.loads(WIND_PREDICTION_PAYLOAD.read_text())
+
+
+@app.get("/wind-prediction/wind-speed")
+def wind_prediction_wind_speed():
+    """Kelmarsh wind-speed forecasting with five time-series models vs. the measured wind and ERA5
+    (wind_prediction/wind_speed.py, README §14.6). Precomputed offline, served static."""
+    if not WIND_SPEED_PAYLOAD.exists():
+        raise HTTPException(404, "wind-speed payload not exported yet - run `python -m wind_prediction.wind_speed`")
+    return json.loads(WIND_SPEED_PAYLOAD.read_text())
 
 
 @app.get("/wind-prediction/live-weather")

@@ -1,0 +1,11 @@
+# Offline only: the wind-speed time-series model comparison (wind_prediction/wind_speed.py, README §14.6).
+# Its result is a static JSON payload the API serves, so none of this goes into the API or jobs images.
+# Kept separate because it is the one place TensorFlow/Keras is used (the LSTM), next to PyTorch (the GRU).
+#   python3 -m venv .venv-tsdemo && .venv-tsdemo/bin/pip install -r requirements-tsdemo.txt \
+#     --extra-index-url https://download.pytorch.org/whl/cpu
+pandas==3.0.3
+numpy==2.4.6
+scikit-learn==1.9.0
+statsmodels==0.14.6
+torch==2.12.0
+tensorflow==2.21.0

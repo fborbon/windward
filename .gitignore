@@ -16,3 +16,5 @@ data/wind_forecast_log/
 data/models/
 .ipynb_checkpoints/
 data/operational_cache/
+.venv-tsdemo/
+data/wind_speed_cache/
