@@ -28,6 +28,7 @@
 14. [Wind Prediction: Time-Series Forecasting Showcase](#14-wind-prediction-time-series-forecasting-showcase)
 15. [Operational Assessment (OpenOA)](#15-operational-assessment-openoa)
 16. [Technical Documents: PDF RAG over Datasheets and Tenders](#16-technical-documents-pdf-rag-over-datasheets-and-tenders)
+17. [RAG Evaluation: 15 Questions, Graded and Fixed](#17-rag-evaluation-15-questions-graded-and-fixed)
 
 ---
 
@@ -56,6 +57,7 @@ The split is deliberate: forecasting is a numerical ML problem (best solved with
 | Multimodal | `multimodal/blade_inspection.py` — real vision-LLM pass (Bedrock Nova, Converse API) on a real inspection photo |
 | Semantic Search | `rag/semantic_search.py` — nearest-neighbor search over the real incident corpus |
 | Document intelligence (PDF RAG + structured extraction) | `rag/pdf_sources.py`, `rag/pdf_corpus.py`, `rag/pdf_index_build.py`, `rag/pdf_retriever.py` - real manufacturer and public-tender PDFs, PyMuPDF page extraction, sentence-aware chunking, page-cited answers; `rag/datasheet_specs.py` - LLM spec extraction re-verified against the cited page, cross-checked against the farm registry (§16) |
+| RAG evaluation | `rag_eval/` - a 15-question battery with reference answers taken from the data behind each tool, an automatic grader (right tool, required facts, forbidden contradictions), a written per-answer review, and a before/after dashboard tab (§17) |
 | MLflow | `forecasting/train.py`, `forecasting/export_model.py` — self-hosted tracking server + registry, S3 artifact store; the API itself never imports MLflow, it reads the latest registered model exported to `data/models/` (`forecasting/model_store.py`) |
 | Wind plant operational assessment (NREL/NLR OpenOA) | `operational_assessment/` - electrical losses, Monte Carlo long-term AEP, wake losses, static yaw misalignment, run offline on the full multi-year data (§15); `analysis/qc.py` - OpenOA's SCADA filters ported into the live `diagnose` step |
 | Per-turbine Q&A | `agents/turbine_tools.py` - `get_turbine_details` / `rank_turbines` tools for the `/ask` agent (§15.6) |
@@ -422,6 +424,7 @@ windward/
 ├── data_sources/        # meteo / price / SCADA clients, farm registry, edp_scada.py + dswe_scada.py (§5)
 ├── forecasting/          # feature engineering, training, registry, prediction
 ├── rag/                   # LangChain retriever, embeddings, incident corpus, semantic search, PDF RAG (§16)
+├── rag_eval/               # the /ask agent's 15-question evaluation: battery, runner/grader, review, export (§17)
 ├── multimodal/             # blade inspection vision pipeline (real vision-LLM pass, §7)
 ├── mcp_server/              # MCP tool server
 ├── api/                      # FastAPI service — this is what runs at windward.forwardforecasting.eu
@@ -488,6 +491,8 @@ Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACK
 - [x] **`smooth_power_curve` — AMK kernel regression** (`analysis/efficiency.py`, `dswe` package, MIT license, from Yu Ding's *Data Science for Wind Energy*) — a continuous, non-parametric power curve alongside the existing discrete IEC binning, evaluated at the same bin centers so the two overlay directly. Wired into `diagnose_node` for all three real farms and into the EDP Wind Farm A case-study endpoint/dashboard chart. The rest of the same package was evaluated and NOT used: `ComparePCurve`/`FunGP` (would've upgraded `fit_power_curve_displacement`'s bare least-squares shift with a real significance test) hit a real, reproducible `TypeError` in `_GPMethods.compute_loglike_GP` against current numpy/scipy — confirmed by running both directly against real Kelmarsh data, not just reading the source; `TempGP` ran without crashing but was slow (28s to fit 500 rows) and produced questionable predictions on a quick test, not vetted enough to ship. AMK itself also needed one real fix: its default `bw="dpi"` (data-adaptive plug-in bandwidth) took 5.7s on one specific real turbine (Kelmarsh_1) vs <50ms on every other turbine across all three farms — reproducible in `diagnose_node`'s actual per-turbine loop, not just a one-off. Switched to a fixed 0.5 m/s bandwidth (matching `binned_power_curve`'s own bin width), verified uniformly fast (<50ms/turbine, all three farms) and visually indistinguishable in output from the adaptive one
 - [x] **OpenOA operational assessment** (§15) - NREL/NLR's OpenOA run offline in its own venv on the full multi-year data: electrical losses for all three farms (turbines vs the substation PMU / grid station; the datasets' "Grid Meter" channel rejected as non-physical), Monte Carlo long-term AEP for Kelmarsh/Penmanshiel by both the benchmark's monthly linear method and Bodini et al. 2021's daily GAM with temperature, a one-component-at-a-time uncertainty breakdown against the root-sum-of-squares shortcut (Bodini & Optis 2020), wake losses, and static yaw misalignment with a consistency gate that marks unstable estimates inconclusive. Wake results feed `diagnose` (neighbor-underperformance flags now say whether wake explains the gap) and `recommend` (the lowest-capacity-factor turbine's rationale notes its wake loss). OpenOA's SCADA filters ported into the live diagnosis (`analysis/qc.py`), verified identical to OpenOA's own output
 - [x] **Technical-document PDF RAG** (§16) - real turbine manufacturer documents and public offshore-wind tender/leasing PDFs, page-cited answers, verified datasheet spec extraction cross-checked against the farm registry; `search_technical_documents` in "Ask the agent", `query_technical_documents` on the MCP server
+- [x] **RAG evaluation** (§17) - 15 test questions across every tool, graded before and after; fixes for every failure found (farm facts from the dataset metadata and full SCADA history, whole-page PDF reading, citation re-checking, ranking notes, answer cleaning). Own dashboard tab. Correct answers 5/15 -> 14/15 on the review, Nova Lite kept after a model comparison
+- [ ] The EnergyUp answer still drops the upgrade sheet's scope note (Bachmann controller only), the one answer the fixes didn't reach (§17.3)
 - [ ] Senvion MM82/MM92 original datasheets and the Kelmarsh/Penmanshiel planning Environmental Statements: not publicly hosted (§16.4)
 - [x] **Per-turbine questions in "Ask the agent"** and on the **MCP server** (§15.6) - `get_turbine_details` and `rank_turbines` tools: best/worst turbine by any of seven metrics, last maintenance stop and forced-outage history from the real status logs, wake loss and yaw per turbine
 - [x] **DSWE Inland-Offshore Wind Farm Dataset1** — a fifth, non-`FARMS` example (six real turbines, three real on-site met masts, Zenodo 10.5281/zenodo.5516552, CC BY 4.0, from *Data Science for Wind Energy* Ch. 5), same diagnosis/RAG-only reasoning as EDP Wind Farm A (§5) but adding a real **Measure-Correlate-Predict** ratio (`analysis.efficiency.measure_correlate_predict`) against live Open-Meteo ERA5 at a caller-chosen reference location — the dataset has real turbine+mast data and a real documented date range, but no per-row timestamps and no disclosed coordinates, so a ratio-of-means MCP (not full timestamp-paired regression) is what the data actually supports. Own loader, RAG corpus/retriever, `/dswe/*` routes, dashboard tab with an editable reference-location control. Verified live against real ERA5: switching the reference point from the illustrative default (Texas Panhandle) to New York moves WT1's ratio from 1.62× to 2.51×, demonstrating rather than hiding how much the choice of reference matters
@@ -509,7 +514,9 @@ Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACK
 | **Data** | Open-Meteo ERA5/CERRA reanalysis for OpenOA | $0 - free archive API, fetched once and cached locally |
 | **AI services** | `/ask` per-turbine tools (§15.6) | No new model calls: the same Nova Lite tool-calling loop, two more tools whose results are computed locally; at most one or two extra round trips per question, well under a cent a month at current volume |
 | **AI services** | Technical-document PDF index (§16): Titan embeddings of 416 chunks (~430K characters, ~110K tokens) + one Nova Lite spec-extraction call | ~$0.002 per rebuild, and a rebuild only happens when the PDF list or chunking changes (an unchanged deploy is a no-op) |
-| **AI services** | `search_technical_documents` per question (§16) | One Titan query embedding + one Nova Lite call over ~6K characters of passages: ~$0.0002 per question |
+| **AI services** | `search_technical_documents` per question (§16, §17) | One Titan query embedding + one Nova Lite call over 20-26K characters (the farm's manufacturer documents in full plus up to four whole matching pages, ~6-7K tokens): ~$0.0005 per question, up from ~$0.0002 with 5 bare chunks |
+| **AI services** | RAG evaluation run (§17) | 15 questions, one to three Nova Lite tool rounds each: ~$0.005 per run against Nova Lite, run by hand when the agent changes (a Nova 2 Lite comparison run cost ~$0.02) |
+| **Compute** | Farm facts export (`data_sources/farm_facts.py`, §17) | $0 - a few seconds offline over the cached SCADA; the API reads an 8KB JSON |
 | **Storage** | PDFs (~20MB) + their FAISS index (~2MB) | $0 - local disk on the EC2 (`data/pdfs/`, `data/pdf_index/`, both gitignored) |
 | **AI services** | DynamoDB `windward-agent-sessions` (on-demand billing) | $0 — within the AWS always-free tier (25GB + 25 RCU/WCU) at this scale |
 
@@ -798,3 +805,73 @@ The 82 in the model name is rounded; the datasheet's 82.4 m is the real rotor. S
 - **No original Senvion datasheets.** Senvion went insolvent in 2019 and its MM82/MM92 datasheets are no longer hosted anywhere official; Siemens Gamesa's uprate sheet is the only manufacturer document found. That sheet is an upgrade offer, not a specification, so it is never used for the cross-check.
 - **No planning documents for the three farms.** Kelmarsh's 2010 Environmental Statement (Daventry ref. DA/2010/0100) is catalogued by the county's historic environment record but not published online. Penmanshiel's application sits behind Scottish Borders' interactive planning portal, and no Hill of Towie repowering application was found.
 - **Not indexed:** RVO's Borssele Sites III and IV description (its download link is broken on RVO's side: the storage server rejects the signed redirect) and the 2015 Borssele v2 description (superseded by v3, already indexed).
+
+## 17. RAG Evaluation: 15 Questions, Graded and Fixed
+
+"Ask the agent" has seven tools over five kinds of source (SCADA history, manufacturer and tender PDFs, OpenOA results, the status logs, the fault-log RAG). A demo question per tool shows that each one runs, not that the answers are right. This section is a test battery: 15 questions, at least one per tool, each with a reference answer taken from the data behind the tool, never from the agent. Every answer was graded, its failures were traced to a cause, and each cause was fixed. The **RAG Evaluation** dashboard tab shows each question with its answer now, the reference, the answer before the fixes, and the fix.
+
+**The model.** Every answer is written by **Amazon Nova Lite** (`eu.amazon.nova-lite-v1:0`) through LiteLLM on Amazon Bedrock (eu-west-1). It routes the question to the tools, writes the tool-level answers over retrieved passages, and writes the final reply. Retrieval embeds with Amazon Titan Text Embeddings v2.
+
+### 17.1 How it's graded
+
+```mermaid
+flowchart LR
+    Q[rag_eval/questions.py<br/>question + reference + required facts] --> RUN[rag_eval/run.py]
+    RUN -->|live| LIVE[/analysis/farm/ask<br/>on the deployment/]
+    RUN -->|--local| LOC[this checkout's agent,<br/>fed the live /analysis payload]
+    LIVE --> G[automatic grade:<br/>right tool, every fact, no forbidden claim]
+    LOC --> G
+    G --> REV[rag_eval/review.py<br/>verdict + diagnosis + fix, by reading each answer]
+    REV --> EXP[rag_eval/export.py] --> TAB[RAG Evaluation tab<br/>GET /rag-eval]
+```
+
+- **Automatic grade** (`rag_eval/run.py`). An answer passes if it used a tool that can answer the question, contains every required fact (regexes such as `12[.,]36\s*MW`), and contains no forbidden claim. Forbidden claims were added after q15's "does not exceed the Betz limit" passed on its required facts alone.
+- **Review** (`rag_eval/review.py`). Each answer is read against the reference and given a verdict: correct, partial, wrong or refused. The tab shows these verdicts, not the regex grade. The regex grade was wrong twice on the baseline: it failed q05's correct 7.778% on an over-strict pattern, and it passed q15's impossible Cp claim. It was also wrong once against the evaluator's own reference: q08's reference named Kelmarsh 2, but the data says Kelmarsh 4, so the reference was fixed rather than the answer.
+- **`--local`** runs this checkout's agent against the deployment's `/analysis` payload, so a fix is measured before it ships. The forecasting model lives only on the server; the analysis payload is the same input production uses.
+
+### 17.2 Results
+
+| | Correct | Partial | Wrong or refused | Automatic pass |
+|---|---|---|---|---|
+| Before (live, 2026-10-18) | 5 | 4 | 6 | 8/15 |
+| After (live, 2026-10-18) | 14 | 1 | 0 | 14/15 |
+
+| # | Question (farm) | Before | After | What was wrong, and the fix |
+|---|---|---|---|---|
+| 1 | What is the maximum historical power production of the wind farm? (Kelmarsh) | wrong | correct | Answered 3.007 MW from the 2016 window; no tool held the SCADA history. New `get_farm_facts`: 12.36 MW on 2018-01-04. |
+| 2 | How many different hub heights, rotor sizes and turbulence categories does the turbine manufacturer offer for this model? (Hill of Towie) | refused | correct | Spec table (p.6) never retrieved. Manufacturer documents read whole: 80 m or site-specific, one 82.4 m rotor, IEC IA. |
+| 3 | When was the wind farm built and when will it be decommissioned? (Kelmarsh) | refused | correct | Refused; the date was in the dataset metadata. `get_farm_facts`: 15 Apr 2016, no decommissioning date in any source. |
+| 4 | Which is the best and which is the worst performing turbine? (Penmanshiel) | correct | correct | Correct: Penmanshiel_13 best, Penmanshiel_07 worst by capacity factor. |
+| 5 | What is the global wake effect in % of the annual energy yield? (Kelmarsh) | correct | correct | Correct (7.778%); the grader's pattern was wrong. Now says "long-term" instead of `lt_pct`. |
+| 6 | At what wind speed does the turbine shut down, and what kind of gearbox does it have? (Hill of Towie) | partial | correct | Right but uncited and padded. Verified page citations re-attached. |
+| 7 | What are the long-term P50 and P90 annual energy production estimates? (Penmanshiel) | partial | correct | Quoted the second (daily GAM) method. Headline method named: P50 76.3, P90 74.8 GWh. |
+| 8 | Which turbine has the largest static yaw misalignment, and how large is it? (Kelmarsh) | wrong | correct | Named Kelmarsh 1: all estimates inconclusive, ranking empty. Now Kelmarsh 4, 18.47 deg, flagged unreliable. |
+| 9 | Which turbine had the most forced-outage hours, and what were the main causes? (Penmanshiel) | correct | correct | Correct at baseline; later runs invented causes after a parallel tool call. Ranking now carries the top turbine's log. |
+| 10 | What were the longest downtime events and what caused them? (Kelmarsh) | correct | correct | Correct; a missing IEC category no longer prints as "nan". |
+| 11 | Does the rotor diameter Windward uses match the manufacturer's datasheet? (Hill of Towie) | correct | correct | Correct: 82.4 m datasheet vs 82.0 m configured. |
+| 12 | What upgrade does the manufacturer offer to raise this turbine's energy output, and by how much? (Kelmarsh) | partial | partial | Right figures, uncited, drops the Bachmann-controller scope. Now cited; scope note still dropped. |
+| 13 | What does an applicant have to submit in the ScotWind leasing round? (Hill of Towie) | partial | correct | Leaked `</thinking>`; later padded items, once empty. Tags stripped, no-padding rule, retry. Cites p.1-5 loosely. |
+| 14 | What water depths and mean wind speed were reported for the Hollandse Kust (zuid) tender sites? (Penmanshiel) | refused | correct | Refused with the depth passage in context; wind speed one chunk away; then cited printed page 20. Whole pages + citation check: p.14, p.21. |
+| 15 | How close does the best turbine get to the Betz limit? (Hill of Towie) | wrong | correct | "Closest to Betz" for Cp 0.5995, above it. Now flagged as impossible, an anemometer artifact. |
+
+### 17.3 What the failures had in common
+
+- **Missing sources, not bad retrieval** (q01, q03). "When was it built?" and "what's its highest output?" had answers in data the project already had: the dataset's turbine metadata and the multi-year SCADA behind OpenOA. No tool read them. `data_sources/farm_facts.py` exports commissioning dates, hub heights per turbine (Kelmarsh's are mixed: 68.5 m and 78.5 m) and production records to an 8KB JSON, behind a new `get_farm_facts` tool.
+- **The answer was one chunk away** (q02, q14). With 1,200-character chunks, the sentence that answers a question often sits in a neighbouring chunk: the Hollandse Kust (zuid) mean wind speed is two chunks after the passage about how it was measured. Chunks now only find the page, and the whole page is read. The farm's own manufacturer documents (8 pages for Hill of Towie) are always read in full, because spec questions match the brochure's prose while the answer sits in its spec table.
+- **Citations that look right** (q14). Nova cited the page number printed in the RVO document's running header (20), not the PDF page (14). `check_citations` re-checks every `p.N` the way §16.3 checks extracted specs: the numbers in the cited sentence must be printed on that page, or the citation moves to the page in the context where they are. The agent's shorter rewrite also often dropped the tool's citations. The verified ones are now put back.
+- **A tool's shape misleads** (q08, q09, q15). An empty ranking, because every Kelmarsh yaw estimate is inconclusive, led the agent to name a turbine from elsewhere. A parallel tool call asked for "the turbine with the most outages" before the ranking had named it, and the agent then invented the causes. An unsorted list was misread. A Cp above Betz was reported as a success. Each tool now returns what the question needs, ready-made, with a note: inconclusive estimates kept and labeled, the top turbine's status log inside the outage ranking, the analysis extremes precomputed, and a peak Cp above 0.593 flagged as a measurement artifact.
+- **Output hygiene** (q13 and others). Leaked `<thinking>` text, citations formatted as broken markdown links, internal field names (`lt_pct`), and, once, an empty reply. These are now stripped or unwrapped, and an empty reply gets one retry. The answer loop runs at temperature 0, so a re-run tests the fix rather than chance.
+- **Still failing: q12.** The EnergyUp sheet says the upgrade only applies to turbines with a Bachmann controller. Nova Lite drops that note even with an explicit prompt rule. It's reported here rather than prompt-hacked into passing.
+
+### 17.4 Would a newer model have fixed it?
+
+Before the citation and parallel-call fixes, the same battery and code were run with two Bedrock models (automatic grade):
+
+| Model | Passed |
+|---|---|
+| Amazon Nova Lite (`eu.amazon.nova-lite-v1:0`) | 11/15 |
+| Amazon Nova 2 Lite (`eu.amazon.nova-2-lite-v1:0`) | 10/15 |
+
+Nova 2 Lite was no better here: it dropped the PDF citations as well, and wrote "turbine 4" without the farm name. It also costs about 5x more per input token and 10x more per output token. The failures were in what the tools returned and how the pages were read, so that is where the fixes went, and the cheaper model stayed. Nova Pro, tested on the two PDF refusals alone, refused one of them for a different reason: it read "never present tender documents as facts about this farm" as a ban on answering.
+
+Re-run with `python -m rag_eval.run --label final` after an agent change, then `python -m rag_eval.export`.

@@ -48,4 +48,13 @@ litellm.completion(
     mock_response="ok",
     aws_region_name="eu-west-1",
 )
-print(f"slim image OK: {len(MODULES)} modules imported, mocked tool call completed")
+# .dockerignore excludes dashboard/data/ except listed payloads: on 2026-10-18 a new payload
+# wasn't listed, and get_farm_facts answered "no farm facts exported" in production only.
+from pathlib import Path  # noqa: E402
+
+DASHBOARD_DATA = Path(__file__).resolve().parent.parent / "dashboard" / "data"
+PAYLOADS = ("wind_prediction_payload.json", "wind_speed_payload.json", "operational_payload.json",
+            "farm_facts_payload.json", "rag_eval_payload.json")
+missing = [p for p in PAYLOADS if not (DASHBOARD_DATA / p).exists()]
+assert not missing, f"payloads missing from the image (add them to .dockerignore's ! list): {missing}"
+print(f"slim image OK: {len(MODULES)} modules imported, mocked tool call completed, {len(PAYLOADS)} payloads present")

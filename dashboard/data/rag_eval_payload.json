@@ -6,7 +6,7 @@
   "embeddings": "Amazon Titan Text Embeddings v2"
  },
  "baseline_run_at": "2026-10-18T13:29:23Z",
- "final_run_at": null,
+ "final_run_at": "2026-10-18T14:16:14Z",
  "verdicts": {
   "baseline": {
    "wrong": 3,
@@ -14,11 +14,14 @@
    "correct": 5,
    "partial": 4
   },
-  "final": {}
+  "final": {
+   "correct": 14,
+   "partial": 1
+  }
  },
  "auto_pass": {
   "baseline": 8,
-  "final": 0
+  "final": 14
  },
  "model_comparison": [
   {
@@ -53,11 +56,13 @@
     "verdict": "wrong"
    },
    "final": {
-    "answer": null,
-    "sources": null,
-    "pass": null,
-    "latency_s": null,
-    "verdict": null
+    "answer": "The maximum historical power production of the wind farm was 12.36 MW, recorded on January 4, 2018, at 17:40.",
+    "sources": [
+     "farm-facts"
+    ],
+    "pass": true,
+    "latency_s": 38.0,
+    "verdict": "correct"
    },
    "diagnosis": "Answered 3.007 MW, a value from the 2016 analysis window: no tool held the multi-year SCADA history.",
    "fix": "New get_farm_facts tool: production records over the full 2016-2021 SCADA, exported to a small JSON (data_sources/farm_facts.py)."
@@ -80,11 +85,13 @@
     "verdict": "refused"
    },
    "final": {
-    "answer": null,
-    "sources": null,
-    "pass": null,
-    "latency_s": null,
-    "verdict": null
+    "answer": "The turbine manufacturer offers the following for the Siemens SWT-2.3-VS-82 model:\n\n- 2 different hub heights (80 m or site-specific)\n- 1 rotor size (82.4 m)\n- 1 turbulence category (IA)\n\nDocuments: Siemens Wind Turbine SWT-2.3-82 VS - Built on experience (technical specifications): https://media.mwps.world/static/2025/04/siemens_wind_turbine_swt-2.3-82_technical_specifications.pdf\n\nSources: Siemens Wind Turbine SWT-2.3-82 VS - Built on experience (technical specifications), p.6, p.4",
+    "sources": [
+     "technical-docs"
+    ],
+    "pass": true,
+    "latency_s": 49.2,
+    "verdict": "correct"
    },
    "diagnosis": "Retrieval matched the brochure's prose pages; the spec table (p.6) with the hub height never reached the model.",
    "fix": "The farm's own manufacturer documents are read whole (8 pages), plus prompt rules for 'which options' questions and the IEC class letter."
@@ -107,11 +114,13 @@
     "verdict": "refused"
    },
    "final": {
-    "answer": null,
-    "sources": null,
-    "pass": null,
-    "latency_s": null,
-    "verdict": null
+    "answer": "The wind farm was built and started commercial operations on April 15, 2016. There is no information available about when the wind farm will be decommissioned.",
+    "sources": [
+     "farm-facts"
+    ],
+    "pass": true,
+    "latency_s": 1.5,
+    "verdict": "correct"
    },
    "diagnosis": "Said it couldn't know; the commissioning date was in the dataset's own turbine metadata, which no tool read.",
    "fix": "get_farm_facts returns the commercial operations date and says plainly that no source has a decommissioning date."
@@ -135,11 +144,13 @@
     "verdict": "correct"
    },
    "final": {
-    "answer": null,
-    "sources": null,
-    "pass": null,
-    "latency_s": null,
-    "verdict": null
+    "answer": "The best performing turbine is Penmanshiel_13 with a capacity factor of 0.3161, and the worst performing turbine is Penmanshiel_07 with a capacity factor of 0.2163.",
+    "sources": [
+     "turbine-ranking"
+    ],
+    "pass": true,
+    "latency_s": 41.0,
+    "verdict": "correct"
    },
    "diagnosis": "rank_turbines by capacity factor, quoted exactly.",
    "fix": null
@@ -162,11 +173,13 @@
     "verdict": "correct"
    },
    "final": {
-    "answer": null,
-    "sources": null,
-    "pass": null,
-    "latency_s": null,
-    "verdict": null
+    "answer": "The global wake effect in % of the annual energy yield is 7.778% (long-term).",
+    "sources": [
+     "operational-assessment"
+    ],
+    "pass": true,
+    "latency_s": 1.4,
+    "verdict": "correct"
    },
    "diagnosis": "7.778% long-term corrected is right. The automatic grade failed it: the evaluator's pattern was wrong, not the answer.",
    "fix": "Grader pattern corrected. Later runs also said what lt_pct means instead of printing the field name."
@@ -190,11 +203,13 @@
     "verdict": "partial"
    },
    "final": {
-    "answer": null,
-    "sources": null,
-    "pass": null,
-    "latency_s": null,
-    "verdict": null
+    "answer": "The turbine shuts down at a wind speed of 25 m/s. It has a custom-built, three-stage planetary-helical gearbox.\n\nSources: Siemens Wind Turbine SWT-2.3-82 VS - Built on experience (technical specifications), p.6, p.4",
+    "sources": [
+     "technical-docs"
+    ],
+    "pass": true,
+    "latency_s": 2.1,
+    "verdict": "correct"
    },
    "diagnosis": "Right values, but no page citation and padded with 'in line with standard practices'.",
    "fix": "The tool's verified page citations are re-attached when the agent's rewrite drops them."
@@ -217,11 +232,13 @@
     "verdict": "partial"
    },
    "final": {
-    "answer": null,
-    "sources": null,
-    "pass": null,
-    "latency_s": null,
-    "verdict": null
+    "answer": "The long-term P50 annual energy production estimate is 76.326 GWh and the P90 estimate is 74.761 GWh.",
+    "sources": [
+     "operational-assessment"
+    ],
+    "pass": true,
+    "latency_s": 1.2,
+    "verdict": "correct"
    },
    "diagnosis": "Quoted the daily GAM method's P50/P90 (76.6/75.7 GWh) without saying it's the second of two methods.",
    "fix": "The OpenOA summary now names the headline method (monthly linear, P50 76.3 / P90 74.8 GWh)."
@@ -247,11 +264,14 @@
     "verdict": "wrong"
    },
    "final": {
-    "answer": null,
-    "sources": null,
-    "pass": null,
-    "latency_s": null,
-    "verdict": null
+    "answer": "The turbine with the largest static yaw misalignment is Kelmarsh_4, with an estimated misalignment of 18.47 degrees. However, this estimate is inconclusive due to disagreements in OpenOA's per-wind-speed-bin estimates. The confidence interval for the misalignment is between 15.43 and 29.67 degrees.",
+    "sources": [
+     "turbine-ranking",
+     "turbine-details"
+    ],
+    "pass": true,
+    "latency_s": 2.3,
+    "verdict": "correct"
    },
    "diagnosis": "Named Kelmarsh 1. Every Kelmarsh yaw estimate is inconclusive, so the ranking dropped them all and came back empty.",
    "fix": "The ranking keeps inconclusive estimates, labeled and listed after conclusive ones. Kelmarsh 4 (18.47 deg) is the largest, and is unreliable."
@@ -276,11 +296,15 @@
     "verdict": "correct"
    },
    "final": {
-    "answer": null,
-    "sources": null,
-    "pass": null,
-    "latency_s": null,
-    "verdict": null
+    "answer": "The turbine with the most forced-outage hours is Penmanshiel_11 with 726.5 hours. The main causes of forced outages for this turbine were \"Emergency stop base box\" with 716.2 hours, \"Externally stopped\" with 3.7 hours, and \"Repeating error BP52\" with 2.7 hours. However, the specific cause of the \"Emergency stop base box\" forced outage is not detailed in the available context.",
+    "sources": [
+     "turbine-ranking",
+     "turbine-details",
+     "maintenance-docs"
+    ],
+    "pass": true,
+    "latency_s": 3.9,
+    "verdict": "correct"
    },
    "diagnosis": "Correct at baseline, but later runs showed the agent requesting the turbine's details in the same parallel tool call as the ranking, before it knew the turbine, and then inventing the causes.",
    "fix": "A ranking by outage hours now carries the top turbine's status log, and the agent is told never to fill a failed tool call."
@@ -303,11 +327,13 @@
     "verdict": "correct"
    },
    "final": {
-    "answer": null,
-    "sources": null,
-    "pass": null,
-    "latency_s": null,
-    "verdict": null
+    "answer": "The longest downtime events at Kelmarsh Wind Farm were:\n\n1. **Kelmarsh 1** with event code 2125 — Timeout brake closed. It started on 2016-12-17 at 16:38 and lasted for 548.2 hours.\n2. **Kelmarsh 2** with event code 2125 — Timeout brake closed. It started on 2016-01-25 at 16:40 and lasted for 167.1 hours.\n\nThe causes of these events were related to a \"Timeout brake closed,\" which is classified as unclassified under the IEC category in both cases.",
+    "sources": [
+     "maintenance-docs"
+    ],
+    "pass": true,
+    "latency_s": 3.5,
+    "verdict": "correct"
    },
    "diagnosis": "Longest stops from the real status log, cited by event.",
    "fix": "A missing IEC category no longer prints as 'nan'."
@@ -330,11 +356,13 @@
     "verdict": "correct"
    },
    "final": {
-    "answer": null,
-    "sources": null,
-    "pass": null,
-    "latency_s": null,
-    "verdict": null
+    "answer": "The rotor diameter Windward uses does not match the manufacturer's datasheet. The datasheet specifies a rotor diameter of 82.4 meters, while Windward's configuration uses 82 meters (Siemens Wind Turbine SWT-2.3-82 VS - Built on experience (technical specifications), p.6).",
+    "sources": [
+     "technical-docs"
+    ],
+    "pass": true,
+    "latency_s": 2.9,
+    "verdict": "correct"
    },
    "diagnosis": "82.4 m datasheet vs 82.0 m configured, from the verified cross-check.",
    "fix": null
@@ -358,11 +386,13 @@
     "verdict": "partial"
    },
    "final": {
-    "answer": null,
-    "sources": null,
-    "pass": null,
-    "latency_s": null,
-    "verdict": null
+    "answer": "The manufacturer offers an upgrade called \"EnergyUp Full Power Curve Advanced\" for the Senvion MM92 turbine model. This upgrade increases the Annual Energy Production (AEP) by up to 5% (EnergyUp Full Power Curve Advanced - Senvion technology (MM82, MM92, MM100 upgrade), p.1). The power output is increased to 2.2 MW for the MM82 and MM92 (50 Hz market) (EnergyUp Full Power Curve Advanced - Senvion technology (MM82, MM92, MM100 upgrade), p.1).",
+    "sources": [
+     "technical-docs"
+    ],
+    "pass": false,
+    "latency_s": 3.0,
+    "verdict": "partial"
    },
    "diagnosis": "Right upgrade, 2.2 MW and up to 5%, but uncited, and it drops the sheet's scope note (only turbines with a Bachmann controller).",
    "fix": "Citations now kept. The scope note is still dropped despite an explicit prompt rule: a remaining Nova Lite failure."
@@ -385,14 +415,16 @@
     "verdict": "partial"
    },
    "final": {
-    "answer": null,
-    "sources": null,
-    "pass": null,
-    "latency_s": null,
-    "verdict": null
+    "answer": "An applicant has to submit the following in the ScotWind leasing round:\n\n- Project concept\n- Project delivery plan\n- Capability and experience\n- Development budget\n- Developer financial resources\n- Commitment to the project and preparedness\n\nAdditionally, the applicant is likely to be asked to provide the following documents:\n\n- Detailed development budget\n- Documentary evidence of nearby windfarm tenants' consent if applicable\n- Information about all organizations responsible for any part of the project funding\n- Statements of Commitment from the Lead and Sole Applicant, or from the Lead Applicant and all Project Partners, at Board level or equivalent\n\n(ScotWind Leasing - April 2019 update (working draft), p.1-5)",
+    "sources": [
+     "technical-docs"
+    ],
+    "pass": true,
+    "latency_s": 2.9,
+    "verdict": "correct"
    },
    "diagnosis": "Right six areas, but leaked a '</thinking>' tag and a sentence of planning. Later runs also padded each item with invented explanations, or returned an empty answer.",
-   "fix": "Reasoning tags stripped, a rule against explanations the page doesn't give, and one retry on an empty reply."
+   "fix": "Reasoning tags stripped, a rule against explanations the page doesn't give, and one retry on an empty reply. The final answer cites the whole document (p.1-5) where p.2 and p.4 would be exact."
   },
   {
    "id": "q14",
@@ -412,11 +444,13 @@
     "verdict": "refused"
    },
    "final": {
-    "answer": null,
-    "sources": null,
-    "pass": null,
-    "latency_s": null,
-    "verdict": null
+    "answer": "The water depths for the Hollandse Kust (zuid) tender sites were reported as ranging from 18.1 m to 27.9 m bLAT (below Lowest Astronomical Tide) for Site I and 18.8 m to 26.6 m bLAT for Site II (Hollandse Kust (zuid) Wind Farm Sites I and II - Project and Site Description, p.14). The mean wind speed at 100 m MSL (Mean Sea Level) at the center of the Hollandse Kust (zuid) Wind Farm Zone was reported as 9.44 ± 0.38 m/s (± standard deviation) (Hollandse Kust (zuid) Wind Farm Sites I and II - Project and Site Description, p.21).",
+    "sources": [
+     "technical-docs"
+    ],
+    "pass": true,
+    "latency_s": 3.3,
+    "verdict": "correct"
    },
    "diagnosis": "The depth passage was retrieved and Nova still refused. The 9.44 m/s sentence sat in the chunk next to the one that matched. Once answered, it cited the depths' printed page number (20), not the PDF page (14).",
    "fix": "Chunks find the page, then the whole page is read. A prompt rewording stops tender questions being refused, and every p.N citation is re-checked against the cited page's numbers and corrected."
@@ -440,11 +474,13 @@
     "verdict": "wrong"
    },
    "final": {
-    "answer": null,
-    "sources": null,
-    "pass": null,
-    "latency_s": null,
-    "verdict": null
+    "answer": "The best turbine, HillOfTowie_18, reaches a peak power coefficient (Cp) of 0.599, which is slightly over the Betz limit of 0.593. This is an anomaly, as it is physically impossible for a turbine to exceed the Betz limit. The over-Betz reading is likely due to a nacelle anemometer bias, as indicated in the anomalies report.",
+    "sources": [
+     "current-analysis"
+    ],
+    "pass": true,
+    "latency_s": 1.7,
+    "verdict": "correct"
    },
    "diagnosis": "Called HillOfTowie_18 'closest to the Betz limit' with Cp 0.5995, which is above it: a physically impossible value presented as a success. Later runs named the second-highest turbine from the unsorted list.",
    "fix": "Tools now flag a peak Cp above 0.593 as a measurement artifact (nacelle anemometer bias), and the analysis tool returns its extremes ready-made."
