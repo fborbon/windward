@@ -133,6 +133,10 @@ def test_crosscheck_compares_only_verified_fields(tmp_path, monkeypatch):
     check = datasheet_specs.crosscheck(FARMS["hill_of_towie"])
     by_field = {c["field"]: c for c in check["checks"]}
     assert by_field["rated_power_kw"]["status"] == "match"
+    assert by_field["rotor_diameter_m"]["status"] == "match"  # farms.py corrected to the datasheet's 82.4 m
+
+    rounded = replace(FARMS["hill_of_towie"], rotor_diameter_m=82.0)  # the dataset metadata's value
+    by_field = {c["field"]: c for c in datasheet_specs.crosscheck(rounded)["checks"]}
     assert by_field["rotor_diameter_m"] == {
         "field": "rotor_diameter_m", "datasheet": 82.4, "configured": 82.0, "page": 6, "status": "differs",
     }

@@ -58,6 +58,7 @@
   .tab .name{color:var(--text); font-weight:600;}
   .tab .meta{font-size:12px; color:var(--text-faint);}
   .tab.active{border-color:var(--gold); background:var(--surface2);}
+  .tab-divider{flex-basis:100%; height:1px; background:var(--border); margin:2px 0;}
   .tab.active .name{color:var(--gold);}
   .tab:hover{border-color:var(--gold-dim);}
 
@@ -474,6 +475,7 @@ async function loadFarms(){
       <span class="name">DSWE Inland-Offshore</span>
       <span class="meta">6 turbines · met-mast MCP</span>
     </div>` + `
+    <div class="tab-divider" role="separator"></div>
     <div class="tab" data-farm="${WIND_PREDICTION_TAB_ID}">
       <span class="name">Wind Prediction</span>
       <span class="meta">naive → foundation models</span>

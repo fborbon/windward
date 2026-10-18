@@ -68,7 +68,10 @@ HILL_OF_TOWIE_FARM = Farm(
     bidding_zone_eic="10YGB----------A",
     turbine_ids=[f"HillOfTowie_{i:02d}" for i in range(1, 22)],
     rated_power_kw=2300.0,
-    rotor_diameter_m=82.0,
+    # The manufacturer's datasheet says 82.4 m (rag/datasheet_specs.py, README §16.3); the dataset's
+    # metadata CSV rounds it to the model name's 82. Swept area goes with the diameter squared, so
+    # 82.0 overstated every Hill of Towie Cp by about 1%.
+    rotor_diameter_m=82.4,
     manufacturer_model="Siemens SWT-2.3-VS-82",
     scada_zips=[DATA_DIR / "hill_of_towie" / "2024.zip"],
     source_doi="10.5281/zenodo.14870023",

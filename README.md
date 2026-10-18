@@ -796,9 +796,9 @@ The verified values are then compared with the turbine specs hand-coded in `data
 | Field | Datasheet (p.6) | `farms.py` | Status |
 |---|---|---|---|
 | Rated power | 2,300 kW | 2,300 kW | match |
-| Rotor diameter | 82.4 m | 82.0 m | differs |
+| Rotor diameter | 82.4 m | 82.4 m (was 82.0 m until 2026-10-18) | match |
 
-The 82 in the model name is rounded; the datasheet's 82.4 m is the real rotor. Swept area, and therefore every Cp computed for Hill of Towie in §4.1, scales with the diameter squared, so the configured value overstates Cp by about 1%. It's reported here and through the agent rather than silently changed, because changing it shifts every published Hill of Towie efficiency figure.
+The 82 in the model name is rounded, and so is the dataset's own metadata CSV; the datasheet's 82.4 m is the real rotor. Swept area, and therefore every Cp computed for Hill of Towie in §4.1, scales with the diameter squared, so the old 82.0 m overstated every Hill of Towie Cp by about 1% ((82.4/82.0)² = 1.0098). The cross-check found it; `farms.py` now uses 82.4 m, and Hill of Towie's Cp figures dropped by that 1%.
 
 ### 16.4 Gaps, stated plainly
 
