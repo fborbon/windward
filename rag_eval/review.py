@@ -61,10 +61,12 @@ REVIEW = {
         "fix": "Citations now kept. The scope note is still dropped despite an explicit prompt rule: a remaining Nova Lite failure.",
     },
     "q13": {
-        "baseline": "partial", "final": "correct",
+        "baseline": "partial", "final": "partial",
         "diagnosis": "Right six areas, but leaked a '</thinking>' tag and a sentence of planning. Later runs also padded each item with invented explanations, or returned an empty answer.",
         "fix": "Reasoning tags stripped, a rule against explanations the page doesn't give, and one retry on an empty reply. "
-               "The final answer cites the whole document (p.1-5) where p.2 and p.4 would be exact.",
+               "It held on one final run, but the re-run after set 2 padded the six areas again ('A clear and detailed "
+               "description of the proposed project...'): the padding comes from the tool's own answer, and the "
+               "no-padding rule doesn't hold reliably on Nova Lite.",
     },
     "q14": {
         "baseline": "refused", "final": "correct",
@@ -78,63 +80,63 @@ REVIEW = {
     },
 
     # ---- set 2: new questions, asked after set 1's fixes ----
-    "q16": {"baseline": "correct", "diagnosis": "Best day 2024-02-02, 1,057.9 MWh, from farm facts.", "fix": None},
+    "q16": {"baseline": "correct", "final": "correct", "diagnosis": "Best day 2024-02-02, 1,057.9 MWh, from farm facts.", "fix": None},
     "q17": {
-        "baseline": "wrong",
+        "baseline": "wrong", "final": "correct",
         "diagnosis": "Named 2020 (80.79 GWh). The best full year is 2017 (84.83 GWh); the agent misread the year list.",
         "fix": "Farm facts now give the best full calendar year ready-made (years under 95% SCADA coverage excluded).",
     },
-    "q18": {"baseline": "correct", "diagnosis": "Kelmarsh 3 and 6 at 68.5 m, the rest at 78.5 m.", "fix": None},
+    "q18": {"baseline": "correct", "final": "correct", "diagnosis": "Kelmarsh 3 and 6 at 68.5 m, the rest at 78.5 m.", "fix": None},
     "q19": {
-        "baseline": "refused",
+        "baseline": "refused", "final": "correct",
         "diagnosis": "Sent to the fault-log RAG, which has nothing on AeroUp, then refused. The dates were in farm facts.",
         "fix": "The routing prompt names upgrades (AeroUp) as a farm-facts question.",
     },
-    "q20": {"baseline": "correct", "diagnosis": "0.859% mean electrical loss, from OpenOA.", "fix": None},
+    "q20": {"baseline": "correct", "final": "correct", "diagnosis": "0.859% mean electrical loss, from OpenOA.", "fix": None},
     "q21": {
-        "baseline": "partial",
+        "baseline": "partial", "final": "correct",
         "diagnosis": "Right turbine (Penmanshiel_10, 18.82%), but printed the prompt's own citation template, '(document title, p.N)'. "
                      "A later run read the unsorted OpenOA wake list instead and named the second-highest turbine.",
         "fix": "Template text removed from the prompt and stripped from answers; the OpenOA summary names the largest turbine wake loss.",
     },
     "q22": {
-        "baseline": "wrong",
+        "baseline": "wrong", "final": "correct",
         "diagnosis": "Invented a P50 of 53.385 GWh: that number is the turbines' metered energy from the electrical-loss study. "
                      "No AEP was computed for this farm (one year, no availability channel).",
         "fix": "The summary now says in so many words that no P50/P90 exists for this farm, and why.",
     },
     "q23": {
-        "baseline": "partial",
+        "baseline": "partial", "final": "correct",
         "diagnosis": "Right total (1.169%), wrong largest component: said windiness (0.499%), it's the regression (0.702%).",
         "fix": "The summary names the largest uncertainty component ready-made.",
     },
-    "q24": {"baseline": "correct", "diagnosis": "6-18 rpm and 3-5 m/s, cited p.6.", "fix": None},
-    "q25": {"baseline": "correct", "diagnosis": "Asynchronous generator, integrated heat exchanger (p.6).", "fix": None},
-    "q26": {"baseline": "correct", "diagnosis": "2.125 MW for 60 Hz, not the 50 Hz 2.2 MW.", "fix": None},
-    "q27": {"baseline": "correct", "diagnosis": "The bat curtailment rules, cited p.33.", "fix": None},
-    "q28": {"baseline": "correct", "diagnosis": "7.0 m and 40.4 m/s, p.23. The automatic grade failed it on 'meters per second': a grader error.", "fix": "Grader pattern corrected."},
+    "q24": {"baseline": "correct", "final": "correct", "diagnosis": "6-18 rpm and 3-5 m/s, cited p.6.", "fix": None},
+    "q25": {"baseline": "correct", "final": "correct", "diagnosis": "Asynchronous generator, integrated heat exchanger (p.6).", "fix": None},
+    "q26": {"baseline": "correct", "final": "correct", "diagnosis": "2.125 MW for 60 Hz, not the 50 Hz 2.2 MW.", "fix": None},
+    "q27": {"baseline": "correct", "final": "correct", "diagnosis": "The bat curtailment rules, cited p.33.", "fix": None},
+    "q28": {"baseline": "correct", "final": "correct", "diagnosis": "7.0 m and 40.4 m/s, p.23. The automatic grade failed it on 'meters per second': a grader error.", "fix": "Grader pattern corrected."},
     "q29": {
-        "baseline": "refused",
+        "baseline": "refused", "final": "correct",
         "diagnosis": "Answered 'I can only provide information about Penmanshiel' without calling a tool: the farm-scoped prompt read as a ban on tender questions.",
         "fix": "The system prompt says tender and leasing questions are in scope whichever farm is selected.",
     },
-    "q30": {"baseline": "correct", "diagnosis": "Kelmarsh_2, 0.2999.", "fix": None},
-    "q31": {"baseline": "correct", "diagnosis": "Penmanshiel_01, 37 maintenance stops.", "fix": None},
+    "q30": {"baseline": "correct", "final": "correct", "diagnosis": "Kelmarsh_2, 0.2999.", "fix": None},
+    "q31": {"baseline": "correct", "final": "correct", "diagnosis": "Penmanshiel_01, 37 maintenance stops.", "fix": None},
     "q32": {
-        "baseline": "correct",
+        "baseline": "correct", "final": "correct",
         "diagnosis": "Correctly said forced outages aren't identifiable here, but only after three detail calls: the empty ranking carried no reason.",
         "fix": "The empty ranking now says why it's empty.",
     },
     "q33": {
-        "baseline": "partial",
+        "baseline": "partial", "final": "correct",
         "diagnosis": "Didn't invent anything, but said 'no information' instead of pointing out Kelmarsh 7 doesn't exist.",
         "fix": "The system prompt lists the farm's turbines and says a turbine outside the list doesn't exist.",
     },
     "q34": {
-        "baseline": "partial",
+        "baseline": "partial", "final": "correct",
         "diagnosis": "Reported the 50.4% mean hourly error as '0.504%' (a fraction under a 'pct' name). The automatic grade passed it. "
                      "After a prompt note failed, a run also called 5.654 MW actual vs 5.653 predicted 'slightly lower'.",
         "fix": "The tool now returns the error as a percentage and the direction in words; the grader forbids both mistakes.",
     },
-    "q35": {"baseline": "correct", "diagnosis": "HillOfTowie_18, +0.31 m/s power-curve displacement. HillOfTowie_16 was also flagged before the rotor fix.", "fix": None},
+    "q35": {"baseline": "correct", "final": "correct", "diagnosis": "HillOfTowie_18, +0.31 m/s power-curve displacement. HillOfTowie_16 was also flagged before the rotor fix.", "fix": None},
 }

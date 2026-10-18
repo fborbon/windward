@@ -28,7 +28,7 @@
 14. [Wind Prediction: Time-Series Forecasting Showcase](#14-wind-prediction-time-series-forecasting-showcase)
 15. [Operational Assessment (OpenOA)](#15-operational-assessment-openoa)
 16. [Technical Documents: PDF RAG over Datasheets and Tenders](#16-technical-documents-pdf-rag-over-datasheets-and-tenders)
-17. [RAG Evaluation: 15 Questions, Graded and Fixed](#17-rag-evaluation-15-questions-graded-and-fixed)
+17. [RAG Evaluation: 35 Questions, Graded and Fixed](#17-rag-evaluation-35-questions-graded-and-fixed)
 
 ---
 
@@ -491,8 +491,8 @@ Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACK
 - [x] **`smooth_power_curve` — AMK kernel regression** (`analysis/efficiency.py`, `dswe` package, MIT license, from Yu Ding's *Data Science for Wind Energy*) — a continuous, non-parametric power curve alongside the existing discrete IEC binning, evaluated at the same bin centers so the two overlay directly. Wired into `diagnose_node` for all three real farms and into the EDP Wind Farm A case-study endpoint/dashboard chart. The rest of the same package was evaluated and NOT used: `ComparePCurve`/`FunGP` (would've upgraded `fit_power_curve_displacement`'s bare least-squares shift with a real significance test) hit a real, reproducible `TypeError` in `_GPMethods.compute_loglike_GP` against current numpy/scipy — confirmed by running both directly against real Kelmarsh data, not just reading the source; `TempGP` ran without crashing but was slow (28s to fit 500 rows) and produced questionable predictions on a quick test, not vetted enough to ship. AMK itself also needed one real fix: its default `bw="dpi"` (data-adaptive plug-in bandwidth) took 5.7s on one specific real turbine (Kelmarsh_1) vs <50ms on every other turbine across all three farms — reproducible in `diagnose_node`'s actual per-turbine loop, not just a one-off. Switched to a fixed 0.5 m/s bandwidth (matching `binned_power_curve`'s own bin width), verified uniformly fast (<50ms/turbine, all three farms) and visually indistinguishable in output from the adaptive one
 - [x] **OpenOA operational assessment** (§15) - NREL/NLR's OpenOA run offline in its own venv on the full multi-year data: electrical losses for all three farms (turbines vs the substation PMU / grid station; the datasets' "Grid Meter" channel rejected as non-physical), Monte Carlo long-term AEP for Kelmarsh/Penmanshiel by both the benchmark's monthly linear method and Bodini et al. 2021's daily GAM with temperature, a one-component-at-a-time uncertainty breakdown against the root-sum-of-squares shortcut (Bodini & Optis 2020), wake losses, and static yaw misalignment with a consistency gate that marks unstable estimates inconclusive. Wake results feed `diagnose` (neighbor-underperformance flags now say whether wake explains the gap) and `recommend` (the lowest-capacity-factor turbine's rationale notes its wake loss). OpenOA's SCADA filters ported into the live diagnosis (`analysis/qc.py`), verified identical to OpenOA's own output
 - [x] **Technical-document PDF RAG** (§16) - real turbine manufacturer documents and public offshore-wind tender/leasing PDFs, page-cited answers, verified datasheet spec extraction cross-checked against the farm registry; `search_technical_documents` in "Ask the agent", `query_technical_documents` on the MCP server
-- [x] **RAG evaluation** (§17) - 15 test questions across every tool, graded before and after; fixes for every failure found (farm facts from the dataset metadata and full SCADA history, whole-page PDF reading, citation re-checking, ranking notes, answer cleaning). Own dashboard tab. Correct answers 5/15 -> 14/15 on the review, Nova Lite kept after a model comparison
-- [ ] The EnergyUp answer still drops the upgrade sheet's scope note (Bachmann controller only), the one answer the fixes didn't reach (§17.3)
+- [x] **RAG evaluation** (§17) - 35 test questions in two sets across every tool, graded before and after; fixes for every failure found (farm facts from the dataset metadata and full SCADA history, whole-page PDF reading, citation re-checking, ranking notes, answer cleaning). Own dashboard tab. Set 1: 5/15 -> 13/15 correct on the review; set 2 (20 new questions, written after set 1's fixes): 12/20 -> 20/20. Nova Lite kept after a model comparison
+- [ ] Two answers the fixes didn't reach (§17.3): the EnergyUp answer drops the sheet's Bachmann-controller scope note, and the ScotWind answer sometimes pads its list with explanations the PDF doesn't give
 - [ ] Senvion MM82/MM92 original datasheets and the Kelmarsh/Penmanshiel planning Environmental Statements: not publicly hosted (§16.4)
 - [x] **Per-turbine questions in "Ask the agent"** and on the **MCP server** (§15.6) - `get_turbine_details` and `rank_turbines` tools: best/worst turbine by any of seven metrics, last maintenance stop and forced-outage history from the real status logs, wake loss and yaw per turbine
 - [x] **DSWE Inland-Offshore Wind Farm Dataset1** — a fifth, non-`FARMS` example (six real turbines, three real on-site met masts, Zenodo 10.5281/zenodo.5516552, CC BY 4.0, from *Data Science for Wind Energy* Ch. 5), same diagnosis/RAG-only reasoning as EDP Wind Farm A (§5) but adding a real **Measure-Correlate-Predict** ratio (`analysis.efficiency.measure_correlate_predict`) against live Open-Meteo ERA5 at a caller-chosen reference location — the dataset has real turbine+mast data and a real documented date range, but no per-row timestamps and no disclosed coordinates, so a ratio-of-means MCP (not full timestamp-paired regression) is what the data actually supports. Own loader, RAG corpus/retriever, `/dswe/*` routes, dashboard tab with an editable reference-location control. Verified live against real ERA5: switching the reference point from the illustrative default (Texas Panhandle) to New York moves WT1's ratio from 1.62× to 2.51×, demonstrating rather than hiding how much the choice of reference matters
@@ -515,7 +515,7 @@ Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACK
 | **AI services** | `/ask` per-turbine tools (§15.6) | No new model calls: the same Nova Lite tool-calling loop, two more tools whose results are computed locally; at most one or two extra round trips per question, well under a cent a month at current volume |
 | **AI services** | Technical-document PDF index (§16): Titan embeddings of 416 chunks (~430K characters, ~110K tokens) + one Nova Lite spec-extraction call | ~$0.002 per rebuild, and a rebuild only happens when the PDF list or chunking changes (an unchanged deploy is a no-op) |
 | **AI services** | `search_technical_documents` per question (§16, §17) | One Titan query embedding + one Nova Lite call over 20-26K characters (the farm's manufacturer documents in full plus up to four whole matching pages, ~6-7K tokens): ~$0.0005 per question, up from ~$0.0002 with 5 bare chunks |
-| **AI services** | RAG evaluation run (§17) | 15 questions, one to three Nova Lite tool rounds each: ~$0.005 per run against Nova Lite, run by hand when the agent changes (a Nova 2 Lite comparison run cost ~$0.02) |
+| **AI services** | RAG evaluation run (§17) | 35 questions, one to three Nova Lite tool rounds each: ~$0.012 per full run against Nova Lite, run by hand when the agent changes (a 15-question Nova 2 Lite comparison run cost ~$0.02) |
 | **Compute** | Farm facts export (`data_sources/farm_facts.py`, §17) | $0 - a few seconds offline over the cached SCADA; the API reads an 8KB JSON |
 | **Storage** | PDFs (~20MB) + their FAISS index (~2MB) | $0 - local disk on the EC2 (`data/pdfs/`, `data/pdf_index/`, both gitignored) |
 | **AI services** | DynamoDB `windward-agent-sessions` (on-demand billing) | $0 — within the AWS always-free tier (25GB + 25 RCU/WCU) at this scale |
@@ -806,9 +806,9 @@ The 82 in the model name is rounded, and so is the dataset's own metadata CSV; t
 - **No planning documents for the three farms.** Kelmarsh's 2010 Environmental Statement (Daventry ref. DA/2010/0100) is catalogued by the county's historic environment record but not published online. Penmanshiel's application sits behind Scottish Borders' interactive planning portal, and no Hill of Towie repowering application was found.
 - **Not indexed:** RVO's Borssele Sites III and IV description (its download link is broken on RVO's side: the storage server rejects the signed redirect) and the 2015 Borssele v2 description (superseded by v3, already indexed).
 
-## 17. RAG Evaluation: 15 Questions, Graded and Fixed
+## 17. RAG Evaluation: 35 Questions, Graded and Fixed
 
-"Ask the agent" has seven tools over five kinds of source (SCADA history, manufacturer and tender PDFs, OpenOA results, the status logs, the fault-log RAG). A demo question per tool shows that each one runs, not that the answers are right. This section is a test battery: 15 questions, at least one per tool, each with a reference answer taken from the data behind the tool, never from the agent. Every answer was graded, its failures were traced to a cause, and each cause was fixed. The **RAG Evaluation** dashboard tab shows each question with its answer now, the reference, the answer before the fixes, and the fix.
+"Ask the agent" has seven tools over five kinds of source (SCADA history, manufacturer and tender PDFs, OpenOA results, the status logs, the fault-log RAG). A demo question per tool shows that each one runs, not that the answers are right. This section is a test battery: 35 questions in two sets, at least one per tool, each with a reference answer taken from the data behind the tool, never from the agent. Every answer was graded, its failures were traced to a cause, and each cause was fixed. The **RAG Evaluation** dashboard tab shows each question with its answer now, the reference, the answer before the fixes, and the fix.
 
 **The model.** Every answer is written by **Amazon Nova Lite** (`eu.amazon.nova-lite-v1:0`) through LiteLLM on Amazon Bedrock (eu-west-1). It routes the question to the tools, writes the tool-level answers over retrieved passages, and writes the final reply. Retrieval embeds with Amazon Titan Text Embeddings v2.
 
@@ -831,10 +831,16 @@ flowchart LR
 
 ### 17.2 Results
 
+Two sets. Set 1 is the first 15 questions; set 2 is 20 more, written afterwards to test the fixes on questions they weren't tuned on, with traps (a turbine that doesn't exist, an AEP that was never computed, a farm whose export can't identify forced outages). Set 2's "before" already includes set 1's fixes. "After" is one live run of all 35 on 2026-10-18, after every fix had deployed.
+
 | | Correct | Partial | Wrong or refused | Automatic pass |
 |---|---|---|---|---|
-| Before (live, 2026-10-18) | 5 | 4 | 6 | 8/15 |
-| After (live, 2026-10-18) | 14 | 1 | 0 | 14/15 |
+| Set 1 before | 5 | 4 | 6 | 8/15 |
+| Set 1 after | 13 | 2 | 0 | 14/15 |
+| Set 2 before (set 1's fixes in place) | 12 | 4 | 4 | 13/20 |
+| Set 2 after | 20 | 0 | 0 | 20/20 |
+
+Set 1's fixes carried over: 12 of the 20 new questions were right first time, against 5 of 15 before any fix. Set 1 lost one answer between its two "after" runs: q13's padding came back (§17.3).
 
 | # | Question (farm) | Before | After | What was wrong, and the fix |
 |---|---|---|---|---|
@@ -848,11 +854,31 @@ flowchart LR
 | 8 | Which turbine has the largest static yaw misalignment, and how large is it? (Kelmarsh) | wrong | correct | Named Kelmarsh 1: all estimates inconclusive, ranking empty. Now Kelmarsh 4, 18.47 deg, flagged unreliable. |
 | 9 | Which turbine had the most forced-outage hours, and what were the main causes? (Penmanshiel) | correct | correct | Correct at baseline; later runs invented causes after a parallel tool call. Ranking now carries the top turbine's log. |
 | 10 | What were the longest downtime events and what caused them? (Kelmarsh) | correct | correct | Correct; a missing IEC category no longer prints as "nan". |
-| 11 | Does the rotor diameter Windward uses match the manufacturer's datasheet? (Hill of Towie) | correct | correct | Correct: 82.4 m datasheet vs 82.0 m configured. |
+| 11 | Does the rotor diameter Windward uses match the manufacturer's datasheet? (Hill of Towie) | correct | correct | Correct both times; the finding was acted on: farms.py now uses 82.4 m, so the answer is now "match". |
 | 12 | What upgrade does the manufacturer offer to raise this turbine's energy output, and by how much? (Kelmarsh) | partial | partial | Right figures, uncited, drops the Bachmann-controller scope. Now cited; scope note still dropped. |
-| 13 | What does an applicant have to submit in the ScotWind leasing round? (Hill of Towie) | partial | correct | Leaked `</thinking>`; later padded items, once empty. Tags stripped, no-padding rule, retry. Cites p.1-5 loosely. |
+| 13 | What does an applicant have to submit in the ScotWind leasing round? (Hill of Towie) | partial | partial | Leaked `</thinking>`; later padded items, once empty. Tags stripped, retry. Padding still comes back (partial). |
 | 14 | What water depths and mean wind speed were reported for the Hollandse Kust (zuid) tender sites? (Penmanshiel) | refused | correct | Refused with the depth passage in context; wind speed one chunk away; then cited printed page 20. Whole pages + citation check: p.14, p.21. |
-| 15 | How close does the best turbine get to the Betz limit? (Hill of Towie) | wrong | correct | "Closest to Betz" for Cp 0.5995, above it. Now flagged as impossible, an anemometer artifact. |
+| 15 | How close does the best turbine get to the Betz limit? (Hill of Towie) | wrong | correct | "Closest to Betz" for Cp 0.5995, above it. Now flagged as impossible; after the rotor fix 0.5937, still above. |
+| 16 | What was the farm's best single day of production, and how much energy did it produce? (Hill of Towie) | correct | correct | Correct: 2024-02-02, 1,057.9 MWh. |
+| 17 | Which calendar year produced the most energy, and how much? (Penmanshiel) | wrong | correct | Named 2020; best full year is 2017 (84.83 GWh). Best full year now ready-made. |
+| 18 | Do all turbines have the same hub height? If not, which ones differ? (Kelmarsh) | correct | correct | Correct: Kelmarsh 3 and 6 at 68.5 m, the rest 78.5 m. |
+| 19 | When was the AeroUp blade upgrade installed on the turbines? (Hill of Towie) | refused | correct | Routed to the fault log and refused. Upgrades now routed to farm facts: 2021-09 to 2023-05. |
+| 20 | How much energy is lost between the turbines and the substation meter? (Kelmarsh) | correct | correct | Correct: 0.859%. |
+| 21 | Which turbine loses the most energy to wakes from its neighbours? (Penmanshiel) | partial | correct | Printed the prompt's "(document title, p.N)" template; later misread the wake list. Template removed, list sorted. |
+| 22 | What is the long-term P50 annual energy production? (Hill of Towie) | wrong | correct | Invented a 53.385 GWh P50 (that's metered turbine energy). Summary now says no AEP exists, and why. |
+| 23 | How uncertain is the long-term energy estimate, and which component contributes most? (Kelmarsh) | partial | correct | Wrong largest component (windiness). Named ready-made: regression, 0.702%. |
+| 24 | What is the turbine's rotor speed range and its cut-in wind speed? (Hill of Towie) | correct | correct | Correct: 6-18 rpm, 3-5 m/s, p.6. |
+| 25 | What type of generator does the turbine use, and how is it cooled? (Hill of Towie) | correct | correct | Correct: asynchronous, integrated heat exchanger. |
+| 26 | What output does the EnergyUp upgrade allow for an MM82 turbine in a 60 Hz market? (Penmanshiel) | correct | correct | Correct: 2.125 MW (60 Hz). |
+| 27 | What rules did the Hollandse Kust (zuid) permit set to protect bats? (Kelmarsh) | correct | correct | Correct: the bat curtailment rules, p.33. |
+| 28 | What are the 50-year design wave height and wind speed at the Hollandse Kust (zuid) site? (Hill of Towie) | correct | correct | Correct (7.0 m, 40.4 m/s); the grader missed "meters per second". |
+| 29 | What water depths and mean wind speed were reported for the Borssele wind farm sites? (Penmanshiel) | refused | correct | "I can only answer about Penmanshiel". Tender questions now in scope for every farm. |
+| 30 | Which turbine has the highest capacity factor, and what is it? (Kelmarsh) | correct | correct | Correct: Kelmarsh_2, 0.2999. |
+| 31 | Which turbine had the most maintenance stops? (Penmanshiel) | correct | correct | Correct: Penmanshiel_01, 37 stops. |
+| 32 | Which turbine had the most forced-outage hours? (Hill of Towie) | correct | correct | Correct, after three wasted detail calls. The empty ranking now says why. |
+| 33 | Why did Kelmarsh 7 stop for so long in 2019? (Kelmarsh) | partial | correct | "No information" instead of "there is no Kelmarsh 7". Turbine list in the system prompt. |
+| 34 | How did the farm's actual production compare with the model's prediction? (Penmanshiel) | partial | correct | 50.4% error reported as "0.504%", later actual called "lower". Percent and direction now in the tool output. |
+| 35 | Which turbines are suspected of an anemometer calibration problem, and why? (Hill of Towie) | correct | correct | Correct: HillOfTowie_18, +0.31 m/s (HillOfTowie_16 dropped out with the rotor fix). |
 
 ### 17.3 What the failures had in common
 
@@ -861,7 +887,7 @@ flowchart LR
 - **Citations that look right** (q14). Nova cited the page number printed in the RVO document's running header (20), not the PDF page (14). `check_citations` re-checks every `p.N` the way §16.3 checks extracted specs: the numbers in the cited sentence must be printed on that page, or the citation moves to the page in the context where they are. The agent's shorter rewrite also often dropped the tool's citations. The verified ones are now put back.
 - **A tool's shape misleads** (q08, q09, q15). An empty ranking, because every Kelmarsh yaw estimate is inconclusive, led the agent to name a turbine from elsewhere. A parallel tool call asked for "the turbine with the most outages" before the ranking had named it, and the agent then invented the causes. An unsorted list was misread. A Cp above Betz was reported as a success. Each tool now returns what the question needs, ready-made, with a note: inconclusive estimates kept and labeled, the top turbine's status log inside the outage ranking, the analysis extremes precomputed, and a peak Cp above 0.593 flagged as a measurement artifact.
 - **Output hygiene** (q13 and others). Leaked `<thinking>` text, citations formatted as broken markdown links, internal field names (`lt_pct`), and, once, an empty reply. These are now stripped or unwrapped, and an empty reply gets one retry. The answer loop runs at temperature 0, so a re-run tests the fix rather than chance.
-- **Still failing: q12.** The EnergyUp sheet says the upgrade only applies to turbines with a Bachmann controller. Nova Lite drops that note even with an explicit prompt rule. It's reported here rather than prompt-hacked into passing.
+- **Still failing: q12 and q13.** The EnergyUp sheet says the upgrade only applies to turbines with a Bachmann controller; Nova Lite drops that note even with an explicit prompt rule. q13's list of ScotWind submission areas is right, but on some runs the technical-documents tool pads each item with explanations the page doesn't give, despite a rule against it. Both are reported here rather than prompt-hacked into passing.
 
 ### 17.4 Would a newer model have fixed it?
 
@@ -874,4 +900,13 @@ Before the citation and parallel-call fixes, the same battery and code were run 
 
 Nova 2 Lite was no better here: it dropped the PDF citations as well, and wrote "turbine 4" without the farm name. It also costs about 5x more per input token and 10x more per output token. The failures were in what the tools returned and how the pages were read, so that is where the fixes went, and the cheaper model stayed. Nova Pro, tested on the two PDF refusals alone, refused one of them for a different reason: it read "never present tender documents as facts about this farm" as a ban on answering.
 
-Re-run with `python -m rag_eval.run --label final` after an agent change, then `python -m rag_eval.export`.
+### 17.5 What set 2 added
+
+- **A wrong number is worse than a refusal** (q22). With only a "skipped" note where the AEP should be, the agent quoted the electrical-loss study's 53.385 GWh of metered turbine energy as Hill of Towie's P50. A tool now has to say in so many words when a result doesn't exist.
+- **Units and directions** (q34). `mean_abs_pct_error` holds a fraction (0.504), so the agent wrote "0.504%" for a 50.4% error. A prompt note didn't fix it; converting the value in the tool output did. The next run called 5.654 MW actual against 5.653 MW predicted "slightly lower", so the direction now comes in words. The automatic grade passed the "0.504%" answer, so the grader now forbids it.
+- **Ready-made extremes, again** (q17, q21, q23). Best year, largest wake loss and largest uncertainty component were each misread from an unsorted list, the same failure as set 1's q15. Each tool now names its extreme and lists items largest-first.
+- **Scope in the system prompt** (q29, q33). Told "you are the agent for farm X", Nova refused a Borssele tender question and missed that Kelmarsh 7 doesn't exist. The prompt now lists the farm's turbines and says tender questions are in scope everywhere.
+- **The rotor fix moved an answer** (q11, q15, q35). With Hill of Towie's rotor corrected to the datasheet's 82.4 m (§16.3), HillOfTowie_18's peak Cp went from 0.5995 to 0.5937, still above the 0.5926 Betz limit. HillOfTowie_16 went from 0.5984 to 0.5926, just under it, and is no longer flagged for anemometer bias. The references were updated with the data rather than kept stale.
+- **References can go stale** (q34). The live analysis is recomputed on each deploy, so the forecast error moved from 50.4% to 52.3-52.6% between runs. A reference tied to a live value checks the claim (direction, a percentage of the right size), not the exact number.
+
+Re-run with `python -m rag_eval.run --label final` after an agent change (`--ids q21,q34 --merge` re-runs a few), then `python -m rag_eval.export`.
