@@ -1,0 +1,453 @@
+{
+ "answer_model": {
+  "name": "Amazon Nova Lite",
+  "id": "eu.amazon.nova-lite-v1:0",
+  "via": "LiteLLM on Amazon Bedrock (eu-west-1)",
+  "embeddings": "Amazon Titan Text Embeddings v2"
+ },
+ "baseline_run_at": "2026-10-18T13:29:23Z",
+ "final_run_at": null,
+ "verdicts": {
+  "baseline": {
+   "wrong": 3,
+   "refused": 3,
+   "correct": 5,
+   "partial": 4
+  },
+  "final": {}
+ },
+ "auto_pass": {
+  "baseline": 8,
+  "final": 0
+ },
+ "model_comparison": [
+  {
+   "model": "Amazon Nova Lite",
+   "model_id": "bedrock/eu.amazon.nova-lite-v1:0",
+   "passed": 11,
+   "total": 15
+  },
+  {
+   "model": "Amazon Nova 2 Lite",
+   "model_id": "bedrock/eu.amazon.nova-2-lite-v1:0",
+   "passed": 10,
+   "total": 15
+  }
+ ],
+ "questions": [
+  {
+   "id": "q01",
+   "farm": "kelmarsh",
+   "capability": "SCADA history",
+   "question": "What is the maximum historical power production of the wind farm?",
+   "truth": "farm_facts_payload.json: highest 10-minute farm output in the 2016-2021 SCADA is 12.36 MW (installed 12.3 MW) on 2018-01-04 17:40; best day 287.0 MWh, best full year 2020 (36.35 GWh).",
+   "sources": [
+    "farm-facts"
+   ],
+   "baseline": {
+    "answer": "The maximum historical power production of the wind farm is 3.007 MW.",
+    "sources": [
+     "current-analysis"
+    ],
+    "pass": false,
+    "verdict": "wrong"
+   },
+   "final": {
+    "answer": null,
+    "sources": null,
+    "pass": null,
+    "latency_s": null,
+    "verdict": null
+   },
+   "diagnosis": "Answered 3.007 MW, a value from the 2016 analysis window: no tool held the multi-year SCADA history.",
+   "fix": "New get_farm_facts tool: production records over the full 2016-2021 SCADA, exported to a small JSON (data_sources/farm_facts.py)."
+  },
+  {
+   "id": "q02",
+   "farm": "hill_of_towie",
+   "capability": "Datasheet PDF",
+   "question": "How many different hub heights, rotor sizes and turbulence categories does the turbine manufacturer offer for this model?",
+   "truth": "Siemens SWT-2.3-82 VS datasheet: one rotor (82.4 m, p.6), hub height '80 m or site-specific' (p.6), IEC Class IA (p.4); standard and IEC versions differ in max gust (55 / 70 m/s).",
+   "sources": [
+    "technical-docs"
+   ],
+   "baseline": {
+    "answer": "Unfortunately, the available technical documents do not contain information about the number of different hub heights, rotor sizes, and turbulence categories offered by the manufacturer for the Siemens SWT-2.3-VS-82 model. To answer this question, more information from the turbine manufacturer would be required.",
+    "sources": [
+     "technical-docs"
+    ],
+    "pass": false,
+    "verdict": "refused"
+   },
+   "final": {
+    "answer": null,
+    "sources": null,
+    "pass": null,
+    "latency_s": null,
+    "verdict": null
+   },
+   "diagnosis": "Retrieval matched the brochure's prose pages; the spec table (p.6) with the hub height never reached the model.",
+   "fix": "The farm's own manufacturer documents are read whole (8 pages), plus prompt rules for 'which options' questions and the IEC class letter."
+  },
+  {
+   "id": "q03",
+   "farm": "kelmarsh",
+   "capability": "Farm metadata",
+   "question": "When was the wind farm built and when will it be decommissioned?",
+   "truth": "Kelmarsh_WT_static.csv: commercial operations 15/04/2016 for all 6 turbines. No decommissioning date in any source.",
+   "sources": [
+    "farm-facts"
+   ],
+   "baseline": {
+    "answer": "Based on the technical documents I have access to, I cannot provide the information about when Kelmarsh Wind Farm was built or when it will be decommissioned.",
+    "sources": [
+     "technical-docs"
+    ],
+    "pass": false,
+    "verdict": "refused"
+   },
+   "final": {
+    "answer": null,
+    "sources": null,
+    "pass": null,
+    "latency_s": null,
+    "verdict": null
+   },
+   "diagnosis": "Said it couldn't know; the commissioning date was in the dataset's own turbine metadata, which no tool read.",
+   "fix": "get_farm_facts returns the commercial operations date and says plainly that no source has a decommissioning date."
+  },
+  {
+   "id": "q04",
+   "farm": "penmanshiel",
+   "capability": "Turbine ranking",
+   "question": "Which is the best and which is the worst performing turbine?",
+   "truth": "rank_turbines('capacity_factor'): top and bottom of the ranking.",
+   "sources": [
+    "turbine-ranking",
+    "current-analysis"
+   ],
+   "baseline": {
+    "answer": "The best performing turbine at Penmanshiel farm is Penmanshiel_13 with a capacity factor of 0.3161. The worst performing turbine is Penmanshiel_07 with a capacity factor of 0.2163.",
+    "sources": [
+     "turbine-ranking"
+    ],
+    "pass": true,
+    "verdict": "correct"
+   },
+   "final": {
+    "answer": null,
+    "sources": null,
+    "pass": null,
+    "latency_s": null,
+    "verdict": null
+   },
+   "diagnosis": "rank_turbines by capacity factor, quoted exactly.",
+   "fix": null
+  },
+  {
+   "id": "q05",
+   "farm": "kelmarsh",
+   "capability": "OpenOA wake losses",
+   "question": "What is the global wake effect in % of the annual energy yield?",
+   "truth": "OpenOA WakeLosses: plant 7.78% long-term corrected (8.26% over the period of record).",
+   "sources": [
+    "operational-assessment"
+   ],
+   "baseline": {
+    "answer": "The global wake effect at Kelmarsh farm, as a percentage of the annual energy yield, is 7.778%. This is based on the long-term (LT) wake losses provided in the operational assessment.",
+    "sources": [
+     "operational-assessment"
+    ],
+    "pass": false,
+    "verdict": "correct"
+   },
+   "final": {
+    "answer": null,
+    "sources": null,
+    "pass": null,
+    "latency_s": null,
+    "verdict": null
+   },
+   "diagnosis": "7.778% long-term corrected is right. The automatic grade failed it: the evaluator's pattern was wrong, not the answer.",
+   "fix": "Grader pattern corrected. Later runs also said what lt_pct means instead of printing the field name."
+  },
+  {
+   "id": "q06",
+   "farm": "hill_of_towie",
+   "capability": "Datasheet PDF",
+   "question": "At what wind speed does the turbine shut down, and what kind of gearbox does it have?",
+   "truth": "Datasheet p.5/p.6: cut-out 25 m/s; p.4: three-stage planetary-helical gearbox.",
+   "sources": [
+    "technical-docs"
+   ],
+   "baseline": {
+    "answer": "The gearbox of the turbine is a custom-built, three-stage planetary-helical design. This design allows for a compact, high-performance construction with high torque, which is ideal for the turbine's operational needs. The turbine shuts down at a wind speed of approximately 25 m/s to prevent damage. This is in line with standard practices to protect the turbine from extreme weather conditions.",
+    "sources": [
+     "technical-docs",
+     "maintenance-docs"
+    ],
+    "pass": true,
+    "verdict": "partial"
+   },
+   "final": {
+    "answer": null,
+    "sources": null,
+    "pass": null,
+    "latency_s": null,
+    "verdict": null
+   },
+   "diagnosis": "Right values, but no page citation and padded with 'in line with standard practices'.",
+   "fix": "The tool's verified page citations are re-attached when the agent's rewrite drops them."
+  },
+  {
+   "id": "q07",
+   "farm": "penmanshiel",
+   "capability": "OpenOA AEP",
+   "question": "What are the long-term P50 and P90 annual energy production estimates?",
+   "truth": "OpenOA MonteCarloAEP (monthly linear): P50 76.3 GWh, P90 74.8 GWh.",
+   "sources": [
+    "operational-assessment"
+   ],
+   "baseline": {
+    "answer": "The long-term annual energy production (AEP) estimates for Penmanshiel are as follows:\n\n- P50: 76.623 GWh\n- P90: 75.67 GWh\n\nThese estimates are based on a daily generalized additive model (GAM) temperature approach, which considers multiple factors affecting the farm's energy production.",
+    "sources": [
+     "operational-assessment"
+    ],
+    "pass": false,
+    "verdict": "partial"
+   },
+   "final": {
+    "answer": null,
+    "sources": null,
+    "pass": null,
+    "latency_s": null,
+    "verdict": null
+   },
+   "diagnosis": "Quoted the daily GAM method's P50/P90 (76.6/75.7 GWh) without saying it's the second of two methods.",
+   "fix": "The OpenOA summary now names the headline method (monthly linear, P50 76.3 / P90 74.8 GWh)."
+  },
+  {
+   "id": "q08",
+   "farm": "kelmarsh",
+   "capability": "OpenOA yaw",
+   "question": "Which turbine has the largest static yaw misalignment, and how large is it?",
+   "truth": "OpenOA StaticYawMisalignment: every Kelmarsh estimate is inconclusive (per-bin estimates spread 14-34 deg); the largest raw value is Kelmarsh 4 at 18.47 deg, not a reliable figure.",
+   "sources": [
+    "turbine-ranking",
+    "operational-assessment"
+   ],
+   "baseline": {
+    "answer": "Kelmarsh 1 has the largest static yaw misalignment, but the exact value is inconclusive according to the OpenOA data. The turbine's yaw misalignment is between 9.1 and 16.97 degrees with a mean of 11.79 degrees. The turbine's yaw misalignment cannot be definitively determined from the current data.",
+    "sources": [
+     "turbine-ranking",
+     "turbine-details",
+     "turbine-ranking"
+    ],
+    "pass": false,
+    "verdict": "wrong"
+   },
+   "final": {
+    "answer": null,
+    "sources": null,
+    "pass": null,
+    "latency_s": null,
+    "verdict": null
+   },
+   "diagnosis": "Named Kelmarsh 1. Every Kelmarsh yaw estimate is inconclusive, so the ranking dropped them all and came back empty.",
+   "fix": "The ranking keeps inconclusive estimates, labeled and listed after conclusive ones. Kelmarsh 4 (18.47 deg) is the largest, and is unreliable."
+  },
+  {
+   "id": "q09",
+   "farm": "penmanshiel",
+   "capability": "Status-log ranking",
+   "question": "Which turbine had the most forced-outage hours, and what were the main causes?",
+   "truth": "rank_turbines('forced_outage_hours'): Penmanshiel_11, 726.5 h; get_turbine_details: top cause 'Emergency stop base box' (2 events, 716.2 h), then 'Externally stopped' (3.7 h).",
+   "sources": [
+    "turbine-ranking",
+    "turbine-details"
+   ],
+   "baseline": {
+    "answer": "'Penmanshiel_11' had the most forced-outage hours, totaling 726.5 hours. The main causes were 'Emergency stop base box' with 716.2 hours and 'Externally stopped' with 3.7 hours. Note that the hours count overlapping events once; per-cause hours can overlap each other, so don't add them up.",
+    "sources": [
+     "turbine-ranking",
+     "turbine-details"
+    ],
+    "pass": true,
+    "verdict": "correct"
+   },
+   "final": {
+    "answer": null,
+    "sources": null,
+    "pass": null,
+    "latency_s": null,
+    "verdict": null
+   },
+   "diagnosis": "Correct at baseline, but later runs showed the agent requesting the turbine's details in the same parallel tool call as the ranking, before it knew the turbine, and then inventing the causes.",
+   "fix": "A ranking by outage hours now carries the top turbine's status log, and the agent is told never to fill a failed tool call."
+  },
+  {
+   "id": "q10",
+   "farm": "kelmarsh",
+   "capability": "Fault-log RAG",
+   "question": "What were the longest downtime events and what caused them?",
+   "truth": "rag/incident_corpus.py: the longest real status-log stop is Kelmarsh 1, 548.2 h, 'Timeout brake closed' (2016-12-17).",
+   "sources": [
+    "maintenance-docs"
+   ],
+   "baseline": {
+    "answer": "The longest downtime events at the Kelmarsh Wind Farm, according to the context provided, are as follows:\n\n1. **Kelmarsh 1:** \n   - **Event type:** Warning event\n   - **Event code:** 2125\n   - **Description:** Timeout brake closed\n   - **Duration:** 548.2 hours\n   - **Start date:** 2016-12-17 16:38\n   - **Source:** (scada-event:Kelmarsh_1:2125:2016-12-17 16:38:07)\n\n2. **Kelmarsh 2:**\n   - **Event type:** Warning event\n   - **Event code:** 2125\n   - **Description:** Timeout brake closed\n   - **Duration:** 167.1 hours\n   - **Start date:** 2016-01-25 16:40\n   - **Source:** (scada-event:Kelmarsh_2:2125:2016-01-25 16:40:35)\n\n3. **Kelmarsh 5:**\n   - **Event type:** Stop event\n   - **Event code:** 21\n   - **Description:** Manual stop - remote\n   - **Duration:** 75.2 hours\n   - **Start date:** 2016-02-22 11:27\n   - **Source:** (scada-event:Kelmarsh_5:21:2016-02-22 11:27:33)\n\n4. **Kelmarsh 6:**\n   - **Event type:** Stop event\n   - **Event code:** 3585\n   - **Description:** Maximum grid frequency\n   - **Duration:** 28.4 hours\n   - **Start date:** 2016-07-29 04:56\n   - **Source:** (scada-event:Kelmarsh_6:3585:2016-07-29 04:56:16)\n\nThe longest downtime event was the warning event (code 2125) on Kelmarsh 1, which lasted 548.2 hours and was caused by a timeout brake being closed. The next longest event was also a warning event (code 2125) on Kelmarsh 2, lasting 167.1 hours, caused by the same reason.",
+    "sources": [
+     "maintenance-docs"
+    ],
+    "pass": true,
+    "verdict": "correct"
+   },
+   "final": {
+    "answer": null,
+    "sources": null,
+    "pass": null,
+    "latency_s": null,
+    "verdict": null
+   },
+   "diagnosis": "Longest stops from the real status log, cited by event.",
+   "fix": "A missing IEC category no longer prints as 'nan'."
+  },
+  {
+   "id": "q11",
+   "farm": "hill_of_towie",
+   "capability": "Datasheet cross-check",
+   "question": "Does the rotor diameter Windward uses match the manufacturer's datasheet?",
+   "truth": "Datasheet p.6 says 82.4 m; data_sources/farms.py uses 82.0 m.",
+   "sources": [
+    "technical-docs"
+   ],
+   "baseline": {
+    "answer": "The rotor diameter used by Windward does not match the manufacturer's datasheet. The datasheet specifies a rotor diameter of 82.4 meters, while Windward's configuration uses 82 meters.",
+    "sources": [
+     "technical-docs"
+    ],
+    "pass": true,
+    "verdict": "correct"
+   },
+   "final": {
+    "answer": null,
+    "sources": null,
+    "pass": null,
+    "latency_s": null,
+    "verdict": null
+   },
+   "diagnosis": "82.4 m datasheet vs 82.0 m configured, from the verified cross-check.",
+   "fix": null
+  },
+  {
+   "id": "q12",
+   "farm": "kelmarsh",
+   "capability": "Manufacturer PDF",
+   "question": "What upgrade does the manufacturer offer to raise this turbine's energy output, and by how much?",
+   "truth": "Siemens Gamesa EnergyUp sheet: software upgrade raising MM92 output to 2.2 MW (50 Hz), AEP up to 5%, only for turbines with a Bachmann controller.",
+   "sources": [
+    "technical-docs"
+   ],
+   "baseline": {
+    "answer": "The EnergyUp Full Power Curve Advanced upgrade is compatible with the MM82, MM92, and MM100 turbines. This upgrade increases the Annual Energy Production (AEP) by optimizing torque and rotor speed. Specifically, for the MM92 turbine, the power output can be increased to 2.2 MW (for the 50 Hz market) and 2.125 MW (for the 60 Hz market). The AEP boost from this upgrade can be up to 5% depending on the turbine model and wind farm conditions.",
+    "sources": [
+     "technical-docs",
+     "technical-docs"
+    ],
+    "pass": true,
+    "verdict": "partial"
+   },
+   "final": {
+    "answer": null,
+    "sources": null,
+    "pass": null,
+    "latency_s": null,
+    "verdict": null
+   },
+   "diagnosis": "Right upgrade, 2.2 MW and up to 5%, but uncited, and it drops the sheet's scope note (only turbines with a Bachmann controller).",
+   "fix": "Citations now kept. The scope note is still dropped despite an explicit prompt rule: a remaining Nova Lite failure."
+  },
+  {
+   "id": "q13",
+   "farm": "hill_of_towie",
+   "capability": "Leasing-round PDF",
+   "question": "What does an applicant have to submit in the ScotWind leasing round?",
+   "truth": "Crown Estate Scotland, ScotWind Leasing April 2019 update.",
+   "sources": [
+    "technical-docs"
+   ],
+   "baseline": {
+    "answer": "The ScotWind leasing round requires applicants to submit several key documents and information. I will present this information as per the technical documents found. </thinking>\nHere is what an applicant has to submit in the ScotWind leasing round, according to the ScotWind Leasing - April 2019 update (working draft), p.2:\n\n- Project concept\n- Project delivery plan\n- Capability and experience\n- Development budget\n- Developer financial resources\n- Commitment to the project and preparedness\n\nAdditionally, applicants may be asked to complete an application form and provide separate substantive documents, including those outlined in Table 1 of the ScotWind Leasing - April 2019 update (working draft), p.2. If an application involves more than one legal entity, statements of commitment at board level are required (ScotWind Leasing - April 2019 update (working draft), p.2).\n\nYou can find more details in the ScotWind Leasing - April 2019 update (working draft): https://www.crownestatescotland.com/sites/default/files/2023-07/scotwind-leasing-april-2019-update.pdf",
+    "sources": [
+     "technical-docs"
+    ],
+    "pass": true,
+    "verdict": "partial"
+   },
+   "final": {
+    "answer": null,
+    "sources": null,
+    "pass": null,
+    "latency_s": null,
+    "verdict": null
+   },
+   "diagnosis": "Right six areas, but leaked a '</thinking>' tag and a sentence of planning. Later runs also padded each item with invented explanations, or returned an empty answer.",
+   "fix": "Reasoning tags stripped, a rule against explanations the page doesn't give, and one retry on an empty reply."
+  },
+  {
+   "id": "q14",
+   "farm": "penmanshiel",
+   "capability": "Tender PDF",
+   "question": "What water depths and mean wind speed were reported for the Hollandse Kust (zuid) tender sites?",
+   "truth": "RVO HKZ Project and Site Description: water depth 18.1-27.9 m LAT (Site I) and 18.8-26.6 m (Site II), p.14; long-term mean wind speed 9.44 +/- 0.38 m/s at 100 m MSL, p.21.",
+   "sources": [
+    "technical-docs"
+   ],
+   "baseline": {
+    "answer": "Based on the search result from the technical documents, the specific water depths and mean wind speed for the Hollandse Kust (zuid) tender sites cannot be determined from the provided passages. However, the documents do provide general information about the site conditions, such as the range of water depths and the characterization of the seabed.\n\nFor more precise information about the water depths and mean wind speed, additional data or documentation would be required. I apologize for not being able to provide the specific numbers you were looking for. If you have any other questions or need information related to the Penmanshiel farm, feel free to ask.",
+    "sources": [
+     "technical-docs"
+    ],
+    "pass": false,
+    "verdict": "refused"
+   },
+   "final": {
+    "answer": null,
+    "sources": null,
+    "pass": null,
+    "latency_s": null,
+    "verdict": null
+   },
+   "diagnosis": "The depth passage was retrieved and Nova still refused. The 9.44 m/s sentence sat in the chunk next to the one that matched. Once answered, it cited the depths' printed page number (20), not the PDF page (14).",
+   "fix": "Chunks find the page, then the whole page is read. A prompt rewording stops tender questions being refused, and every p.N citation is re-checked against the cited page's numbers and corrected."
+  },
+  {
+   "id": "q15",
+   "farm": "hill_of_towie",
+   "capability": "Betz-limit analysis",
+   "question": "How close does the best turbine get to the Betz limit?",
+   "truth": "rank_turbines('peak_cp'): HillOfTowie_18's peak Cp 0.5995 is above the 0.593 Betz limit, which is physically impossible: a measurement artifact (anemometer reading low), not a near-Betz turbine.",
+   "sources": [
+    "turbine-ranking",
+    "current-analysis"
+   ],
+   "baseline": {
+    "answer": "The turbine HillOfTowie_18 gets closest to the Betz limit with a peak Cp of 0.5995.",
+    "sources": [
+     "turbine-ranking"
+    ],
+    "pass": true,
+    "verdict": "wrong"
+   },
+   "final": {
+    "answer": null,
+    "sources": null,
+    "pass": null,
+    "latency_s": null,
+    "verdict": null
+   },
+   "diagnosis": "Called HillOfTowie_18 'closest to the Betz limit' with Cp 0.5995, which is above it: a physically impossible value presented as a success. Later runs named the second-highest turbine from the unsorted list.",
+   "fix": "Tools now flag a peak Cp above 0.593 as a measurement artifact (nacelle anemometer bias), and the analysis tool returns its extremes ready-made."
+  }
+ ]
+}

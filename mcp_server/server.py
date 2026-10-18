@@ -36,6 +36,13 @@ def query_technical_documents(farm_id: str, question: str) -> str:
 
 
 @mcp.tool()
+def get_farm_facts(farm_id: str) -> dict:
+    """A farm's commissioning date, turbine model and hub height per turbine (from the dataset's
+    metadata) and its production records over the full multi-year SCADA history."""
+    return tools.get_farm_facts(farm_id)
+
+
+@mcp.tool()
 def query_edp_incidents(question: str) -> str:
     """Ask a question against EDP Wind Farm A's real labeled fault case studies (22
     anonymized turbine windows, diagnosis/RAG only, no forecasting for this farm)."""

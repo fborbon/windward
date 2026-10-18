@@ -107,6 +107,20 @@
   .pill{display:inline-block; padding:2px 8px; border-radius:99px; font-size:11px; font-weight:600;}
   .pill.ok{background:rgba(76,175,130,0.15); color:var(--good);}
   .pill.flag{background:rgba(226,87,76,0.15); color:var(--bad);}
+  .pill.warn{background:rgba(224,163,64,0.15); color:var(--warn);}
+
+  .evalq{border-bottom:1px solid var(--border); padding:10px 0;}
+  .evalq:last-child{border-bottom:none;}
+  .evalq summary{cursor:pointer; display:flex; gap:10px; align-items:baseline; list-style:none;}
+  .evalq summary::-webkit-details-marker{display:none;}
+  .evalq summary .q{flex:1; color:var(--text); font-size:14px;}
+  .evalq summary .meta{font-size:11px; color:var(--text-faint); white-space:nowrap;}
+  .evalq .body{margin-top:10px; display:grid; gap:10px;}
+  .evalq .label{font-size:10px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:3px;}
+  .evalq .ans{white-space:pre-wrap; font-size:13px; color:var(--text); background:var(--surface2); border-radius:8px; padding:10px 12px; overflow-wrap:anywhere;}
+  .evalq .ans.old{color:var(--text-dim);}
+  .evalq .note{font-size:13px; color:var(--text-dim);}
+  @media (max-width:600px){.evalq summary{flex-wrap:wrap;} .evalq summary .meta{white-space:normal;}}
 
   .anomaly{display:flex; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:13px;}
   .anomaly:last-child{border-bottom:none;}
@@ -441,6 +455,7 @@ function drawWindRose(canvas, sectors, opts={}){
 const EDP_FARM_ID = "edp_wind_farm_a";
 const DSWE_FARM_ID = "dswe_inland_offshore";
 const WIND_PREDICTION_TAB_ID = "wind_prediction";
+const RAG_EVAL_TAB_ID = "rag_eval";
 
 async function loadFarms(){
   const res = await fetch(`${API}/farms`);
@@ -462,6 +477,10 @@ async function loadFarms(){
     <div class="tab" data-farm="${WIND_PREDICTION_TAB_ID}">
       <span class="name">Wind Prediction</span>
       <span class="meta">naive → foundation models</span>
+    </div>` + `
+    <div class="tab" data-farm="${RAG_EVAL_TAB_ID}">
+      <span class="name">RAG Evaluation</span>
+      <span class="meta">15 test questions, graded</span>
     </div>`;
   tabs.querySelectorAll(".tab").forEach(el => el.addEventListener("click", () => selectFarm(el.dataset.farm)));
   if(FARMS.length) selectFarm(FARMS[0].farm_id);
@@ -478,6 +497,7 @@ async function selectFarm(farmId){
   if(farmId === EDP_FARM_ID){ selectEdp(panel); return; }
   if(farmId === DSWE_FARM_ID){ selectDswe(panel); return; }
   if(farmId === WIND_PREDICTION_TAB_ID){ selectWindPrediction(panel); return; }
+  if(farmId === RAG_EVAL_TAB_ID){ selectRagEval(panel); return; }
   panel.innerHTML = `<div class="skeleton"><span class="spinner"></span> Running the agent — forecast, Betz-limit diagnostics, RAG, and a vision-LLM blade check. First load per farm takes ~10-20s (cached after).</div>`;
   const res = await fetch(`${API}/analysis/${farmId}`);
   if(!res.ok){ panel.innerHTML = `<div class="card">Analysis failed: ${res.status}</div>`; return; }
@@ -844,6 +864,75 @@ async function loadDsweTurbine(turbineId, lat, lon){
 
 // ---------- Wind Prediction: naive -> foundation-model technique showcase ----------
 const WP_COLORS = [GOLD, GOOD, "#5c8ce0", "#e0725c", "#a05ce0", "#5ce0c8"];
+
+// ---------- RAG evaluation tab ----------
+const SOURCE_LABELS = {"maintenance-docs":"maintenance docs (RAG)", "technical-docs":"technical PDFs (datasheets, tenders)", "farm-facts":"farm facts (metadata, SCADA history)", "current-analysis":"current analysis", "operational-assessment":"OpenOA operational assessment", "turbine-details":"turbine details + status log", "turbine-ranking":"turbine ranking"};
+function esc(t){ return String(t ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+const VERDICT_PILL = {correct:"ok", partial:"warn", wrong:"flag", refused:"flag"};
+function verdictPill(v){ return v ? `<span class="pill ${VERDICT_PILL[v]||"warn"}">${esc(v)}</span>` : `<span class="pill warn">pending</span>`; }
+function sourceList(src){ return (src && src.length) ? [...new Set(src)].map(x => SOURCE_LABELS[x] || x).join(", ") : "none (no tool used)"; }
+
+async function selectRagEval(panel){
+  panel.innerHTML = `<div class="skeleton"><span class="spinner"></span> Loading evaluation…</div>`;
+  const res = await fetch(`${API}/rag-eval`);
+  if(!res.ok){ panel.innerHTML = `<div class="card">Not available yet: ${res.status}.</div>`; return; }
+  const data = await res.json();
+  if(ACTIVE_FARM !== RAG_EVAL_TAB_ID) return;
+  renderRagEval(panel, data);
+}
+
+function renderRagEval(panel, data){
+  const farmName = id => (FARMS.find(f => f.farm_id === id) || {}).name || id;
+  const n = data.questions.length;
+  const count = (k, v) => (data.verdicts[k] || {})[v] || 0;
+  const m = data.answer_model;
+  panel.innerHTML = `
+  <div class="card">
+    <h2>RAG evaluation: 15 questions, before and after</h2>
+    <div class="desc">
+      One question per capability of the "Ask the agent" box: SCADA history, the turbine datasheet and
+      tender PDFs, OpenOA results, turbine rankings and the fault log. Each answer was read against a
+      reference taken from the data behind the tool (not from the agent), given a verdict, and its
+      failure traced to a cause and fixed. Answers are written by <b>${esc(m.name)}</b>
+      (<code>${esc(m.id)}</code>) through ${esc(m.via)}; retrieval uses ${esc(m.embeddings)}.
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="v">${count("baseline","correct")}/${n}</div><div class="l">correct before</div></div>
+      <div class="kpi"><div class="v">${count("final","correct")}/${n}</div><div class="l">correct after</div></div>
+      <div class="kpi"><div class="v">${count("baseline","wrong")+count("baseline","refused")}</div><div class="l">wrong or refused before</div></div>
+      <div class="kpi"><div class="v">${count("final","wrong")+count("final","refused")}</div><div class="l">wrong or refused after</div></div>
+    </div>
+    ${data.model_comparison.length ? `
+    <h3>Would a newer model have fixed it?</h3>
+    <div class="desc">The same battery and code, before the citation and parallel-call fixes, answered by two
+      Bedrock models (automatic grade). The newer model did not do better, so the fixes went into
+      retrieval, tools and prompts, and the cheaper model stayed.</div>
+    <table><thead><tr><th>Model</th><th class="num">Passed</th></tr></thead><tbody>
+      ${data.model_comparison.map(c => `<tr><td>${esc(c.model)} <span style="color:var(--text-faint)">${esc(c.model_id)}</span></td><td class="num">${c.passed}/${c.total}</td></tr>`).join("")}
+    </tbody></table>` : ""}
+  </div>
+  <div class="card">
+    <h3>The questions</h3>
+    <div class="desc">Click a question for the answer, the earlier answer, and what was fixed.</div>
+    ${data.questions.map(q => `
+      <details class="evalq">
+        <summary>
+          <span class="q">${esc(q.question)}</span>
+          <span class="meta">${esc(farmName(q.farm))} · ${esc(q.capability)}</span>
+          ${verdictPill(q.final.verdict)}
+        </summary>
+        <div class="body">
+          <div><div class="label">Answer now · ${esc(sourceList(q.final.sources))}</div>
+            <div class="ans">${esc(q.final.answer || "(not run yet)")}</div></div>
+          <div><div class="label">Reference</div><div class="note">${esc(q.truth)}</div></div>
+          <div><div class="label">Before the fixes ${verdictPill(q.baseline.verdict)} · ${esc(sourceList(q.baseline.sources))}</div>
+            <div class="ans old">${esc(q.baseline.answer)}</div></div>
+          <div><div class="label">What was wrong</div><div class="note">${esc(q.diagnosis)}</div></div>
+          ${q.fix ? `<div><div class="label">Fix</div><div class="note">${esc(q.fix)}</div></div>` : ""}
+        </div>
+      </details>`).join("")}
+  </div>`;
+}
 
 async function selectWindPrediction(panel){
   panel.innerHTML = `<div class="skeleton"><span class="spinner"></span> Loading technique comparison…</div>`;
@@ -1251,7 +1340,6 @@ function renderAnalysis(panel, farmId, a){
   const askInput = document.getElementById("ask-input");
   const askAnswer = document.getElementById("ask-answer");
   const askSources = document.getElementById("ask-sources");
-  const SOURCE_LABELS = {"maintenance-docs":"maintenance docs (RAG)", "technical-docs":"technical PDFs (datasheets, tenders)", "current-analysis":"current analysis", "operational-assessment":"OpenOA operational assessment", "turbine-details":"turbine details + status log", "turbine-ranking":"turbine ranking"};
   async function submitAsk(){
     const q = askInput.value.trim();
     if(!q) return;

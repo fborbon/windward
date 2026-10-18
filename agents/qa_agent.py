@@ -12,10 +12,11 @@ FAISS/Bedrock-Titan retriever the MCP server already exposes — so the public d
 MCP client are grounded by the same retrieval pipeline, not two divergent implementations.
 """
 import json
+import re
 
 from agents.llm_router import complete
 from agents.turbine_tools import RANK_METRICS, rank_turbines, turbine_details
-from mcp_server.tools import query_maintenance_docs, query_technical_documents
+from mcp_server.tools import query_maintenance_docs, technical_documents_answer
 
 MAX_TOOL_ROUNDS = 3
 
@@ -62,6 +63,21 @@ _TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
+            "name": "get_farm_facts",
+            "description": (
+                "This farm's own dataset metadata and production history: commissioning (commercial "
+                "operations) date, turbine model, hub height per turbine, decommissioning information, "
+                "upgrades, and production records over the full multi-year SCADA (highest 10-minute "
+                "farm output and when, best day, best month, energy per calendar year). Use for when "
+                "the farm was built or decommissioned, its hub heights, or its maximum/record/"
+                "historical production."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_current_analysis",
             "description": (
                 "Get this farm's current numeric analysis: actual-vs-predicted production, "
@@ -94,7 +110,9 @@ _TOOLS_SCHEMA = [
                 "Everything known about ONE turbine: capacity factor and its rank in the fleet, "
                 "peak Cp, QC-removed hours, its anomalies, OpenOA wake loss and yaw misalignment, "
                 "and its real status log (last maintenance stop, maintenance count, forced-outage "
-                "hours and top causes). Use for any question about a specific turbine."
+                "hours and top causes). Use for any question about a specific turbine. It needs the turbine's "
+                "name or number: when the turbine comes from a ranking, call rank_turbines first and this "
+                "in a later step."
             ),
             "parameters": {
                 "type": "object",
@@ -128,7 +146,8 @@ _SYSTEM_PROMPT = (
     "questions, search_technical_documents for turbine design/specification questions and "
     "wind-project tender or planning requirements (keep its page citations, and never present "
     "tender documents about other projects as facts about this farm), get_current_analysis for "
-    "numeric/performance questions, "
+    "numeric/performance questions over the 2016 analysis window, get_farm_facts for when the farm was "
+    "built or decommissioned, its hub heights, and record or multi-year production, "
     "get_operational_assessment for long-term yield/loss/wake/yaw questions, get_turbine_details "
     "for a question about one specific turbine, rank_turbines for best/worst/most-affected "
     "comparisons across turbines, several if the question "
@@ -136,20 +155,83 @@ _SYSTEM_PROMPT = (
     "answer under 120 words, plain English, technical but non-specialist. For totals, counts and "
     "rankings per turbine, the turbine tools are authoritative; if you also cite a single event from "
     "the maintenance docs, say it's one event. Quote numbers exactly "
-    "as the tools return them; never compute new statistics (intervals, percentages) yourself."
+    "as the tools return them; never compute new statistics (intervals, percentages) yourself. "
+    "Keep the (document title, p.N) citations search_technical_documents returns, and any condition it "
+    "attaches to a fact (\"only for turbines with...\"); never add citations for the other tools. Follow any "
+    "note a tool returns. If a tool returns an error or lacks something, say what is missing; never fill the "
+    "gap yourself. Don't pad a tool's facts with explanations it didn't give, and don't show its "
+    "internal field names (lt_pct, por_pct): say what they mean (long-term corrected, period of record). "
+    "Reply with the answer only: no reasoning, plans or tags."
 )
 
+# Asked "how close does the best turbine get to Betz?", the agent scanned this unsorted list and
+# named the second-highest turbine, and called a Cp above the limit "close to it".
+_ANALYSIS_NOTE = (
+    "efficiency_summary is not sorted: for best/worst/highest across turbines call rank_turbines. The Betz "
+    "limit is 0.593; a peak_cp above it (over_betz true) is physically impossible and points to the nacelle "
+    "anemometer reading low (see anomalies), not to a turbine beating Betz."
+)
 
-def _run_tool(name: str, args: dict, farm_id: str, analysis: dict, sources: list[str]):
+def _highlights(analysis: dict) -> dict:
+    """The extremes of the unsorted efficiency_summary, ready-made."""
+    eff = [e for e in analysis.get("efficiency_summary") or [] if e.get("peak_cp") is not None]
+    if not eff:
+        return {}
+    by_cf = sorted(eff, key=lambda e: e["capacity_factor"])
+    top_cp = max(eff, key=lambda e: e["peak_cp"])
+    return {
+        "highest_capacity_factor": {k: by_cf[-1][k] for k in ("turbine_id", "capacity_factor")},
+        "lowest_capacity_factor": {k: by_cf[0][k] for k in ("turbine_id", "capacity_factor")},
+        "highest_peak_cp": {k: top_cp.get(k) for k in ("turbine_id", "peak_cp", "over_betz")},
+    }
+
+
+def _with_citations(answer: str, cited: list[dict]) -> str:
+    """The technical-documents tool's answer is page-cited, but the agent's shorter rewrite of it
+    often drops the citations. Put the verified ones back when it did."""
+    if not cited or re.search(r"\bp\.\s?\d", answer):
+        return answer
+    by_title: dict[str, list[str]] = {}
+    for c in cited:
+        by_title.setdefault(c["title"], []).append(f"p.{c['page']}")
+    return answer + "\n\nSources: " + "; ".join(f"{t}, {', '.join(p)}" for t, p in by_title.items())
+
+
+_NO_ANSWER = "The agent returned no answer this time. Please try asking again."
+
+_THINKING = re.compile(r"<thinking>.*?</thinking>", re.DOTALL)
+
+
+def _clean(text: str | None) -> str:
+    """Nova sometimes leaks its reasoning: a <thinking> block, or only the closing tag after
+    a paragraph of plans ("I will present this information as..."). Keep what follows it, and
+    unwrap citations it formats as broken markdown links."""
+    text = _THINKING.sub("", text or "")
+    # citations formatted as broken markdown links: "[Title, p.6](document_title, p.6)"
+    text = re.sub(r"\[([^\]]+)\]\(document_title[^)]*\)", r"(\1)", text)
+    if "</thinking>" in text:
+        text = text.rsplit("</thinking>", 1)[1]
+    return text.replace("<thinking>", "").strip()
+
+
+def _run_tool(name: str, args: dict, farm_id: str, analysis: dict, sources: list[str], cited: list[dict]):
     if name == "search_maintenance_docs":
         sources.append("maintenance-docs")
         return query_maintenance_docs(farm_id, args.get("question") or "")
     if name == "search_technical_documents":
         sources.append("technical-docs")
-        return query_technical_documents(farm_id, args.get("question") or "")
+        result = technical_documents_answer(farm_id, args.get("question") or "")
+        cited.extend(c for c in result["cited"] if c not in cited)
+        return result["text"]
+    if name == "get_farm_facts":
+        from data_sources.farm_facts import farm_facts
+
+        sources.append("farm-facts")
+        return farm_facts(farm_id) or "no farm facts exported for this farm"
     if name == "get_current_analysis":
         sources.append("current-analysis")
-        return {k: analysis[k] for k in _ANALYSIS_KEYS if k in analysis}
+        return {**{k: analysis[k] for k in _ANALYSIS_KEYS if k in analysis}, "highlights": _highlights(analysis),
+                "note": _ANALYSIS_NOTE}
     if name == "get_operational_assessment":
         from operational_assessment.payload import compact_summary, farm_operational
 
@@ -176,11 +258,13 @@ def _fallback_answer(farm_id: str, question: str, analysis: dict) -> dict:
         f"Visitor question: {question}"
     )
     response = complete([{"role": "user", "content": context}])
-    return {"answer": response.choices[0].message.content, "sources": []}
+    return {"answer": _clean(response.choices[0].message.content), "sources": []}
 
 
 def answer_question(farm_id: str, question: str, analysis: dict) -> dict:
     sources: list[str] = []
+    cited: list[dict] = []
+    retried = False
     messages = [
         {"role": "system", "content": _SYSTEM_PROMPT.format(farm_id=farm_id)},
         {"role": "user", "content": question},
@@ -188,22 +272,28 @@ def answer_question(farm_id: str, question: str, analysis: dict) -> dict:
 
     try:
         for _ in range(MAX_TOOL_ROUNDS):
-            response = complete(messages, tools=_TOOLS_SCHEMA)
+            response = complete(messages, tools=_TOOLS_SCHEMA, temperature=0.3 if retried else 0)
             msg = response.choices[0].message
             tool_calls = getattr(msg, "tool_calls", None)
             if not tool_calls:
-                return {"answer": msg.content, "sources": sources}
+                answer = _clean(msg.content)
+                if not answer and not retried:
+                    # Nova Lite now and then returns a bare newline, no answer and no tool call
+                    # (seen at temperature 0 on the ScotWind question); one retry clears it.
+                    retried = True
+                    continue
+                return {"answer": _with_citations(answer, cited) or _NO_ANSWER, "sources": sources}
 
             messages.append(msg.model_dump())
             for call in tool_calls:
                 args = json.loads(call.function.arguments or "{}")
-                result = _run_tool(call.function.name, args, farm_id, analysis, sources)
+                result = _run_tool(call.function.name, args, farm_id, analysis, sources, cited)
                 content = result if isinstance(result, str) else json.dumps(result, default=str)
                 messages.append({"role": "tool", "tool_call_id": call.id, "content": content})
 
         # Exhausted MAX_TOOL_ROUNDS without a final answer — ask once more without tools.
-        response = complete(messages)
-        return {"answer": response.choices[0].message.content, "sources": sources}
+        response = complete(messages, temperature=0)
+        return {"answer": _with_citations(_clean(response.choices[0].message.content), cited), "sources": sources}
     except Exception as e:  # tool-calling is new — never let it take the endpoint fully down
         print(f"WARN: qa_agent tool-calling failed ({e}); falling back to stuffed-prompt answer", flush=True)
         return _fallback_answer(farm_id, question, analysis)

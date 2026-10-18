@@ -18,6 +18,7 @@ MODULES = [
     "rag.pdf_retriever",
     "rag.datasheet_specs",
     "mcp_server.tools",
+    "data_sources.farm_facts",
     "data_sources.edp_scada",
     "data_sources.dswe_scada",
     "data_sources.meteo_client",

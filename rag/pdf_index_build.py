@@ -1,6 +1,7 @@
 """`python -m rag.pdf_index_build [--force]` - downloads the technical-document PDFs
 (rag/pdf_sources.py), extracts and chunks them (rag/pdf_corpus.py), embeds the chunks with
-Bedrock Titan into one FAISS index in data/pdf_index/, and extracts structured turbine specs
+Bedrock Titan into one FAISS index in data/pdf_index/, keeps each page's text (pages.json, what
+answers are built from: chunks find the page, the whole page is read), and extracts structured turbine specs
 from each datasheet (rag/datasheet_specs.py).
 
 Runs in the jobs image from infra/deploy_host.sh on every deploy, but only rebuilds when the
@@ -17,7 +18,7 @@ from langchain_community.vectorstores import FAISS
 
 from rag import datasheet_specs, pdf_corpus
 from rag.embeddings import BedrockTitanEmbeddings
-from rag.pdf_retriever import INDEX_DIR, MANIFEST_PATH, index_built
+from rag.pdf_retriever import INDEX_DIR, MANIFEST_PATH, PAGES_PATH, index_built
 from rag.pdf_sources import SOURCES
 
 
@@ -25,6 +26,7 @@ def fingerprint() -> str:
     parts = [f"{s.doc_id}:{s.sha256}:{','.join(s.applies_to)}:{','.join(s.drop_lines)}" for s in SOURCES]
     parts.append(f"chunk:{pdf_corpus.CHUNK_SIZE}:{pdf_corpus.CHUNK_OVERLAP}:{pdf_corpus.MIN_CHUNK_LENGTH}")
     parts.append(f"specs:{','.join(datasheet_specs.SPEC_FIELDS)}")
+    parts.append("pages:v1")  # pages.json, the full page text the answer is built from
     return hashlib.sha256("\n".join(parts).encode()).hexdigest()
 
 
@@ -39,13 +41,14 @@ def up_to_date() -> bool:
 def build() -> dict:
     from agents.llm_router import complete
 
-    docs, documents, specs = [], {}, {}
+    docs, documents, specs, page_text = [], {}, {}, {}
     for source in SOURCES:
         path = pdf_corpus.download(source)
         if path is None:
             continue
         pages = pdf_corpus.extract_pages(path, source)
         chunks = pdf_corpus.page_documents(pages, source)
+        page_text[source.doc_id] = {str(p.page): p.text for p in pages}
         docs.extend(chunks)
         documents[source.doc_id] = {"pages": len(pages), "chunks": len(chunks), "sha256": source.sha256}
         print(f"{source.doc_id}: {len(pages)} pages -> {len(chunks)} chunks")
@@ -61,6 +64,7 @@ def build() -> dict:
     INDEX_DIR.mkdir(parents=True, exist_ok=True)
     store.save_local(str(INDEX_DIR))
     datasheet_specs.SPECS_PATH.write_text(json.dumps(specs, indent=1))
+    PAGES_PATH.write_text(json.dumps(page_text))
     manifest = {
         "fingerprint": fingerprint(),
         "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),

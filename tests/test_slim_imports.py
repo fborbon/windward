@@ -16,6 +16,7 @@ API_MODULES = (
     "rag.dswe_retriever",
     "rag.pdf_retriever",
     "rag.datasheet_specs",
+    "data_sources.farm_facts",
     "data_sources.edp_scada",
     "data_sources.dswe_scada",
     "storage.dynamo_session_store",

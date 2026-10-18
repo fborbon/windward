@@ -191,17 +191,48 @@ def rank_turbines(farm_id: str, metric: str, analysis: dict) -> dict | str:
             value = (op["wake"].get(tid) or {}).get("lt_pct")
         elif metric == "abs_yaw_misalignment_deg":
             mean = (op["yaw"].get(tid) or {}).get("mean_deg")
-            value = abs(mean) if mean is not None and op["yaw_status"].get(tid) != "inconclusive" else None
+            value = abs(mean) if mean is not None else None
         elif metric == "qc_removed_share":
             value = (qc.get(tid) or {}).get("qc_flag")
         else:
             value = _maintenance_stats(farm_id, tid)[metric]
-        if value is not None:
-            rows.append({"turbine_id": tid, metric: round(float(value), 4)})
-    rows.sort(key=lambda r: r[metric], reverse=True)
-    return {
+        if value is None:
+            continue
+        row = {"turbine_id": tid, metric: round(float(value), 4)}
+        if metric == "abs_yaw_misalignment_deg":
+            row["status"] = op["yaw_status"].get(tid)
+        if metric == "peak_cp":
+            row["over_betz_limit"] = bool((eff.get(tid) or {}).get("over_betz"))
+        rows.append(row)
+    if metric == "abs_yaw_misalignment_deg":
+        # Inconclusive estimates were once dropped here, which left Kelmarsh (all six inconclusive)
+        # with an empty ranking and the agent naming a turbine from elsewhere. Rank the reliable
+        # ones first and label the rest, so the answer can say how far each can be trusted.
+        rows.sort(key=lambda r: (r["status"] == "inconclusive", -r[metric]))
+    else:
+        rows.sort(key=lambda r: r[metric], reverse=True)
+    out = {
         "metric": metric, "description": description,
         "order": "highest first; " + ("higher is better, so best first" if higher_is_better else "higher is worse, so most affected first"),
         "ranking": rows,
-        "note": "yaw estimates marked inconclusive are left out" if metric == "abs_yaw_misalignment_deg" else None,
+        "note": _RANK_NOTES.get(metric),
     }
+    if metric in ("forced_outage_hours", "maintenance_events") and rows:
+        # "Which turbine had the most outages, and why?": the agent asked for the details in the
+        # same parallel tool round, before it knew the turbine, and then made the causes up.
+        out["first_turbine_status_log"] = _maintenance_stats(farm_id, rows[0]["turbine_id"])
+    return out
+
+
+_RANK_NOTES = {
+    "abs_yaw_misalignment_deg": (
+        "conclusive estimates are listed first; 'inconclusive' means OpenOA's per-wind-speed-bin estimates disagree by "
+        "more than 10 deg, so the value is not reliable. If every turbine is inconclusive, say that no reliable estimate "
+        "exists and only mention the largest value as unreliable."
+    ),
+    "peak_cp": (
+        "the Betz limit is 0.593. A turbine with over_betz_limit true has a measured peak Cp above it, which is physically "
+        "impossible: it points to the nacelle anemometer reading low (see anomalies), not to a turbine beating Betz. Say "
+        "so instead of calling it close to the limit."
+    ),
+}

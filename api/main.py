@@ -24,6 +24,7 @@ WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 INSPECTION_PHOTO = Path(__file__).resolve().parent.parent / "data" / "sample_inspection_photos" / "rotorblatt_inspection.jpg"
 WIND_PREDICTION_PAYLOAD = Path(__file__).resolve().parent.parent / "dashboard" / "data" / "wind_prediction_payload.json"
 WIND_SPEED_PAYLOAD = Path(__file__).resolve().parent.parent / "dashboard" / "data" / "wind_speed_payload.json"
+RAG_EVAL_PAYLOAD = Path(__file__).resolve().parent.parent / "dashboard" / "data" / "rag_eval_payload.json"
 
 _analysis_cache: dict[str, dict] = {}
 _ANALYSIS_TTL_S = 3600  # SCADA history is static 2016 data; just avoids re-running Bedrock calls on every viewer
@@ -64,6 +65,14 @@ def wind_prediction():
     if not WIND_PREDICTION_PAYLOAD.exists():
         raise HTTPException(404, "wind-prediction payload not exported yet - run `python -m wind_prediction.export`")
     return json.loads(WIND_PREDICTION_PAYLOAD.read_text())
+
+
+@app.get("/rag-eval")
+def rag_eval():
+    """The /ask agent's 15-question evaluation, before and after its fixes (rag_eval/, README §17)."""
+    if not RAG_EVAL_PAYLOAD.exists():
+        raise HTTPException(404, "rag-eval payload not exported yet - run `python -m rag_eval.export`")
+    return json.loads(RAG_EVAL_PAYLOAD.read_text())
 
 
 @app.get("/wind-prediction/wind-speed")

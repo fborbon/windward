@@ -92,6 +92,11 @@ def compact_summary(operational: dict | None) -> dict | None:
         if m and m.get("p50_gwh") is not None and m.get("std_gwh") is not None:
             aep[method] = {**m, "interval_95pct_gwh": [round(m["mean_gwh"] - 1.96 * m["std_gwh"], 2),
                                                         round(m["mean_gwh"] + 1.96 * m["std_gwh"], 2)]}
+    # Two methods, two P50/P90 pairs: asked for "the" P50 and P90 the LLM picked one at random.
+    # The monthly linear one is the industry standard the dashboard and README lead with.
+    if "monthly_linear" in aep:
+        aep["headline_method"] = ("monthly_linear (industry standard): quote its P50/P90 first; daily_gam_temperature "
+                                  "is a second estimate with lower uncertainty, mention it only as such")
     out["aep"] = aep
     wl = operational.get("wake_losses") or {}
     out["wake_losses"] = {k: v for k, v in wl.items() if k != "by_direction"}

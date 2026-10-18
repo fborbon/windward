@@ -1,0 +1,228 @@
+{
+ "label": "baseline",
+ "url": "https://windward.forwardforecasting.eu",
+ "run_at": "2026-10-18T13:29:23Z",
+ "results": [
+  {
+   "id": "q01",
+   "answer": "The maximum historical power production of the wind farm is 3.007 MW.",
+   "sources": [
+    "current-analysis"
+   ],
+   "latency_s": 1.6,
+   "tool_ok": false,
+   "facts_found": 0,
+   "facts_total": 2,
+   "missing_facts": [
+    "1[0-2][.,]\\d+\\s*MW|1[0-2],\\d{3}\\s*kW",
+    "20(1[6-9]|2[01])"
+   ],
+   "pass": false
+  },
+  {
+   "id": "q02",
+   "answer": "Unfortunately, the available technical documents do not contain information about the number of different hub heights, rotor sizes, and turbulence categories offered by the manufacturer for the Siemens SWT-2.3-VS-82 model. To answer this question, more information from the turbine manufacturer would be required.",
+   "sources": [
+    "technical-docs"
+   ],
+   "latency_s": 49.4,
+   "tool_ok": true,
+   "facts_found": 0,
+   "facts_total": 4,
+   "missing_facts": [
+    "82\\.4",
+    "80\\s*m",
+    "site.specific",
+    "\\bI\\s?A\\b|class\\s*IA"
+   ],
+   "pass": false
+  },
+  {
+   "id": "q03",
+   "answer": "Based on the technical documents I have access to, I cannot provide the information about when Kelmarsh Wind Farm was built or when it will be decommissioned.",
+   "sources": [
+    "technical-docs"
+   ],
+   "latency_s": 2.1,
+   "tool_ok": false,
+   "facts_found": 0,
+   "facts_total": 2,
+   "missing_facts": [
+    "2016",
+    "not (stated|in|available|known|recorded|published)|no (decommission|date)|doesn.t (state|include)|does not (state|include)"
+   ],
+   "pass": false
+  },
+  {
+   "id": "q04",
+   "answer": "The best performing turbine at Penmanshiel farm is Penmanshiel_13 with a capacity factor of 0.3161. The worst performing turbine is Penmanshiel_07 with a capacity factor of 0.2163.",
+   "sources": [
+    "turbine-ranking"
+   ],
+   "latency_s": 40.0,
+   "tool_ok": true,
+   "facts_found": 2,
+   "facts_total": 2,
+   "missing_facts": [],
+   "pass": true
+  },
+  {
+   "id": "q05",
+   "answer": "The global wake effect at Kelmarsh farm, as a percentage of the annual energy yield, is 7.778%. This is based on the long-term (LT) wake losses provided in the operational assessment.",
+   "sources": [
+    "operational-assessment"
+   ],
+   "latency_s": 1.7,
+   "tool_ok": true,
+   "facts_found": 0,
+   "facts_total": 1,
+   "missing_facts": [
+    "7\\.8|8\\.3"
+   ],
+   "pass": false
+  },
+  {
+   "id": "q06",
+   "answer": "The gearbox of the turbine is a custom-built, three-stage planetary-helical design. This design allows for a compact, high-performance construction with high torque, which is ideal for the turbine's operational needs. The turbine shuts down at a wind speed of approximately 25 m/s to prevent damage. This is in line with standard practices to protect the turbine from extreme weather conditions.",
+   "sources": [
+    "technical-docs",
+    "maintenance-docs"
+   ],
+   "latency_s": 3.8,
+   "tool_ok": true,
+   "facts_found": 3,
+   "facts_total": 3,
+   "missing_facts": [],
+   "pass": true
+  },
+  {
+   "id": "q07",
+   "answer": "The long-term annual energy production (AEP) estimates for Penmanshiel are as follows:\n\n- P50: 76.623 GWh\n- P90: 75.67 GWh\n\nThese estimates are based on a daily generalized additive model (GAM) temperature approach, which considers multiple factors affecting the farm's energy production.",
+   "sources": [
+    "operational-assessment"
+   ],
+   "latency_s": 1.6,
+   "tool_ok": true,
+   "facts_found": 1,
+   "facts_total": 2,
+   "missing_facts": [
+    "74\\.[7-8]"
+   ],
+   "pass": false
+  },
+  {
+   "id": "q08",
+   "answer": "Kelmarsh 1 has the largest static yaw misalignment, but the exact value is inconclusive according to the OpenOA data. The turbine's yaw misalignment is between 9.1 and 16.97 degrees with a mean of 11.79 degrees. The turbine's yaw misalignment cannot be definitively determined from the current data.",
+   "sources": [
+    "turbine-ranking",
+    "turbine-details",
+    "turbine-ranking"
+   ],
+   "latency_s": 3.3,
+   "tool_ok": true,
+   "facts_found": 0,
+   "facts_total": 2,
+   "missing_facts": [
+    "Kelmarsh[ _]?2",
+    "17\\.8"
+   ],
+   "pass": false
+  },
+  {
+   "id": "q09",
+   "answer": "'Penmanshiel_11' had the most forced-outage hours, totaling 726.5 hours. The main causes were 'Emergency stop base box' with 716.2 hours and 'Externally stopped' with 3.7 hours. Note that the hours count overlapping events once; per-cause hours can overlap each other, so don't add them up.",
+   "sources": [
+    "turbine-ranking",
+    "turbine-details"
+   ],
+   "latency_s": 2.7,
+   "tool_ok": true,
+   "facts_found": 2,
+   "facts_total": 2,
+   "missing_facts": [],
+   "pass": true
+  },
+  {
+   "id": "q10",
+   "answer": "The longest downtime events at the Kelmarsh Wind Farm, according to the context provided, are as follows:\n\n1. **Kelmarsh 1:** \n   - **Event type:** Warning event\n   - **Event code:** 2125\n   - **Description:** Timeout brake closed\n   - **Duration:** 548.2 hours\n   - **Start date:** 2016-12-17 16:38\n   - **Source:** (scada-event:Kelmarsh_1:2125:2016-12-17 16:38:07)\n\n2. **Kelmarsh 2:**\n   - **Event type:** Warning event\n   - **Event code:** 2125\n   - **Description:** Timeout brake closed\n   - **Duration:** 167.1 hours\n   - **Start date:** 2016-01-25 16:40\n   - **Source:** (scada-event:Kelmarsh_2:2125:2016-01-25 16:40:35)\n\n3. **Kelmarsh 5:**\n   - **Event type:** Stop event\n   - **Event code:** 21\n   - **Description:** Manual stop - remote\n   - **Duration:** 75.2 hours\n   - **Start date:** 2016-02-22 11:27\n   - **Source:** (scada-event:Kelmarsh_5:21:2016-02-22 11:27:33)\n\n4. **Kelmarsh 6:**\n   - **Event type:** Stop event\n   - **Event code:** 3585\n   - **Description:** Maximum grid frequency\n   - **Duration:** 28.4 hours\n   - **Start date:** 2016-07-29 04:56\n   - **Source:** (scada-event:Kelmarsh_6:3585:2016-07-29 04:56:16)\n\nThe longest downtime event was the warning event (code 2125) on Kelmarsh 1, which lasted 548.2 hours and was caused by a timeout brake being closed. The next longest event was also a warning event (code 2125) on Kelmarsh 2, lasting 167.1 hours, caused by the same reason.",
+   "sources": [
+    "maintenance-docs"
+   ],
+   "latency_s": 5.8,
+   "tool_ok": true,
+   "facts_found": 2,
+   "facts_total": 2,
+   "missing_facts": [],
+   "pass": true
+  },
+  {
+   "id": "q11",
+   "answer": "The rotor diameter used by Windward does not match the manufacturer's datasheet. The datasheet specifies a rotor diameter of 82.4 meters, while Windward's configuration uses 82 meters.",
+   "sources": [
+    "technical-docs"
+   ],
+   "latency_s": 2.1,
+   "tool_ok": true,
+   "facts_found": 3,
+   "facts_total": 3,
+   "missing_facts": [],
+   "pass": true
+  },
+  {
+   "id": "q12",
+   "answer": "The EnergyUp Full Power Curve Advanced upgrade is compatible with the MM82, MM92, and MM100 turbines. This upgrade increases the Annual Energy Production (AEP) by optimizing torque and rotor speed. Specifically, for the MM92 turbine, the power output can be increased to 2.2 MW (for the 50 Hz market) and 2.125 MW (for the 60 Hz market). The AEP boost from this upgrade can be up to 5% depending on the turbine model and wind farm conditions.",
+   "sources": [
+    "technical-docs",
+    "technical-docs"
+   ],
+   "latency_s": 5.0,
+   "tool_ok": true,
+   "facts_found": 2,
+   "facts_total": 2,
+   "missing_facts": [],
+   "pass": true
+  },
+  {
+   "id": "q13",
+   "answer": "The ScotWind leasing round requires applicants to submit several key documents and information. I will present this information as per the technical documents found. </thinking>\nHere is what an applicant has to submit in the ScotWind leasing round, according to the ScotWind Leasing - April 2019 update (working draft), p.2:\n\n- Project concept\n- Project delivery plan\n- Capability and experience\n- Development budget\n- Developer financial resources\n- Commitment to the project and preparedness\n\nAdditionally, applicants may be asked to complete an application form and provide separate substantive documents, including those outlined in Table 1 of the ScotWind Leasing - April 2019 update (working draft), p.2. If an application involves more than one legal entity, statements of commitment at board level are required (ScotWind Leasing - April 2019 update (working draft), p.2).\n\nYou can find more details in the ScotWind Leasing - April 2019 update (working draft): https://www.crownestatescotland.com/sites/default/files/2023-07/scotwind-leasing-april-2019-update.pdf",
+   "sources": [
+    "technical-docs"
+   ],
+   "latency_s": 3.5,
+   "tool_ok": true,
+   "facts_found": 2,
+   "facts_total": 2,
+   "missing_facts": [],
+   "pass": true
+  },
+  {
+   "id": "q14",
+   "answer": "Based on the search result from the technical documents, the specific water depths and mean wind speed for the Hollandse Kust (zuid) tender sites cannot be determined from the provided passages. However, the documents do provide general information about the site conditions, such as the range of water depths and the characterization of the seabed.\n\nFor more precise information about the water depths and mean wind speed, additional data or documentation would be required. I apologize for not being able to provide the specific numbers you were looking for. If you have any other questions or need information related to the Penmanshiel farm, feel free to ask.",
+   "sources": [
+    "technical-docs"
+   ],
+   "latency_s": 3.7,
+   "tool_ok": true,
+   "facts_found": 1,
+   "facts_total": 3,
+   "missing_facts": [
+    "\\d+(\\.\\d+)?\\s*m/s",
+    "\\d+\\s*(m|metres|meters)\\b"
+   ],
+   "pass": false
+  },
+  {
+   "id": "q15",
+   "answer": "The turbine HillOfTowie_18 gets closest to the Betz limit with a peak Cp of 0.5995.",
+   "sources": [
+    "turbine-ranking"
+   ],
+   "latency_s": 1.7,
+   "tool_ok": true,
+   "facts_found": 3,
+   "facts_total": 3,
+   "missing_facts": [],
+   "pass": true
+  }
+ ]
+}

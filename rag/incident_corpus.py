@@ -31,7 +31,7 @@ def _event_documents(farm: Farm) -> list[Document]:
         text = (
             f"{farm.name}, {e['turbine_id'].replace('_', ' ')}: {e['status']} event, "
             f"code {e['code']} — {e['message']}. Started {e['start']:%Y-%m-%d %H:%M}, "
-            f"lasted {e['duration_hours']:.1f} hours. IEC category: {e['iec_category'] or 'unclassified'}."
+            f"lasted {e['duration_hours']:.1f} hours. IEC category: {e['iec_category'] if isinstance(e['iec_category'], str) and e['iec_category'] else 'unclassified'}."
         )
         docs.append(Document(page_content=text, metadata={"source": f"scada-event:{e['turbine_id']}:{e['code']}:{e['start']}"}))
     return docs

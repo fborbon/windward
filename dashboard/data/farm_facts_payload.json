@@ -1,0 +1,225 @@
+{
+ "farms": {
+  "kelmarsh": {
+   "turbines": {
+    "source": "Kelmarsh_WT_static.csv (the dataset's turbine metadata)",
+    "count": 6,
+    "manufacturer": "Senvion",
+    "model": "MM92",
+    "rated_power_kw": 2050.0,
+    "rotor_diameter_m_in_metadata": 92.0,
+    "hub_heights_m": {
+     "68.5": [
+      "Kelmarsh 3",
+      "Kelmarsh 6"
+     ],
+     "78.5": [
+      "Kelmarsh 1",
+      "Kelmarsh 2",
+      "Kelmarsh 4",
+      "Kelmarsh 5"
+     ]
+    },
+    "commercial_operations_date": [
+     "2016-04-15"
+    ]
+   },
+   "production_records": {
+    "source": "10-minute turbine SCADA (the OpenOA input, README \u00a715), farm output = sum of turbine active power",
+    "period": "2016-01-03 to 2021-06-30",
+    "max_10min_farm_output_mw": 12.36,
+    "max_10min_farm_output_at": "2018-01-04 17:40",
+    "turbines_reporting_then": 6,
+    "installed_capacity_mw": 12.3,
+    "max_10min_single_turbine_kw": 2086.9,
+    "max_10min_single_turbine": "Kelmarsh_6 at 2019-05-04 12:40",
+    "best_day": {
+     "period": "2017-11-22",
+     "energy_mwh": 287.0
+    },
+    "best_month": {
+     "period": "2020-02",
+     "energy_mwh": 5703.0
+    },
+    "energy_by_calendar_year": {
+     "2016": {
+      "energy_gwh": 24.52,
+      "scada_coverage": 0.903
+     },
+     "2017": {
+      "energy_gwh": 32.39,
+      "scada_coverage": 0.989
+     },
+     "2018": {
+      "energy_gwh": 30.09,
+      "scada_coverage": 0.965
+     },
+     "2019": {
+      "energy_gwh": 30.87,
+      "scada_coverage": 0.999
+     },
+     "2020": {
+      "energy_gwh": 36.35,
+      "scada_coverage": 0.991
+     },
+     "2021": {
+      "energy_gwh": 14.53,
+      "scada_coverage": 0.495
+     }
+    },
+    "note": "energy is from turbine SCADA, before the few-% electrical losses to the export meter; a year with scada_coverage well below 1 is partial (data gaps or the export starting/ending mid-year)"
+   },
+   "decommissioning": "No decommissioning or end-of-consent date appears in any source Windward holds for this farm (dataset metadata, SCADA, the indexed PDFs)."
+  },
+  "penmanshiel": {
+   "turbines": {
+    "source": "Penmanshiel_WT_static.csv (the dataset's turbine metadata)",
+    "count": 14,
+    "manufacturer": "Senvion",
+    "model": "MM82",
+    "rated_power_kw": 2050.0,
+    "rotor_diameter_m_in_metadata": 82.0,
+    "hub_heights_m": {
+     "59": [
+      "Penmanshiel 01",
+      "Penmanshiel 02",
+      "Penmanshiel 04",
+      "Penmanshiel 05",
+      "Penmanshiel 06",
+      "Penmanshiel 07",
+      "Penmanshiel 08",
+      "Penmanshiel 09",
+      "Penmanshiel 10",
+      "Penmanshiel 11",
+      "Penmanshiel 12",
+      "Penmanshiel 13",
+      "Penmanshiel 14",
+      "Penmanshiel 15"
+     ]
+    },
+    "commercial_operations_date": [
+     "2016-09-01"
+    ]
+   },
+   "production_records": {
+    "source": "10-minute turbine SCADA (the OpenOA input, README \u00a715), farm output = sum of turbine active power",
+    "period": "2016-06-02 to 2021-06-30",
+    "max_10min_farm_output_mw": 28.73,
+    "max_10min_farm_output_at": "2018-10-27 06:30",
+    "turbines_reporting_then": 14,
+    "installed_capacity_mw": 28.7,
+    "max_10min_single_turbine_kw": 2087.6,
+    "max_10min_single_turbine": "Penmanshiel_06 at 2019-11-12 15:30",
+    "best_day": {
+     "period": "2018-12-15",
+     "energy_mwh": 673.3
+    },
+    "best_month": {
+     "period": "2020-02",
+     "energy_mwh": 11788.5
+    },
+    "energy_by_calendar_year": {
+     "2016": {
+      "energy_gwh": 28.55,
+      "scada_coverage": 0.44
+     },
+     "2017": {
+      "energy_gwh": 84.83,
+      "scada_coverage": 0.997
+     },
+     "2018": {
+      "energy_gwh": 77.14,
+      "scada_coverage": 0.995
+     },
+     "2019": {
+      "energy_gwh": 77.43,
+      "scada_coverage": 0.991
+     },
+     "2020": {
+      "energy_gwh": 80.79,
+      "scada_coverage": 0.944
+     },
+     "2021": {
+      "energy_gwh": 35.65,
+      "scada_coverage": 0.495
+     }
+    },
+    "note": "energy is from turbine SCADA, before the few-% electrical losses to the export meter; a year with scada_coverage well below 1 is partial (data gaps or the export starting/ending mid-year)"
+   },
+   "decommissioning": "No decommissioning or end-of-consent date appears in any source Windward holds for this farm (dataset metadata, SCADA, the indexed PDFs)."
+  },
+  "hill_of_towie": {
+   "turbines": {
+    "source": "Hill_of_Towie_turbine_metadata.csv (the dataset's turbine metadata)",
+    "count": 21,
+    "manufacturer": "Siemens",
+    "model": "SWT-2.3-VS-82",
+    "rated_power_kw": 2300.0,
+    "rotor_diameter_m_in_metadata": 82.0,
+    "hub_heights_m": {
+     "59": [
+      "T01",
+      "T02",
+      "T03",
+      "T04",
+      "T05",
+      "T06",
+      "T07",
+      "T08",
+      "T09",
+      "T10",
+      "T11",
+      "T12",
+      "T13",
+      "T14",
+      "T15",
+      "T16",
+      "T17",
+      "T18",
+      "T19",
+      "T20",
+      "T21"
+     ]
+    },
+    "commercial_operations_date": [
+     "2012-05-12"
+    ]
+   },
+   "production_records": {
+    "source": "10-minute turbine SCADA (the OpenOA input, README \u00a715), farm output = sum of turbine active power",
+    "period": "2024-01-01 to 2024-09-01",
+    "max_10min_farm_output_mw": 47.69,
+    "max_10min_farm_output_at": "2024-06-19 21:50",
+    "turbines_reporting_then": 21,
+    "installed_capacity_mw": 48.3,
+    "max_10min_single_turbine_kw": 2306.5,
+    "max_10min_single_turbine": "HillOfTowie_08 at 2024-01-12 20:20",
+    "best_day": {
+     "period": "2024-02-02",
+     "energy_mwh": 1057.9
+    },
+    "best_month": {
+     "period": "2024-02",
+     "energy_mwh": 12304.8
+    },
+    "energy_by_calendar_year": {
+     "2024": {
+      "energy_gwh": 69.24,
+      "scada_coverage": 0.664
+     }
+    },
+    "note": "energy is from turbine SCADA, before the few-% electrical losses to the export meter; a year with scada_coverage well below 1 is partial (data gaps or the export starting/ending mid-year)"
+   },
+   "decommissioning": "No decommissioning or end-of-consent date appears in any source Windward holds for this farm (dataset metadata, SCADA, the indexed PDFs).",
+   "upgrades": [
+    {
+     "name": "AeroUp (blade aerodynamic upgrade)",
+     "installed": "2021-09-23 to 2023-05-26",
+     "turbines": 21,
+     "source": "Hill_of_Towie_AeroUp_install_dates.csv"
+    }
+   ]
+  }
+ },
+ "generated_at": "2026-10-18T13:33:05+00:00"
+}
