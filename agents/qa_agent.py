@@ -15,6 +15,7 @@ import json
 import re
 
 from agents.llm_router import complete
+from data_sources.farms import FARMS
 from agents.turbine_tools import RANK_METRICS, rank_turbines, turbine_details
 from mcp_server.tools import query_maintenance_docs, technical_documents_answer
 
@@ -141,13 +142,17 @@ _TOOLS_SCHEMA = [
 ]
 
 _SYSTEM_PROMPT = (
-    "You are the Windward analysis agent for farm '{farm_id}'. Answer the visitor's question "
+    "You are the Windward analysis agent for farm '{farm_id}', whose turbines are {turbines}. A question "
+    "about a turbine not in that list is about a turbine that doesn't exist: say so. Questions about "
+    "public offshore tenders or leasing rounds (Borssele, Hollandse Kust (zuid), ScotWind) are in scope "
+    "whichever farm is selected: answer them with search_technical_documents. Answer the visitor's question "
     "using the tools available: call search_maintenance_docs for fault/downtime/history "
     "questions, search_technical_documents for turbine design/specification questions and "
     "wind-project tender or planning requirements (keep its page citations, and never present "
     "tender documents about other projects as facts about this farm), get_current_analysis for "
     "numeric/performance questions over the 2016 analysis window, get_farm_facts for when the farm was "
-    "built or decommissioned, its hub heights, and record or multi-year production, "
+    "built or decommissioned, upgrades installed on it (e.g. AeroUp), its hub heights, and record or "
+    "multi-year production, "
     "get_operational_assessment for long-term yield/loss/wake/yaw questions, get_turbine_details "
     "for a question about one specific turbine, rank_turbines for best/worst/most-affected "
     "comparisons across turbines, several if the question "
@@ -156,7 +161,7 @@ _SYSTEM_PROMPT = (
     "rankings per turbine, the turbine tools are authoritative; if you also cite a single event from "
     "the maintenance docs, say it's one event. Quote numbers exactly "
     "as the tools return them; never compute new statistics (intervals, percentages) yourself. "
-    "Keep the (document title, p.N) citations search_technical_documents returns, and any condition it "
+    "Keep the page citations search_technical_documents returns, and any condition it "
     "attaches to a fact (\"only for turbines with...\"); never add citations for the other tools. Follow any "
     "note a tool returns. If a tool returns an error or lacks something, say what is missing; never fill the "
     "gap yourself. Don't pad a tool's facts with explanations it didn't give, and don't show its "
@@ -207,6 +212,8 @@ def _clean(text: str | None) -> str:
     a paragraph of plans ("I will present this information as..."). Keep what follows it, and
     unwrap citations it formats as broken markdown links."""
     text = _THINKING.sub("", text or "")
+    # the prompt's own citation template, echoed back verbatim
+    text = re.sub(r"\s*\(document title, p\.N\)", "", text)
     # citations formatted as broken markdown links: "[Title, p.6](document_title, p.6)"
     text = re.sub(r"\[([^\]]+)\]\(document_title[^)]*\)", r"(\1)", text)
     if "</thinking>" in text:
@@ -230,8 +237,21 @@ def _run_tool(name: str, args: dict, farm_id: str, analysis: dict, sources: list
         return farm_facts(farm_id) or "no farm facts exported for this farm"
     if name == "get_current_analysis":
         sources.append("current-analysis")
-        return {**{k: analysis[k] for k in _ANALYSIS_KEYS if k in analysis}, "highlights": _highlights(analysis),
-                "note": _ANALYSIS_NOTE}
+        out = {k: analysis[k] for k in _ANALYSIS_KEYS if k in analysis}
+        cmp = dict(out.get("comparison_summary") or {})
+        if cmp.get("mean_abs_pct_error") is not None:
+            # a fraction under a "pct" name: the agent reported 0.504 as "0.504%" even with a note
+            cmp["mean_abs_hourly_error_percent"] = round(cmp.pop("mean_abs_pct_error") * 100, 1)
+        if cmp.get("mean_actual_mw") is not None and cmp.get("mean_predicted_mw"):
+            # and it called 5.654 MW actual vs 5.653 predicted "slightly lower"
+            diff = cmp["mean_actual_mw"] - cmp["mean_predicted_mw"]
+            cmp["mean_actual_vs_predicted"] = f"actual {'above' if diff >= 0 else 'below'} predicted by {abs(diff) / cmp['mean_predicted_mw'] * 100:.2f}%"
+        for k in ("mean_actual_mw", "mean_predicted_mw"):
+            if isinstance(cmp.get(k), float):
+                cmp[k] = round(cmp[k], 3)
+        if cmp:
+            out["comparison_summary"] = cmp
+        return {**out, "highlights": _highlights(analysis), "note": _ANALYSIS_NOTE}
     if name == "get_operational_assessment":
         from operational_assessment.payload import compact_summary, farm_operational
 
@@ -266,7 +286,7 @@ def answer_question(farm_id: str, question: str, analysis: dict) -> dict:
     cited: list[dict] = []
     retried = False
     messages = [
-        {"role": "system", "content": _SYSTEM_PROMPT.format(farm_id=farm_id)},
+        {"role": "system", "content": _SYSTEM_PROMPT.format(farm_id=farm_id, turbines=", ".join(FARMS[farm_id].turbine_ids))},
         {"role": "user", "content": question},
     ]
 

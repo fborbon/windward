@@ -217,6 +217,9 @@ def rank_turbines(farm_id: str, metric: str, analysis: dict) -> dict | str:
         "ranking": rows,
         "note": _RANK_NOTES.get(metric),
     }
+    if metric == "forced_outage_hours" and not rows and FARMS[farm_id].data_source == "hill_of_towie":
+        out["note"] = ("not identifiable at this farm: the RES alarm export doesn't label stops as forced outages, "
+                       "so no turbine can be ranked by forced-outage hours")
     if metric in ("forced_outage_hours", "maintenance_events") and rows:
         # "Which turbine had the most outages, and why?": the agent asked for the details in the
         # same parallel tool round, before it knew the turbine, and then made the causes up.

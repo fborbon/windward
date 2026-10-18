@@ -89,12 +89,12 @@ def test_farm_facts_payload():
 
 def test_grader_needs_a_right_tool_every_fact_and_no_forbidden_claim():
     q15 = next(q for q in QUESTIONS if q["id"] == "q15")
-    good = "HillOfTowie_18's peak Cp of 0.5995 is above the Betz limit of 0.593: an anemometer artifact."
+    good = "HillOfTowie_18's peak Cp of 0.5937 is above the Betz limit of 0.5926: an anemometer artifact."
     assert grade(q15, good, ["turbine-ranking"])["pass"]
     assert not grade(q15, good, ["maintenance-docs"])["pass"]
     contradiction = good + " It does not exceed the Betz limit."
     assert grade(q15, contradiction, ["turbine-ranking"])["forbidden_found"]
-    assert len({q["id"] for q in QUESTIONS}) == len(QUESTIONS) == 15
+    assert len({q["id"] for q in QUESTIONS}) == len(QUESTIONS) == 35
 
 
 def test_rag_eval_endpoint():
@@ -103,4 +103,29 @@ def test_rag_eval_endpoint():
     from api.main import app
 
     body = TestClient(app).get("/rag-eval").json()
-    assert len(body["questions"]) == 15 and body["answer_model"]["id"] == "eu.amazon.nova-lite-v1:0"
+    assert len(body["questions"]) >= 15 and body["answer_model"]["id"] == "eu.amazon.nova-lite-v1:0"
+
+
+def test_current_analysis_states_error_and_direction_plainly():
+    analysis = {"comparison_summary": {"mean_actual_mw": 5.65423, "mean_predicted_mw": 5.65332, "mean_abs_pct_error": 0.5044}}
+    out = qa_agent._run_tool("get_current_analysis", {}, "penmanshiel", analysis, [], [])
+    cmp = out["comparison_summary"]
+    assert cmp["mean_abs_hourly_error_percent"] == 50.4 and "mean_abs_pct_error" not in cmp
+    assert cmp["mean_actual_vs_predicted"].startswith("actual above") and cmp["mean_actual_mw"] == 5.654
+
+
+def test_operational_summary_says_when_no_aep_exists_and_names_extremes():
+    from operational_assessment.payload import compact_summary, farm_operational
+
+    hot = compact_summary(farm_operational("hill_of_towie"))["aep"]
+    assert "NOT COMPUTED" in hot["long_term_aep_p50_p90"]
+    pen = compact_summary(farm_operational("penmanshiel"))
+    assert pen["wake_losses"]["largest_turbine_wake_loss_lt"]["turbine_id"] == "Penmanshiel_10"
+    assert compact_summary(farm_operational("kelmarsh"))["aep"]["largest_uncertainty_component"]["component"] == "regression"
+
+
+def test_unknown_turbine_and_tender_scope_are_in_the_system_prompt():
+    prompt = qa_agent._SYSTEM_PROMPT.format(farm_id="kelmarsh", turbines=", ".join(qa_agent.FARMS["kelmarsh"].turbine_ids))
+    assert "Kelmarsh_6" in prompt and "Kelmarsh_7" not in prompt and "doesn't exist" in prompt
+    assert "Borssele" in prompt
+    assert qa_agent._clean("18.8% loss. (document title, p.N)") == "18.8% loss."

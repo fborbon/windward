@@ -1,0 +1,309 @@
+{
+ "label": "set2-baseline",
+ "url": "https://windward.forwardforecasting.eu",
+ "local": false,
+ "model": null,
+ "run_at": "2026-10-18T15:36:49Z",
+ "results": [
+  {
+   "id": "q16",
+   "answer": "The farm's best single day of production was on February 2, 2024, with an energy output of 1057.9 MWh.",
+   "sources": [
+    "farm-facts"
+   ],
+   "latency_s": 2.2,
+   "tool_ok": true,
+   "facts_found": 2,
+   "facts_total": 2,
+   "missing_facts": [],
+   "forbidden_found": [],
+   "pass": true
+  },
+  {
+   "id": "q17",
+   "answer": "The calendar year that produced the most energy was 2020, with 80.79 GWh.",
+   "sources": [
+    "farm-facts",
+    "farm-facts"
+   ],
+   "latency_s": 1.8,
+   "tool_ok": true,
+   "facts_found": 0,
+   "facts_total": 2,
+   "missing_facts": [
+    "2017",
+    "84\\.8"
+   ],
+   "forbidden_found": [],
+   "pass": false
+  },
+  {
+   "id": "q18",
+   "answer": "Not all turbines at the Kelmarsh farm have the same hub height. The hub heights are as follows: Kelmarsh 3 and Kelmarsh 6 have a hub height of 68.5 meters, while Kelmarsh 1, Kelmarsh 2, Kelmarsh 4, and Kelmarsh 5 have a hub height of 78.5 meters.",
+   "sources": [
+    "farm-facts"
+   ],
+   "latency_s": 1.5,
+   "tool_ok": true,
+   "facts_found": 4,
+   "facts_total": 4,
+   "missing_facts": [],
+   "forbidden_found": [],
+   "pass": true
+  },
+  {
+   "id": "q19",
+   "answer": "The context provided does not contain any information regarding the AeroUp blade upgrade installation on the turbines at the Hill of Towie Wind Farm. Therefore, I cannot provide an answer based on the given information.",
+   "sources": [
+    "maintenance-docs"
+   ],
+   "latency_s": 2.0,
+   "tool_ok": false,
+   "facts_found": 0,
+   "facts_total": 2,
+   "missing_facts": [
+    "2021",
+    "2023"
+   ],
+   "forbidden_found": [],
+   "pass": false
+  },
+  {
+   "id": "q20",
+   "answer": "The mean percentage of energy lost between the turbines and the substation meter at the Kelmarsh farm is 0.859%.",
+   "sources": [
+    "operational-assessment"
+   ],
+   "latency_s": 1.4,
+   "tool_ok": true,
+   "facts_found": 1,
+   "facts_total": 1,
+   "missing_facts": [],
+   "forbidden_found": [],
+   "pass": true
+  },
+  {
+   "id": "q21",
+   "answer": "Penmanshiel_10 loses the most energy to wakes from its neighbours, with a long-term wake loss percentage of 18.824%. (document title, p.N)",
+   "sources": [
+    "turbine-ranking"
+   ],
+   "latency_s": 1.3,
+   "tool_ok": true,
+   "facts_found": 2,
+   "facts_total": 2,
+   "missing_facts": [],
+   "forbidden_found": [],
+   "pass": true
+  },
+  {
+   "id": "q22",
+   "answer": "The long-term P50 annual energy production for the farm is 53.385 GWh.",
+   "sources": [
+    "operational-assessment"
+   ],
+   "latency_s": 1.5,
+   "tool_ok": true,
+   "facts_found": 0,
+   "facts_total": 1,
+   "missing_facts": [
+    "not (computed|calculated|available|estimated)|skipped|no (long-term|P50)|isn.t available|wasn.t (computed|calculated)"
+   ],
+   "forbidden_found": [],
+   "pass": false
+  },
+  {
+   "id": "q23",
+   "answer": "The uncertainty in the long-term energy estimate for Kelmarsh farm is 1.169%. The component that contributes most to this uncertainty is 'windiness_lt_period' with 0.499%.",
+   "sources": [
+    "operational-assessment"
+   ],
+   "latency_s": 1.6,
+   "tool_ok": true,
+   "facts_found": 1,
+   "facts_total": 2,
+   "missing_facts": [
+    "regression"
+   ],
+   "forbidden_found": [],
+   "pass": false
+  },
+  {
+   "id": "q24",
+   "answer": "The rotor speed range of the turbine is 6–18 rpm and its cut-in wind speed is 3–5 m/s (Siemens Wind Turbine SWT-2.3-82 VS - Built on experience (technical specifications), p.6).",
+   "sources": [
+    "technical-docs"
+   ],
+   "latency_s": 2.4,
+   "tool_ok": true,
+   "facts_found": 3,
+   "facts_total": 3,
+   "missing_facts": [],
+   "forbidden_found": [],
+   "pass": true
+  },
+  {
+   "id": "q25",
+   "answer": "The turbine uses an asynchronous generator that is cooled with an integrated heat exchanger (Siemens Wind Turbine SWT-2.3-82 VS - Built on experience (technical specifications), p.6).",
+   "sources": [
+    "technical-docs"
+   ],
+   "latency_s": 2.4,
+   "tool_ok": true,
+   "facts_found": 2,
+   "facts_total": 2,
+   "missing_facts": [],
+   "forbidden_found": [],
+   "pass": true
+  },
+  {
+   "id": "q26",
+   "answer": "The EnergyUp upgrade allows for an output of 2.125 MW for an MM82 turbine in a 60 Hz market (EnergyUp Full Power Curve Advanced - Senvion technology (MM82, MM92, MM100 upgrade), p.1)",
+   "sources": [
+    "technical-docs"
+   ],
+   "latency_s": 2.4,
+   "tool_ok": true,
+   "facts_found": 1,
+   "facts_total": 1,
+   "missing_facts": [],
+   "forbidden_found": [],
+   "pass": true
+  },
+  {
+   "id": "q27",
+   "answer": "The Hollandse Kust (zuid) permit set the following rules to protect bats:\n\n1. The cut-in wind speed of turbines will be 5.0 m/s at axis height during the period of 15 August to 30 September between 1 hour after sunset to 2 hours before sunrise (Hollandse Kust (zuid) Wind Farm Sites I and II - Project and Site Description, p.33).\n2. In case of a wind speed of less than 5.0 m/s at axis height, during the period referred to in part a, the permit holder will reduce the number of rotations per minute per wind turbine to less than 1 (Hollandse Kust (zuid) Wind Farm Sites I and II - Project and Site Description, p.33).\n3. Within two months after the end of the period referred to in part a, the permit holder will produce a report outlining how and in which way this regulation is implemented and submit it to the Minister of Economic Affairs (Hollandse Kust (zuid) Wind Farm Sites I and II - Project and Site Description, p.33).\n\nThese rules were set under WFSD I and II Reg. 4.4 (Hollandse Kust (zuid) Wind Farm Sites I and II - Project and Site Description, p.33).",
+   "sources": [
+    "technical-docs"
+   ],
+   "latency_s": 4.5,
+   "tool_ok": true,
+   "facts_found": 4,
+   "facts_total": 4,
+   "missing_facts": [],
+   "forbidden_found": [],
+   "pass": true
+  },
+  {
+   "id": "q28",
+   "answer": "The 50-year design wave height at the Hollandse Kust (zuid) site is 7.0 meters, and the 50-year design wind speed is 40.4 meters per second at 100 meters elevation relative to MSL (Hollandse Kust (zuid) Wind Farm Sites I and II - Project and Site Description, p.23).",
+   "sources": [
+    "technical-docs"
+   ],
+   "latency_s": 2.8,
+   "tool_ok": true,
+   "facts_found": 2,
+   "facts_total": 3,
+   "missing_facts": [
+    "40\\.4\\s*m/s"
+   ],
+   "forbidden_found": [],
+   "pass": false
+  },
+  {
+   "id": "q29",
+   "answer": "I can only provide information about the Penmanshiel wind farm. I do not have data on the Borssele wind farm sites.",
+   "sources": [],
+   "latency_s": 1.1,
+   "tool_ok": false,
+   "facts_found": 1,
+   "facts_total": 3,
+   "missing_facts": [
+    "9\\.6",
+    "17\\.8|14\\.0|16\\s*(-|–|to)\\s*38"
+   ],
+   "forbidden_found": [],
+   "pass": false
+  },
+  {
+   "id": "q30",
+   "answer": "The turbine with the highest capacity factor is Kelmarsh_2 with a capacity factor of 0.2999. It has a peak Cp of 0.5354, and its wake loss is -3.496% in the long term. The yaw misalignment status is inconclusive with a mean of 17.79 degrees. It had 20 maintenance events and 68 forced outage events in 2016.",
+   "sources": [
+    "turbine-ranking",
+    "turbine-details"
+   ],
+   "latency_s": 2.8,
+   "tool_ok": true,
+   "facts_found": 2,
+   "facts_total": 2,
+   "missing_facts": [],
+   "forbidden_found": [],
+   "pass": true
+  },
+  {
+   "id": "q31",
+   "answer": "Penmanshiel_01 had the most maintenance stops with 37 events.",
+   "sources": [
+    "turbine-ranking"
+   ],
+   "latency_s": 1.6,
+   "tool_ok": true,
+   "facts_found": 2,
+   "facts_total": 2,
+   "missing_facts": [],
+   "forbidden_found": [],
+   "pass": true
+  },
+  {
+   "id": "q32",
+   "answer": "The 'get_turbine_details' tool returned that forced-outage hours are not identifiable from this farm's alarm export for all three turbines. Therefore, I cannot provide information on which turbine had the most forced-outage hours.",
+   "sources": [
+    "turbine-ranking",
+    "turbine-details",
+    "turbine-details",
+    "turbine-details"
+   ],
+   "latency_s": 4.5,
+   "tool_ok": true,
+   "facts_found": 1,
+   "facts_total": 1,
+   "missing_facts": [],
+   "forbidden_found": [],
+   "pass": true
+  },
+  {
+   "id": "q33",
+   "answer": "I'm sorry, but the context provided does not include any information about Kelmarsh 7 or any events that occurred in 2019. Therefore, I cannot provide an answer to the question based on the given context.",
+   "sources": [
+    "maintenance-docs"
+   ],
+   "latency_s": 2.3,
+   "tool_ok": true,
+   "facts_found": 0,
+   "facts_total": 1,
+   "missing_facts": [
+    "(no|not a|isn.t a|doesn.t have a|does not have a|there is no) (Kelmarsh[ _]?7|turbine 7|seventh)|six turbines|6 turbines|Kelmarsh_1 to Kelmarsh_6|only (has )?(six|6)"
+   ],
+   "forbidden_found": [],
+   "pass": false
+  },
+  {
+   "id": "q34",
+   "answer": "The mean actual production was 5.654 MW, while the mean predicted production was 5.653 MW, with a mean absolute percentage error of 0.504%.",
+   "sources": [
+    "current-analysis"
+   ],
+   "latency_s": 1.5,
+   "tool_ok": true,
+   "facts_found": 2,
+   "facts_total": 2,
+   "missing_facts": [],
+   "forbidden_found": [],
+   "pass": true
+  },
+  {
+   "id": "q35",
+   "answer": "Turbine HillOfTowie_18 is suspected of an anemometer calibration problem. The reason is that its peak Cp exceeds the Betz limit even after correcting for real air density, and the turbine's power curve is displaced +0.31 m/s from the farm-mean curve, consistent with a real nacelle anemometer bias.",
+   "sources": [
+    "current-analysis"
+   ],
+   "latency_s": 1.7,
+   "tool_ok": true,
+   "facts_found": 3,
+   "facts_total": 3,
+   "missing_facts": [],
+   "forbidden_found": [],
+   "pass": true
+  }
+ ]
+}

@@ -57,7 +57,7 @@ def ask_local(base_url: str, farm: str, question: str) -> dict:
 
 def grade(q: dict, answer: str, sources: list[str]) -> dict:
     facts = [bool(re.search(p, answer or "", re.IGNORECASE)) for p in q["expect"]]
-    tool_ok = any(s in sources for s in q["sources"])
+    tool_ok = not q["sources"] or any(s in sources for s in q["sources"])
     forbidden = [p for p in q.get("forbid", []) if re.search(p, answer or "", re.IGNORECASE)]
     return {
         "tool_ok": tool_ok,
@@ -69,9 +69,11 @@ def grade(q: dict, answer: str, sources: list[str]) -> dict:
     }
 
 
-def run(base_url: str, local: bool = False) -> list[dict]:
+def run(base_url: str, local: bool = False, ids: set[str] | None = None) -> list[dict]:
     results = []
     for q in QUESTIONS:
+        if ids and q["id"] not in ids:
+            continue
         if not local and results:
             time.sleep(PAUSE_S)
         start = time.time()
@@ -93,13 +95,14 @@ def main():
     parser.add_argument("--label", required=True)
     parser.add_argument("--url", default=DEFAULT_URL)
     parser.add_argument("--local", action="store_true", help="answer with this checkout's code")
+    parser.add_argument("--ids", help="comma-separated question ids to run (default: all)")
     parser.add_argument("--model", help="--local only: LiteLLM model id to answer with instead of the configured one")
     args = parser.parse_args()
     if args.model:
         from agents import llm_router
 
         llm_router.MODEL_MAP[llm_router.config.LLM_PROVIDER] = args.model
-    results = run(args.url.rstrip("/"), args.local)
+    results = run(args.url.rstrip("/"), args.local, set(args.ids.split(",")) if args.ids else None)
     RUNS_DIR.mkdir(exist_ok=True)
     out = {"label": args.label, "url": args.url, "local": args.local, "model": args.model, "run_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "results": results}
     (RUNS_DIR / f"{args.label}.json").write_text(json.dumps(out, indent=1, ensure_ascii=False))

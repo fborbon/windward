@@ -885,38 +885,9 @@ async function selectRagEval(panel){
 
 function renderRagEval(panel, data){
   const farmName = id => (FARMS.find(f => f.farm_id === id) || {}).name || id;
-  const n = data.questions.length;
-  const count = (k, v) => (data.verdicts[k] || {})[v] || 0;
   const m = data.answer_model;
-  panel.innerHTML = `
-  <div class="card">
-    <h2>RAG evaluation: 15 questions, before and after</h2>
-    <div class="desc">
-      One question per capability of the "Ask the agent" box: SCADA history, the turbine datasheet and
-      tender PDFs, OpenOA results, turbine rankings and the fault log. Each answer was read against a
-      reference taken from the data behind the tool (not from the agent), given a verdict, and its
-      failure traced to a cause and fixed. Answers are written by <b>${esc(m.name)}</b>
-      (<code>${esc(m.id)}</code>) through ${esc(m.via)}; retrieval uses ${esc(m.embeddings)}.
-    </div>
-    <div class="kpis">
-      <div class="kpi"><div class="v">${count("baseline","correct")}/${n}</div><div class="l">correct before</div></div>
-      <div class="kpi"><div class="v">${count("final","correct")}/${n}</div><div class="l">correct after</div></div>
-      <div class="kpi"><div class="v">${count("baseline","wrong")+count("baseline","refused")}</div><div class="l">wrong or refused before</div></div>
-      <div class="kpi"><div class="v">${count("final","wrong")+count("final","refused")}</div><div class="l">wrong or refused after</div></div>
-    </div>
-    ${data.model_comparison.length ? `
-    <h3>Would a newer model have fixed it?</h3>
-    <div class="desc">The same battery and code, before the citation and parallel-call fixes, answered by two
-      Bedrock models (automatic grade). The newer model did not do better, so the fixes went into
-      retrieval, tools and prompts, and the cheaper model stayed.</div>
-    <table><thead><tr><th>Model</th><th class="num">Passed</th></tr></thead><tbody>
-      ${data.model_comparison.map(c => `<tr><td>${esc(c.model)} <span style="color:var(--text-faint)">${esc(c.model_id)}</span></td><td class="num">${c.passed}/${c.total}</td></tr>`).join("")}
-    </tbody></table>` : ""}
-  </div>
-  <div class="card">
-    <h3>The questions</h3>
-    <div class="desc">Click a question for the answer, the earlier answer, and what was fixed.</div>
-    ${data.questions.map(q => `
+  const ok = t => t.correct || 0, bad = t => (t.wrong || 0) + (t.refused || 0);
+  const question = q => `
       <details class="evalq">
         <summary>
           <span class="q">${esc(q.question)}</span>
@@ -932,8 +903,37 @@ function renderRagEval(panel, data){
           <div><div class="label">What was wrong</div><div class="note">${esc(q.diagnosis)}</div></div>
           ${q.fix ? `<div><div class="label">Fix</div><div class="note">${esc(q.fix)}</div></div>` : ""}
         </div>
-      </details>`).join("")}
-  </div>`;
+      </details>`;
+  panel.innerHTML = `
+  <div class="card">
+    <h2>RAG evaluation: ${data.questions.length} questions, before and after</h2>
+    <div class="desc">
+      Test questions covering every capability of the "Ask the agent" box: SCADA history, the turbine
+      datasheet and tender PDFs, OpenOA results, turbine rankings and the fault log. Each answer was read
+      against a reference taken from the data behind the tool (not from the agent), given a verdict, and
+      its failure traced to a cause and fixed. Answers are written by <b>${esc(m.name)}</b>
+      (<code>${esc(m.id)}</code>) through ${esc(m.via)}; retrieval uses ${esc(m.embeddings)}.
+    </div>
+    <table><thead><tr><th>Set</th><th class="num">Correct before</th><th class="num">Correct after</th><th class="num">Wrong or refused before</th><th class="num">Wrong or refused after</th></tr></thead><tbody>
+      ${data.sets.map(st => `<tr><td><b>${esc(st.name)}</b> <span style="color:var(--text-faint)">${st.size} questions</span></td>
+        <td class="num">${ok(st.verdicts.baseline)}/${st.size}</td><td class="num">${ok(st.verdicts.final)}/${st.size}</td>
+        <td class="num">${bad(st.verdicts.baseline)}</td><td class="num">${bad(st.verdicts.final)}</td></tr>`).join("")}
+    </tbody></table>
+    ${data.model_comparison.length ? `
+    <h3 style="margin-top:16px;">Would a newer model have fixed it?</h3>
+    <div class="desc">Set 1, before the citation and parallel-call fixes, answered by two Bedrock models
+      (automatic grade). The newer model did not do better, so the fixes went into retrieval, tools and
+      prompts, and the cheaper model stayed.</div>
+    <table><thead><tr><th>Model</th><th class="num">Passed</th></tr></thead><tbody>
+      ${data.model_comparison.map(c => `<tr><td>${esc(c.model)} <span style="color:var(--text-faint)">${esc(c.model_id)}</span></td><td class="num">${c.passed}/${c.total}</td></tr>`).join("")}
+    </tbody></table>` : ""}
+  </div>
+  ${data.sets.map(st => `
+  <div class="card">
+    <h3>${esc(st.name)}: ${st.size} questions</h3>
+    <div class="desc">${esc(st.about)} Click a question for the answer, the earlier answer, and what was fixed.</div>
+    ${data.questions.filter(q => q.set === st.set).map(question).join("")}
+  </div>`).join("")}`;
 }
 
 async function selectWindPrediction(panel){

@@ -94,12 +94,25 @@ def compact_summary(operational: dict | None) -> dict | None:
                                                         round(m["mean_gwh"] + 1.96 * m["std_gwh"], 2)]}
     # Two methods, two P50/P90 pairs: asked for "the" P50 and P90 the LLM picked one at random.
     # The monthly linear one is the industry standard the dashboard and README lead with.
+    if aep.get("skipped"):
+        # Hill of Towie has no AEP; with only "skipped" here the agent quoted the electrical-loss
+        # section's 53.385 GWh of turbine energy as the P50.
+        aep = {"long_term_aep_p50_p90": "NOT COMPUTED for this farm, so there is no P50 or P90 to quote",
+               "reason": aep["skipped"]}
+    comps = aep.get("uncertainty_components_pct") or {}
+    if comps:
+        top = max(comps, key=comps.get)
+        aep["largest_uncertainty_component"] = {"component": top, "pct": comps[top]}
     if "monthly_linear" in aep:
         aep["headline_method"] = ("monthly_linear (industry standard): quote its P50/P90 first; daily_gam_temperature "
                                   "is a second estimate with lower uncertainty, mention it only as such")
     out["aep"] = aep
     wl = operational.get("wake_losses") or {}
     out["wake_losses"] = {k: v for k, v in wl.items() if k != "by_direction"}
+    turbines = wl.get("turbines") or {}
+    if turbines:  # read off the unsorted dict, the agent picked the second-highest turbine
+        worst = max(turbines, key=lambda t: turbines[t].get("lt_pct", float("-inf")))
+        out["wake_losses"]["largest_turbine_wake_loss_lt"] = {"turbine_id": worst, "lt_pct": turbines[worst]["lt_pct"]}
     ym = operational.get("yaw_misalignment") or {}
     statuses = yaw_statuses(operational)
     out["yaw_misalignment"] = {

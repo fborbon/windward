@@ -41,6 +41,11 @@
      "period": "2020-02",
      "energy_mwh": 5703.0
     },
+    "best_full_calendar_year": {
+     "year": "2020",
+     "energy_gwh": 36.35,
+     "scada_coverage": 0.991
+    },
     "energy_by_calendar_year": {
      "2016": {
       "energy_gwh": 24.52,
@@ -117,6 +122,11 @@
     "best_month": {
      "period": "2020-02",
      "energy_mwh": 11788.5
+    },
+    "best_full_calendar_year": {
+     "year": "2017",
+     "energy_gwh": 84.83,
+     "scada_coverage": 0.997
     },
     "energy_by_calendar_year": {
      "2016": {
@@ -202,6 +212,7 @@
      "period": "2024-02",
      "energy_mwh": 12304.8
     },
+    "best_full_calendar_year": "no calendar year with at least 95% SCADA coverage",
     "energy_by_calendar_year": {
      "2024": {
       "energy_gwh": 69.24,
@@ -221,5 +232,5 @@
    ]
   }
  },
- "generated_at": "2026-10-18T13:33:05+00:00"
+ "generated_at": "2026-10-18T15:37:46+00:00"
 }

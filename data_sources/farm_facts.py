@@ -78,6 +78,10 @@ def _records(farm_id: str) -> dict:
         coverage = g["count"].sum() / expected
         annual[str(year)] = {"energy_gwh": round(float(g["mwh"].sum() / 1000), 2), "scada_coverage": round(float(coverage), 3)}
 
+    # Asked for "the year that produced the most", the agent picked 2020 over Penmanshiel's 2017
+    # from the year list; partial years (export start/end) can't count, so give it ready-made.
+    full_years = {y: a for y, a in annual.items() if a["scada_coverage"] >= MIN_COVERAGE}
+    best_year = max(full_years, key=lambda y: full_years[y]["energy_gwh"]) if full_years else None
     return {
         "source": "10-minute turbine SCADA (the OpenOA input, README §15), farm output = sum of turbine active power",
         "period": f"{scada['time'].min():%Y-%m-%d} to {scada['time'].max():%Y-%m-%d}",
@@ -89,6 +93,8 @@ def _records(farm_id: str) -> dict:
         "max_10min_single_turbine": f"{peak_row['asset_id']} at {peak_row['time']:%Y-%m-%d %H:%M}",
         "best_day": best("D", "%Y-%m-%d"),
         "best_month": best("MS", "%Y-%m"),
+        "best_full_calendar_year": {"year": best_year, **full_years[best_year]} if best_year else
+                                   "no calendar year with at least 95% SCADA coverage",
         "energy_by_calendar_year": annual,
         "note": "energy is from turbine SCADA, before the few-% electrical losses to the export meter; a year "
                 "with scada_coverage well below 1 is partial (data gaps or the export starting/ending mid-year)",
