@@ -14,6 +14,7 @@ import argparse
 import json
 import re
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -23,14 +24,23 @@ RUNS_DIR = Path(__file__).resolve().parent / "runs"
 DEFAULT_URL = "https://windward.forwardforecasting.eu"
 
 
+PAUSE_S = 8  # the live /ask is rate-limited per client (nginx); 15 back-to-back questions hit it
+
+
 def ask(base_url: str, farm: str, question: str) -> dict:
     req = urllib.request.Request(
         f"{base_url}/analysis/{farm}/ask",
         data=json.dumps({"question": question}).encode(),
         headers={"content-type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=180) as resp:
-        return json.loads(resp.read())
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(req, timeout=180) as resp:
+                return json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or attempt == 3:
+                raise
+            time.sleep(30 * (attempt + 1))
 
 
 _analysis: dict[str, dict] = {}
@@ -62,6 +72,8 @@ def grade(q: dict, answer: str, sources: list[str]) -> dict:
 def run(base_url: str, local: bool = False) -> list[dict]:
     results = []
     for q in QUESTIONS:
+        if not local and results:
+            time.sleep(PAUSE_S)
         start = time.time()
         try:
             out = (ask_local if local else ask)(base_url, q["farm"], q["question"])

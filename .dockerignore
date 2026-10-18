@@ -9,4 +9,6 @@ dashboard/data/
 !dashboard/data/wind_prediction_payload.json
 !dashboard/data/operational_payload.json
 !dashboard/data/wind_speed_payload.json
+!dashboard/data/farm_facts_payload.json
+!dashboard/data/rag_eval_payload.json
 .env
