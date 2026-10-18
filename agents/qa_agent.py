@@ -15,7 +15,7 @@ import json
 
 from agents.llm_router import complete
 from agents.turbine_tools import RANK_METRICS, rank_turbines, turbine_details
-from mcp_server.tools import query_maintenance_docs
+from mcp_server.tools import query_maintenance_docs, query_technical_documents
 
 MAX_TOOL_ROUNDS = 3
 
@@ -32,6 +32,25 @@ _TOOLS_SCHEMA = [
                 "Use for 'why', 'what caused', or history questions. Its incidents are individual "
                 "example events (the farm's longest ones), not totals: for a turbine's total "
                 "outage hours, counts or rankings use get_turbine_details / rank_turbines instead."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {"question": {"type": "string"}},
+                "required": ["question"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_technical_documents",
+            "description": (
+                "Search real public PDFs: the manufacturer documents for this farm's turbine "
+                "model (design, drivetrain, operating limits, power, upgrades) and public "
+                "offshore-wind tender and leasing documents (site conditions, technical and "
+                "application requirements for bidders). Answers cite document and page. Use for "
+                "turbine design/specification questions, whether Windward's turbine specs match "
+                "the datasheet, or wind-project planning and tender requirement questions."
             ),
             "parameters": {
                 "type": "object",
@@ -106,7 +125,10 @@ _TOOLS_SCHEMA = [
 _SYSTEM_PROMPT = (
     "You are the Windward analysis agent for farm '{farm_id}'. Answer the visitor's question "
     "using the tools available: call search_maintenance_docs for fault/downtime/history "
-    "questions, get_current_analysis for numeric/performance questions, "
+    "questions, search_technical_documents for turbine design/specification questions and "
+    "wind-project tender or planning requirements (keep its page citations, and never present "
+    "tender documents about other projects as facts about this farm), get_current_analysis for "
+    "numeric/performance questions, "
     "get_operational_assessment for long-term yield/loss/wake/yaw questions, get_turbine_details "
     "for a question about one specific turbine, rank_turbines for best/worst/most-affected "
     "comparisons across turbines, several if the question "
@@ -122,6 +144,9 @@ def _run_tool(name: str, args: dict, farm_id: str, analysis: dict, sources: list
     if name == "search_maintenance_docs":
         sources.append("maintenance-docs")
         return query_maintenance_docs(farm_id, args.get("question") or "")
+    if name == "search_technical_documents":
+        sources.append("technical-docs")
+        return query_technical_documents(farm_id, args.get("question") or "")
     if name == "get_current_analysis":
         sources.append("current-analysis")
         return {k: analysis[k] for k in _ANALYSIS_KEYS if k in analysis}

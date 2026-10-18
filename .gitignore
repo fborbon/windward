@@ -12,6 +12,8 @@ data/hill_of_towie/*.zip
 data/edp_wind_farm_a/datasets/
 data/rag_index/
 data/llamaindex/
+data/pdfs/
+data/pdf_index/
 data/wind_forecast_log/
 data/models/
 .ipynb_checkpoints/

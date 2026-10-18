@@ -246,6 +246,15 @@ def analysis(farm_id: str):
     return {k: v for k, v in _run_analysis(farm_id).items() if k != "_cached_at"}
 
 
+@app.get("/analysis/{farm_id}/technical-documents")
+def technical_documents(farm_id: str):
+    if farm_id not in FARMS:
+        raise HTTPException(404, f"unknown farm_id '{farm_id}'")
+    from mcp_server.tools import technical_documents as _technical_documents
+
+    return _technical_documents(farm_id)
+
+
 @app.get("/analysis/{farm_id}/inspection-photo")
 def inspection_photo(farm_id: str):
     if farm_id not in FARMS:

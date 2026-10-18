@@ -27,6 +27,7 @@
 13. [Cost & Resource Consumption](#13-cost--resource-consumption)
 14. [Wind Prediction: Time-Series Forecasting Showcase](#14-wind-prediction-time-series-forecasting-showcase)
 15. [Operational Assessment (OpenOA)](#15-operational-assessment-openoa)
+16. [Technical Documents: PDF RAG over Datasheets and Tenders](#16-technical-documents-pdf-rag-over-datasheets-and-tenders)
 
 ---
 
@@ -54,6 +55,7 @@ The split is deliberate: forecasting is a numerical ML problem (best solved with
 | LlamaIndex | `rag/llamaindex_index.py` — second, independent RAG stack over turbine spec metadata |
 | Multimodal | `multimodal/blade_inspection.py` — real vision-LLM pass (Bedrock Nova, Converse API) on a real inspection photo |
 | Semantic Search | `rag/semantic_search.py` — nearest-neighbor search over the real incident corpus |
+| Document intelligence (PDF RAG + structured extraction) | `rag/pdf_sources.py`, `rag/pdf_corpus.py`, `rag/pdf_index_build.py`, `rag/pdf_retriever.py` - real manufacturer and public-tender PDFs, PyMuPDF page extraction, sentence-aware chunking, page-cited answers; `rag/datasheet_specs.py` - LLM spec extraction re-verified against the cited page, cross-checked against the farm registry (§16) |
 | MLflow | `forecasting/train.py`, `forecasting/export_model.py` — self-hosted tracking server + registry, S3 artifact store; the API itself never imports MLflow, it reads the latest registered model exported to `data/models/` (`forecasting/model_store.py`) |
 | Wind plant operational assessment (NREL/NLR OpenOA) | `operational_assessment/` - electrical losses, Monte Carlo long-term AEP, wake losses, static yaw misalignment, run offline on the full multi-year data (§15); `analysis/qc.py` - OpenOA's SCADA filters ported into the live `diagnose` step |
 | Per-turbine Q&A | `agents/turbine_tools.py` - `get_turbine_details` / `rank_turbines` tools for the `/ask` agent (§15.6) |
@@ -263,13 +265,14 @@ Grouped by the AI capability each one supports — only libraries actually used 
 - **LangChain** (`langchain-community`) — supplies the `Document` abstraction and the FAISS vector-store integration used by the retriever (`rag/langchain_retriever.py`).
 - **FAISS** (`faiss-cpu`) — Meta's similarity-search library; the actual vector index behind both the RAG retriever and the standalone semantic-search tool. Stores embeddings for the incident/reference corpus and finds nearest neighbors fast, cached to disk per farm so it isn't rebuilt (re-embedded) on every run.
 - **Amazon Titan Text Embeddings v2** (via `boto3`, wrapped in a ~15-line custom LangChain `Embeddings` class) — turns each fault-event/reference-note document into a 1024-dim vector for FAISS. Chosen over the chat models because Titan embeddings are invocable on-demand in `eu-west-1` (no inference-profile requirement, unlike the newer Nova chat models — see below).
+- **PyMuPDF** (`pymupdf`, index build only) - fast page-by-page PDF text extraction behind the technical-document RAG (§16). Chosen over pypdf for its text quality on multi-column brochures and its speed on the 69-page tender documents; it runs in the jobs image only, so the slim API image never parses a PDF.
 - **LlamaIndex** (`rag/llamaindex_index.py`) — a second, independent retrieval framework, over a different corpus: structured turbine spec/metadata (manufacturer, hub height, exact coordinates) rather than incident narratives. Needed a small custom `CustomLLM` wrapper too — LlamaIndex's query engine defaults to OpenAI for response synthesis, so without pointing it at the same Bedrock Nova model the rest of the project uses, it would silently require an OpenAI key.
 
 **LLM integration**
 - **Amazon Nova Lite** (via LiteLLM/Bedrock) — the generation model behind `explain_node`'s field report. Invoked as `bedrock/eu.amazon.nova-lite-v1:0`, an EU cross-region *inference profile* — a real gotcha hit during development: bare Bedrock model IDs aren't invocable on-demand in `eu-west-1` for this model family, only via a region-prefixed inference profile.
 - **Amazon Nova Lite, multimodal** (`multimodal/blade_inspection.py`, direct Bedrock Converse API) — the same model family, called with an image content block instead of text-only, for the blade-inspection vision pass.
-- **MCP (Model Context Protocol)** — the open protocol/SDK for exposing tools to LLM clients (Claude and others) in a standard way. `mcp_server/` exposes `get_forecast`, `get_recommendation`, `query_maintenance_docs`, and (since §15) `get_operational_assessment`, `get_turbine_details` and `rank_turbines` over MCP, so an external agent can operate Windward's capabilities directly rather than only via a bespoke REST call.
-- **Amazon Nova Lite, tool-calling agent** (`agents/qa_agent.py`, via LiteLLM/Bedrock) - powers the dashboard's "Ask the agent" box (`POST /analysis/{farm_id}/ask`). The LLM decides per question which tools it needs: `search_maintenance_docs` (the RAG retriever), `get_current_analysis` (the farm's precomputed numbers), `get_operational_assessment` (the OpenOA results, §15), and the per-turbine `get_turbine_details` / `rank_turbines` (§15.6), or none, instead of one stuffed prompt. This replaced an earlier design that used Claude's `sample` capability from a client-side Claude Artifact (billed to the *viewer's* own Claude account, no AWS cost) - once the dashboard moved off Artifacts onto a real self-hosted frontend (§10/§13), routing the chat through Windward's own Bedrock backend like everything else made more sense than requiring visitors to have a Claude account.
+- **MCP (Model Context Protocol)** — the open protocol/SDK for exposing tools to LLM clients (Claude and others) in a standard way. `mcp_server/` exposes `get_forecast`, `get_recommendation`, `query_maintenance_docs`, and (since §15) `get_operational_assessment`, `get_turbine_details` and `rank_turbines`, and (since §16) `query_technical_documents` over MCP, so an external agent can operate Windward's capabilities directly rather than only via a bespoke REST call.
+- **Amazon Nova Lite, tool-calling agent** (`agents/qa_agent.py`, via LiteLLM/Bedrock) - powers the dashboard's "Ask the agent" box (`POST /analysis/{farm_id}/ask`). The LLM decides per question which tools it needs: `search_maintenance_docs` (the RAG retriever), `search_technical_documents` (the page-cited PDF RAG, §16), `get_current_analysis` (the farm's precomputed numbers), `get_operational_assessment` (the OpenOA results, §15), and the per-turbine `get_turbine_details` / `rank_turbines` (§15.6), or none, instead of one stuffed prompt. This replaced an earlier design that used Claude's `sample` capability from a client-side Claude Artifact (billed to the *viewer's* own Claude account, no AWS cost) - once the dashboard moved off Artifacts onto a real self-hosted frontend (§10/§13), routing the chat through Windward's own Bedrock backend like everything else made more sense than requiring visitors to have a Claude account.
 
 **Observability**
 - **Langfuse** (`observability/tracing.py`) - **live and working**, tracing every LLM/agent call end to end: both `explain_node`'s narration inside `agents/graph.py` and `agents/qa_agent.py`'s tool-calling `/ask` loop show up as real traces in the Langfuse dashboard, auto-activating whenever `LANGFUSE_PUBLIC_KEY`/`SECRET_KEY` are set (no-op otherwise). Two coverage paths, because Windward has two different call shapes to trace: `get_handler()` returns a `langfuse.langchain.CallbackHandler` for the LangGraph run (`agents.graph.run()` passes it in as a LangChain callback); `wrap_completion()` wraps `agents/llm_router.py`'s raw `litellm.completion()` calls with a manual Langfuse generation span, for the `/ask` loop's direct calls that don't go through a LangChain `Runnable` at all. The manual path is deliberate, not incidental: litellm's own built-in `success_callback=["langfuse"]` hook is broken against the current Langfuse v4 SDK (`AttributeError: module 'langfuse' has no attribute 'version'`, still true on litellm 1.101.0 as of this writing) and - because litellm swallows that error as "non-blocking" while it actually aborts the completion - was silently degrading every `/ask` question to its stuffed-prompt fallback before this was caught. `wrap_completion()`'s direct `langfuse.get_client().start_as_current_observation()` call sidesteps that broken litellm code path entirely, so it isn't exposed to whichever litellm version happens to be installed.
@@ -418,7 +421,7 @@ windward/
 ├── analysis/           # physics: power-curve binning, Cp/Betz efficiency
 ├── data_sources/        # meteo / price / SCADA clients, farm registry, edp_scada.py + dswe_scada.py (§5)
 ├── forecasting/          # feature engineering, training, registry, prediction
-├── rag/                   # LangChain retriever, embeddings, incident corpus, semantic search
+├── rag/                   # LangChain retriever, embeddings, incident corpus, semantic search, PDF RAG (§16)
 ├── multimodal/             # blade inspection vision pipeline (real vision-LLM pass, §7)
 ├── mcp_server/              # MCP tool server
 ├── api/                      # FastAPI service — this is what runs at windward.forwardforecasting.eu
@@ -484,6 +487,8 @@ Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACK
 - [x] **Real CI/CD** (`.github/workflows/deploy.yml`, `infra/aws/README.md`) - `pytest` on every push to `master`, deploy only on green, no SSH keys anywhere (GitHub OIDC to a tightly-scoped AWS IAM role, deploy runs over SSM rather than a direct connection to the host). Added after several features (Wind Prediction, this very tab) sat pushed-but-not-deployed for a while with no automated signal that the live site was stale
 - [x] **`smooth_power_curve` — AMK kernel regression** (`analysis/efficiency.py`, `dswe` package, MIT license, from Yu Ding's *Data Science for Wind Energy*) — a continuous, non-parametric power curve alongside the existing discrete IEC binning, evaluated at the same bin centers so the two overlay directly. Wired into `diagnose_node` for all three real farms and into the EDP Wind Farm A case-study endpoint/dashboard chart. The rest of the same package was evaluated and NOT used: `ComparePCurve`/`FunGP` (would've upgraded `fit_power_curve_displacement`'s bare least-squares shift with a real significance test) hit a real, reproducible `TypeError` in `_GPMethods.compute_loglike_GP` against current numpy/scipy — confirmed by running both directly against real Kelmarsh data, not just reading the source; `TempGP` ran without crashing but was slow (28s to fit 500 rows) and produced questionable predictions on a quick test, not vetted enough to ship. AMK itself also needed one real fix: its default `bw="dpi"` (data-adaptive plug-in bandwidth) took 5.7s on one specific real turbine (Kelmarsh_1) vs <50ms on every other turbine across all three farms — reproducible in `diagnose_node`'s actual per-turbine loop, not just a one-off. Switched to a fixed 0.5 m/s bandwidth (matching `binned_power_curve`'s own bin width), verified uniformly fast (<50ms/turbine, all three farms) and visually indistinguishable in output from the adaptive one
 - [x] **OpenOA operational assessment** (§15) - NREL/NLR's OpenOA run offline in its own venv on the full multi-year data: electrical losses for all three farms (turbines vs the substation PMU / grid station; the datasets' "Grid Meter" channel rejected as non-physical), Monte Carlo long-term AEP for Kelmarsh/Penmanshiel by both the benchmark's monthly linear method and Bodini et al. 2021's daily GAM with temperature, a one-component-at-a-time uncertainty breakdown against the root-sum-of-squares shortcut (Bodini & Optis 2020), wake losses, and static yaw misalignment with a consistency gate that marks unstable estimates inconclusive. Wake results feed `diagnose` (neighbor-underperformance flags now say whether wake explains the gap) and `recommend` (the lowest-capacity-factor turbine's rationale notes its wake loss). OpenOA's SCADA filters ported into the live diagnosis (`analysis/qc.py`), verified identical to OpenOA's own output
+- [x] **Technical-document PDF RAG** (§16) - real turbine manufacturer documents and public offshore-wind tender/leasing PDFs, page-cited answers, verified datasheet spec extraction cross-checked against the farm registry; `search_technical_documents` in "Ask the agent", `query_technical_documents` on the MCP server
+- [ ] Senvion MM82/MM92 original datasheets and the Kelmarsh/Penmanshiel planning Environmental Statements: not publicly hosted (§16.4)
 - [x] **Per-turbine questions in "Ask the agent"** and on the **MCP server** (§15.6) - `get_turbine_details` and `rank_turbines` tools: best/worst turbine by any of seven metrics, last maintenance stop and forced-outage history from the real status logs, wake loss and yaw per turbine
 - [x] **DSWE Inland-Offshore Wind Farm Dataset1** — a fifth, non-`FARMS` example (six real turbines, three real on-site met masts, Zenodo 10.5281/zenodo.5516552, CC BY 4.0, from *Data Science for Wind Energy* Ch. 5), same diagnosis/RAG-only reasoning as EDP Wind Farm A (§5) but adding a real **Measure-Correlate-Predict** ratio (`analysis.efficiency.measure_correlate_predict`) against live Open-Meteo ERA5 at a caller-chosen reference location — the dataset has real turbine+mast data and a real documented date range, but no per-row timestamps and no disclosed coordinates, so a ratio-of-means MCP (not full timestamp-paired regression) is what the data actually supports. Own loader, RAG corpus/retriever, `/dswe/*` routes, dashboard tab with an editable reference-location control. Verified live against real ERA5: switching the reference point from the illustrative default (Texas Panhandle) to New York moves WT1's ratio from 1.62× to 2.51×, demonstrating rather than hiding how much the choice of reference matters
 
@@ -503,6 +508,9 @@ Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACK
 | **Compute** | OpenOA operational assessment (§15) | $0 - run offline on a laptop, roughly an hour for all three farms; the service only serves the resulting static JSON (~tens of KB) |
 | **Data** | Open-Meteo ERA5/CERRA reanalysis for OpenOA | $0 - free archive API, fetched once and cached locally |
 | **AI services** | `/ask` per-turbine tools (§15.6) | No new model calls: the same Nova Lite tool-calling loop, two more tools whose results are computed locally; at most one or two extra round trips per question, well under a cent a month at current volume |
+| **AI services** | Technical-document PDF index (§16): Titan embeddings of 416 chunks (~430K characters, ~110K tokens) + one Nova Lite spec-extraction call | ~$0.002 per rebuild, and a rebuild only happens when the PDF list or chunking changes (an unchanged deploy is a no-op) |
+| **AI services** | `search_technical_documents` per question (§16) | One Titan query embedding + one Nova Lite call over ~6K characters of passages: ~$0.0002 per question |
+| **Storage** | PDFs (~20MB) + their FAISS index (~2MB) | $0 - local disk on the EC2 (`data/pdfs/`, `data/pdf_index/`, both gitignored) |
 | **AI services** | DynamoDB `windward-agent-sessions` (on-demand billing) | $0 — within the AWS always-free tier (25GB + 25 RCU/WCU) at this scale |
 
 **Estimated total: under $0.10/month, indefinitely.** Auth throughout is the EC2 instance's IAM role, scoped by an inline policy (`windward-app-access`) to exactly this S3 bucket, this DynamoDB table, and the two Bedrock models used — no static AWS keys anywhere in the codebase or on the server.
@@ -727,3 +735,66 @@ The `/ask` box answers questions about single turbines as well as the farm, thro
 - **`rank_turbines(metric)`**: ranks the fleet by capacity factor, peak Cp, long-term wake loss, yaw offset (inconclusive estimates left out), QC-removed hours, forced-outage hours or maintenance stops, for "best performing" / "most affected" questions.
 
 What counts as maintenance follows what each export actually records. Kelmarsh/Penmanshiel: events in the IEC 61400-26 category "Scheduled Maintenance" (manual on-site stops, manual brake) and "Forced outage" for unplanned stops. Hill of Towie: the alarm lookup names only one maintenance-type stop, 3130 "Pitch lubrication", and every other stopping code it describes is weather or cable untwisting, so forced outages there are reported as *not identifiable from the export*, not as zero. The fault-log RAG search and these tools answer different questions: the RAG corpus indexes the farm's ~60 longest **single** events (for Penmanshiel_06's "Safety chain open", one 305.9 h stop in June 2016), while `get_turbine_details` totals **all** events per cause (434.4 h across six stops). Both tool descriptions now say which they return, each cause carries both `total_hours_all_events` and `longest_single_event_hours`, and the agent is told the turbine tools are authoritative for totals and rankings. Outage and maintenance hours are the **union** of the event intervals: one stop is often logged as several concurrent alarms (Kelmarsh_1's three "Overload generator fan 1/2/3" events are the same 218.5 h), and a plain sum had Kelmarsh_1 at 1,156 forced-outage hours in 2016 when the real figure is 507.7 h.
+
+## 16. Technical Documents: PDF RAG over Datasheets and Tenders
+
+The other RAG corpora (§4, §5) are built from structured records: SCADA status events, labeled fault case studies, reference notes. This one reads real PDFs. It answers turbine design and specification questions from the manufacturer's own documents, and wind-project planning and tender-requirement questions from public tender documents, with every fact cited to a document and page.
+
+### 16.1 The documents
+
+Every PDF is real, public and downloadable from the URL in `rag/pdf_sources.py`, which also pins its sha256.
+
+| Document | Publisher | Pages | Scope |
+|---|---|---|---|
+| [SWT-2.3-82 VS technical specifications](https://media.mwps.world/static/2025/04/siemens_wind_turbine_swt-2.3-82_technical_specifications.pdf) | Siemens, 2009 | 8 | Hill of Towie (its turbine model) |
+| [EnergyUp Full Power Curve Advanced, Senvion technology](https://assets.siemens-energy.com/dam/4efd451c-6c1c-4c16-9c6a-b34e0118222a/siemens-gamesa-energyup-full-power-curve-advanced-senvion-pdf_Original%20file.pdf) | Siemens Gamesa | 1 | Kelmarsh, Penmanshiel (MM92/MM82 uprate) |
+| [Borssele Sites I and II, Project and Site Description v3](https://offshorewind.rvo.nl/file/download/43061512) | Netherlands Enterprise Agency (RVO) | 69 | all farms, as tender reference |
+| [Hollandse Kust (zuid) Sites I and II, Project and Site Description](https://offshorewind.rvo.nl/file/download/54309512) | RVO | 43 | all farms, as tender reference |
+| [ScotWind Leasing, April 2019 update](https://www.crownestatescotland.com/sites/default/files/2023-07/scotwind-leasing-april-2019-update.pdf) | Crown Estate Scotland | 5 | all farms, as leasing-round reference |
+
+The RVO Project and Site Descriptions are what the Dutch government gives every bidder in its offshore wind tenders: site boundaries, wind/wave/current measurement campaigns, soil investigations, and the design and operation requirements a winning project must meet. The ScotWind update lists what an applicant must submit in Scotland's seabed-leasing round. None of these is about one of this project's farms, and both the retrieval prompt and the agent are told never to present them as facts about the farm being asked about.
+
+Each chunk carries an `applies_to` scope. Hill of Towie's questions see the Siemens brochure and the tender documents, never the Senvion sheet, and the reverse for Kelmarsh and Penmanshiel.
+
+### 16.2 Pipeline
+
+```mermaid
+flowchart LR
+    SRC[rag/pdf_sources.py<br/>URL + sha256 + scope] --> DL[download<br/>sha256-checked, cached in data/pdfs/]
+    DL --> EX[PyMuPDF<br/>page text, watermark lines dropped]
+    EX --> CH[chunking<br/>1200 chars, 150 overlap,<br/>ends on a sentence]
+    CH --> EMB[Bedrock Titan v2<br/>embeddings] --> IDX[(FAISS<br/>data/pdf_index/)]
+    EX --> SPEC[Nova Lite spec extraction<br/>datasheets only] --> VER[re-verified on the cited page] --> JSON[(datasheet_specs.json)]
+    IDX --> RET[rag/pdf_retriever.py<br/>filtered by farm scope]
+    JSON --> CC[cross-check vs<br/>data_sources/farms.py]
+    RET --> TOOL[query_technical_documents<br/>page-cited answer]
+    CC --> TOOL
+    TOOL --> ASK[/ask agent:<br/>search_technical_documents/]
+    TOOL --> MCP[MCP server]
+```
+
+- **Built offline, read online.** `python -m rag.pdf_index_build` runs in the jobs image on every deploy (`infra/deploy_host.sh`). It rebuilds only when the source list or the chunking parameters change (a fingerprint in `manifest.json`), so an ordinary deploy makes no Bedrock calls. The slim API image only loads the FAISS index; PyMuPDF is not in it, and `tests/test_slim_imports.py` fails if a request-path module pulls it in.
+- **Integrity.** A PDF whose download fails or whose sha256 differs from the pinned one is left out with a warning rather than silently indexing a different file. A failed build never fails the deploy; the API keeps the previous index.
+- **Copyright.** The PDFs are not committed (`data/pdfs/` is gitignored): the manufacturer brochures are the manufacturers' copyright. They are downloaded from the publisher's URL at build time, and every answer links back to it.
+- **Watermarks.** The Siemens brochure copy is stamped with a watermark broken into one-letter text lines on every page. Those lines are dropped per source (`drop_lines`) before chunking so they don't end up in the embeddings.
+
+Result: 5 PDFs, 126 pages, 416 chunks.
+
+### 16.3 Structured extraction, verified
+
+For each datasheet, Nova Lite extracts 12 fields (rated power, rotor diameter, swept area, blade length, rotor speed, cut-in/rated/cut-out wind speed, hub height, IEC class, gearbox, generator), each with the page it read it from. The LLM's output isn't taken on trust: every value is re-checked against the text of the cited page (`rag/datasheet_specs.verify`), so a misread or invented number is stored as unverified. On the first real run this caught an actual citation error: the model cited the brochure's printed page number for the IEC class (page 3), but the text is on PDF page 4. When a value isn't on the cited page but is on another one, the stored page is corrected and the model's original citation is kept as `cited_page`. All 12 fields are now verified.
+
+The verified values are then compared with the turbine specs hand-coded in `data_sources/farms.py` (`GET /analysis/{farm_id}/technical-documents`, also included in the agent's context):
+
+| Field | Datasheet (p.6) | `farms.py` | Status |
+|---|---|---|---|
+| Rated power | 2,300 kW | 2,300 kW | match |
+| Rotor diameter | 82.4 m | 82.0 m | differs |
+
+The 82 in the model name is rounded; the datasheet's 82.4 m is the real rotor. Swept area, and therefore every Cp computed for Hill of Towie in §4.1, scales with the diameter squared, so the configured value overstates Cp by about 1%. It's reported here and through the agent rather than silently changed, because changing it shifts every published Hill of Towie efficiency figure.
+
+### 16.4 Gaps, stated plainly
+
+- **No original Senvion datasheets.** Senvion went insolvent in 2019 and its MM82/MM92 datasheets are no longer hosted anywhere official; Siemens Gamesa's uprate sheet is the only manufacturer document found. That sheet is an upgrade offer, not a specification, so it is never used for the cross-check.
+- **No planning documents for the three farms.** Kelmarsh's 2010 Environmental Statement (Daventry ref. DA/2010/0100) is catalogued by the county's historic environment record but not published online. Penmanshiel's application sits behind Scottish Borders' interactive planning portal, and no Hill of Towie repowering application was found.
+- **Not indexed:** RVO's Borssele Sites III and IV description (its download link is broken on RVO's side: the storage server rejects the signed redirect) and the 2015 Borssele v2 description (superseded by v3, already indexed).

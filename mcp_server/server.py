@@ -29,6 +29,13 @@ def query_maintenance_docs(farm_id: str, question: str) -> str:
 
 
 @mcp.tool()
+def query_technical_documents(farm_id: str, question: str) -> str:
+    """Ask a question against real public PDFs: the farm's turbine-model manufacturer documents
+    and public offshore-wind tender/leasing documents, answered with page citations."""
+    return tools.query_technical_documents(farm_id, question)
+
+
+@mcp.tool()
 def query_edp_incidents(question: str) -> str:
     """Ask a question against EDP Wind Farm A's real labeled fault case studies (22
     anonymized turbine windows, diagnosis/RAG only, no forecasting for this farm)."""

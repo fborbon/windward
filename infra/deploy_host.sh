@@ -27,6 +27,13 @@ fi
 with-mlflow docker run --rm --network host -v "$PWD/data:/app/data" --env-file .env \
   windward-jobs:latest python -m forecasting.export_model
 
+# Technical-document PDF index (README §16): parsed in the jobs image (PyMuPDF), read by the slim
+# API. A no-op unless rag/pdf_sources.py or the chunking changed; never fails the deploy - the
+# API answers "index not built" until a later deploy succeeds.
+docker run --rm --network host -v "$PWD/data:/app/data" --env-file .env \
+  windward-jobs:latest python -m rag.pdf_index_build \
+  || echo "WARN: technical-document index build failed; the API keeps the previous index"
+
 install -m 644 infra/cron/windward /etc/cron.d/windward
 # Retire the old host-only ubuntu crontab entry for the same job (replaced by /etc/cron.d above).
 (sudo -u ubuntu crontab -l 2>/dev/null | grep -v 'wind_prediction.live_forecast' || true) | sudo -u ubuntu crontab -

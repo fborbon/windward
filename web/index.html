@@ -1251,7 +1251,7 @@ function renderAnalysis(panel, farmId, a){
   const askInput = document.getElementById("ask-input");
   const askAnswer = document.getElementById("ask-answer");
   const askSources = document.getElementById("ask-sources");
-  const SOURCE_LABELS = {"maintenance-docs":"maintenance docs (RAG)", "current-analysis":"current analysis", "operational-assessment":"OpenOA operational assessment", "turbine-details":"turbine details + status log", "turbine-ranking":"turbine ranking"};
+  const SOURCE_LABELS = {"maintenance-docs":"maintenance docs (RAG)", "technical-docs":"technical PDFs (datasheets, tenders)", "current-analysis":"current analysis", "operational-assessment":"OpenOA operational assessment", "turbine-details":"turbine details + status log", "turbine-ranking":"turbine ranking"};
   async function submitAsk(){
     const q = askInput.value.trim();
     if(!q) return;

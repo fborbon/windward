@@ -97,6 +97,56 @@ def query_maintenance_docs(farm_id: str, question: str) -> str:
     return response.choices[0].message.content
 
 
+def technical_documents(farm_id: str) -> dict:
+    """The real PDFs indexed for this farm (README §16) and the datasheet-vs-config check."""
+    from rag.datasheet_specs import crosscheck
+    from rag.pdf_retriever import indexed_documents
+
+    _check_farm(farm_id)
+    return {"documents": indexed_documents(farm_id), "datasheet_check": crosscheck(FARMS[farm_id])}
+
+
+def query_technical_documents(farm_id: str, question: str) -> str:
+    """RAG over real public PDFs: the manufacturer documents for this farm's turbine model and
+    public offshore-wind tender/leasing documents (rag/pdf_sources.py), answered with page
+    citations."""
+    from rag.datasheet_specs import crosscheck
+    from rag.pdf_retriever import index_built, search
+
+    _check_farm(farm_id)
+    if not index_built():
+        return "The technical-document index has not been built on this host yet (rag/pdf_index_build.py)."
+    docs = search(farm_id, question)
+    if not docs:
+        return "No passage in the indexed technical documents matches this question."
+
+    context = "\n\n".join(
+        f"[{d.metadata['title']}, p.{d.metadata['page']} - {d.metadata['doc_type']}]\n{d.page_content}" for d in docs
+    )
+    check = crosscheck(FARMS[farm_id])
+    if check and check["checks"]:
+        lines = [
+            f"- {c['field']}: datasheet p.{c['page']} says {c['datasheet']:g}, Windward's config uses "
+            f"{c['configured']:g} ({c['status']})"
+            for c in check["checks"]
+        ]
+        context += f"\n\n[Datasheet cross-check for {check['turbine_model']}]\n" + "\n".join(lines)
+
+    prompt = (
+        f"Farm: {FARMS[farm_id].name}, turbine model {FARMS[farm_id].manufacturer_model}.\n"
+        "Answer the question using only the PDF passages below, citing every fact as (document "
+        "title, p.N), and keep any condition or limit the passage attaches to it. Passages of type "
+        "tender_site_description or leasing_round are about other, offshore wind projects: answer "
+        "questions about tenders, bidding or project planning directly from them, naming the "
+        "project, but never present them as facts about this farm. If the passages don't cover "
+        "the question, say so.\n\n"
+        f"Passages:\n{context}\n\nQuestion: {question}"
+    )
+    response = complete([{"role": "user", "content": prompt}])
+    urls = sorted({f"{d.metadata['title']}: {d.metadata['url']}" for d in docs})
+    return response.choices[0].message.content + "\n\nDocuments: " + "; ".join(urls)
+
+
 def query_edp_incidents(question: str) -> str:
     """RAG over EDP Wind Farm A's real labeled fault case studies (22 anonymized turbine
     windows, 11 with a real root-cause description) — see rag/edp_incident_corpus.py. Separate

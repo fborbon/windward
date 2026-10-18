@@ -10,6 +10,7 @@ liteLLM
 # RAG / retrieval
 llama-index
 faiss-cpu
+pymupdf  # technical-document PDFs, index build only (rag/pdf_index_build.py) - not in the API image
 
 # Observability
 langfuse

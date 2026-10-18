@@ -4,7 +4,7 @@ would crash the slim image at request time (ImportError), not at build time."""
 import subprocess
 import sys
 
-HEAVY = ("torch", "chronos", "statsmodels", "mlflow", "llama_index", "dswe")
+HEAVY = ("torch", "chronos", "statsmodels", "mlflow", "llama_index", "dswe", "pymupdf", "fitz")
 API_MODULES = (
     "api.main",
     "agents.graph",
@@ -14,6 +14,8 @@ API_MODULES = (
     "operational_assessment.payload",
     "rag.edp_retriever",
     "rag.dswe_retriever",
+    "rag.pdf_retriever",
+    "rag.datasheet_specs",
     "data_sources.edp_scada",
     "data_sources.dswe_scada",
     "storage.dynamo_session_store",
