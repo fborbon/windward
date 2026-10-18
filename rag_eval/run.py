@@ -95,6 +95,7 @@ def main():
     parser.add_argument("--label", required=True)
     parser.add_argument("--url", default=DEFAULT_URL)
     parser.add_argument("--local", action="store_true", help="answer with this checkout's code")
+    parser.add_argument("--merge", action="store_true", help="with --ids: replace only those results in an existing run")
     parser.add_argument("--ids", help="comma-separated question ids to run (default: all)")
     parser.add_argument("--model", help="--local only: LiteLLM model id to answer with instead of the configured one")
     args = parser.parse_args()
@@ -104,8 +105,14 @@ def main():
         llm_router.MODEL_MAP[llm_router.config.LLM_PROVIDER] = args.model
     results = run(args.url.rstrip("/"), args.local, set(args.ids.split(",")) if args.ids else None)
     RUNS_DIR.mkdir(exist_ok=True)
+    path = RUNS_DIR / f"{args.label}.json"
+    if args.merge and path.exists():  # re-run some questions, keep the rest of the run
+        rerun = {r["id"] for r in results}
+        results = [r for r in json.loads(path.read_text())["results"] if r["id"] not in rerun] + results
+        order = [q["id"] for q in QUESTIONS]
+        results.sort(key=lambda r: order.index(r["id"]))
     out = {"label": args.label, "url": args.url, "local": args.local, "model": args.model, "run_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "results": results}
-    (RUNS_DIR / f"{args.label}.json").write_text(json.dumps(out, indent=1, ensure_ascii=False))
+    path.write_text(json.dumps(out, indent=1, ensure_ascii=False))
     print(f"{sum(r['pass'] for r in results)}/{len(results)} passed")
 
 

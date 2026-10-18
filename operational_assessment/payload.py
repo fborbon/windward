@@ -110,9 +110,13 @@ def compact_summary(operational: dict | None) -> dict | None:
     wl = operational.get("wake_losses") or {}
     out["wake_losses"] = {k: v for k, v in wl.items() if k != "by_direction"}
     turbines = wl.get("turbines") or {}
-    if turbines:  # read off the unsorted dict, the agent picked the second-highest turbine
-        worst = max(turbines, key=lambda t: turbines[t].get("lt_pct", float("-inf")))
-        out["wake_losses"]["largest_turbine_wake_loss_lt"] = {"turbine_id": worst, "lt_pct": turbines[worst]["lt_pct"]}
+    if turbines:
+        # Read off the unsorted dict, the agent picked the second-highest turbine, and on the live
+        # run it still did with the extreme named alongside: list them largest-first as well.
+        ordered = dict(sorted(turbines.items(), key=lambda kv: -kv[1].get("lt_pct", float("-inf"))))
+        worst = next(iter(ordered))
+        out["wake_losses"]["turbines"] = ordered
+        out["wake_losses"]["largest_turbine_wake_loss_lt"] = {"turbine_id": worst, "lt_pct": ordered[worst]["lt_pct"]}
     ym = operational.get("yaw_misalignment") or {}
     statuses = yaw_statuses(operational)
     out["yaw_misalignment"] = {
