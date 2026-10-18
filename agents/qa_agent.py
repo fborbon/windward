@@ -205,5 +205,5 @@ def answer_question(farm_id: str, question: str, analysis: dict) -> dict:
         response = complete(messages)
         return {"answer": response.choices[0].message.content, "sources": sources}
     except Exception as e:  # tool-calling is new — never let it take the endpoint fully down
-        print(f"WARN: qa_agent tool-calling failed ({e}); falling back to stuffed-prompt answer")
+        print(f"WARN: qa_agent tool-calling failed ({e}); falling back to stuffed-prompt answer", flush=True)
         return _fallback_answer(farm_id, question, analysis)

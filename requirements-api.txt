@@ -14,6 +14,7 @@ langchain-core
 langchain-community
 langgraph
 liteLLM
+mcp  # imported by liteLLM itself on any call with tools= (the /ask agent); missing it broke every tool call
 faiss-cpu
 langfuse  # its langchain CallbackHandler needs the full `langchain` package above
 

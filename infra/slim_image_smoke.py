@@ -34,4 +34,17 @@ MODULES = [
 
 for m in MODULES:
     importlib.import_module(m)
-print(f"slim image OK: {len(MODULES)} modules imported")
+
+# An import check can't see what liteLLM loads lazily inside completion(): on 2026-10-18 a newer
+# liteLLM started importing `mcp` on any call with tools=, the slim image lacked it, and every
+# /ask tool call fell back to the stuffed prompt. A mocked tool call walks that path offline.
+import litellm  # noqa: E402
+
+litellm.completion(
+    model="bedrock/eu.amazon.nova-lite-v1:0",
+    messages=[{"role": "user", "content": "smoke"}],
+    tools=[{"type": "function", "function": {"name": "noop", "parameters": {"type": "object", "properties": {}}}}],
+    mock_response="ok",
+    aws_region_name="eu-west-1",
+)
+print(f"slim image OK: {len(MODULES)} modules imported, mocked tool call completed")
