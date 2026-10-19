@@ -297,6 +297,37 @@ Grouped by the AI capability each one supports — only libraries actually used 
 
 **Deliberately not used:** Kafka and GraphQL don't fit this project's shape (batch/agent-run workloads, not event streaming or a graph-shaped API surface) and aren't part of the stack.
 
+### 7.1 Appendix: Tech Stack Coverage
+
+Commonly requested AI/ML technologies, and whether Windward uses each one (and why or why not):
+
+| Technology | Used? | What for / why not |
+|---|---|---|
+| **Kubernetes** | ❌ No (no longer) | Used in the early Azure phase (AKS deployment, verified end to end, then torn down). Today Windward is one Docker Compose container (700 MB limit) on a shared EC2 host, deployed by GitHub Actions via SSM; a cluster would cost far more than it adds at this scale. |
+| **Generative AI workflows** | ✅ Yes | The LangGraph pipeline: ingest → forecast → diagnose → RAG + multimodal (parallel) → investigate → recommend / recommend_retrain → explain (`agents/graph.py`, §4). |
+| **LLM APIs** | ✅ Yes | AWS Bedrock (Amazon Nova) via LiteLLM (`agents/llm_router.py`), plus direct Bedrock Converse for vision; Titan for embeddings. |
+| **MCP servers** | ✅ Yes | `mcp_server/server.py` exposes 11 tools (`get_forecast`, `get_recommendation`, `query_maintenance_docs`, `query_technical_documents`, `rank_turbines`, `get_operational_assessment`, EDP/DSWE queries, ...). |
+| **REST APIs** | ✅ Yes | FastAPI (`api/main.py`), about 20 endpoints: `/forecast`, `/wind-prediction/*`, `/analysis/{farm}/ask`, `/edp/ask`, `/dswe/ask`, `/operational/{farm}`, `/rag-eval`, ... |
+| **DynamoDB** | ✅ Yes | Agent conversation/session state (`storage/dynamo_session_store.py`, table `windward-agent-sessions`), on-demand billing within the free tier. |
+| **RAG** | ✅ Yes | Retrieval over historical incident logs, technical PDFs and datasheets (EDP, DSWE, per-farm corpora); evaluated by the `rag_eval/` harness (§17). |
+| **LangGraph** | ✅ Yes | The agent state machine with conditional routing (normal recommendation vs. retrain recommendation); declarative, checkpointable, traceable. |
+| **LangChain** | ✅ Yes | Primary RAG stack: FAISS vector store + Titan embeddings over incident narratives (`rag/langchain_retriever.py`). |
+| **Langfuse** | ✅ Yes | LLM tracing/observability, hooked into the LiteLLM router and the LangChain callbacks (`observability/tracing.py`). |
+| **LangSmith** | ❌ No | Langfuse already covers tracing; a second stack would be another external account with no functional gain. |
+| **LiteLLM** | ✅ Yes | Model routing layer (`LLM_PROVIDER` → Bedrock model ID, EU inference profile). Vision is the one exception, calling Bedrock Converse directly because LiteLLM's Nova image support is inconsistent. |
+| **Pydantic** | ✅ Yes | Request/response schemas (`ForecastRequest`, `ForecastResult`, `BladeInspectionResult` in `schemas/models.py`), FastAPI validation, structured vision-LLM output. |
+| **LlamaIndex** | ✅ Yes | A second, independent RAG stack over structured turbine specs/metadata (`rag/llamaindex_index.py`); same Titan embeddings, different framework and corpus shape. |
+| **Semantic Search** | ✅ Yes | `rag/semantic_search.py`: direct FAISS similarity search for similar past incidents, used by the MCP server without the LangChain retriever wrapper. |
+| **GraphRAG** | ❌ No | The corpora are flat incident logs and spec sheets with few entity relationships; vector RAG answers the questions well, and graph extraction would add per-document LLM cost for little gain. |
+| **Neo4j** | ❌ No | Follows from no GraphRAG: no graph data model to store, and it would be another always-on service on a RAM-bound host. |
+| **Multimodal** | ✅ Yes | Nova Lite vision on blade inspection photos (erosion, cracks, delamination, lightning, icing) → structured JSON (`multimodal/blade_inspection.py`, §9); a parallel graph node. |
+| **XGBoost** | ⚠️ Not the library | Listed in the taxonomy under "Classical ML", but implemented with scikit-learn's `HistGradientBoostingRegressor` / `GradientBoostingRegressor`: same gradient-boosting idea, no extra dependency. It is the backtest winner (MAE 1.26 MW, R² 0.70, §14.4). |
+| **ARIMA** | ✅ Covered by SARIMA | SARIMA(1,1,1)(1,0,0)[24] is the implemented representative and contains AR/MA/ARMA/ARIMA as special cases; a separate ARIMA would be redundant. |
+| **SARIMAX** | ✅ Yes | statsmodels' `SARIMAX` class fits that SARIMA model (`wind_prediction/wind_speed.py`, `models.py`), without exogenous regressors. |
+| **LSTM** | ✅ Yes | Two versions: PyTorch seq2seq (72 h in → 24 h out) in the power showcase (§14), and Keras LSTM(32) in the wind-speed demo (§14.6). Neither beats gradient boosting. |
+
+**Summary:** 18 of 22 used. Not used: Kubernetes (overkill for one container), LangSmith (Langfuse covers it), GraphRAG and Neo4j (no graph-shaped data). XGBoost is technique-yes, library-no. Also used though not in the list above: MLflow (tracking/registry) and Amazon Chronos-Bolt (zero-shot foundation-model baseline).
+
 ## 8. Forecasting Model
 
 **Model:** `sklearn.ensemble.GradientBoostingRegressor`, one instance trained per farm.
