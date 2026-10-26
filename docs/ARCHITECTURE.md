@@ -2,7 +2,7 @@
 
 ## History: originally built on Azure ML, migrated to self-hosted MLflow on AWS
 
-This project started as a deliberate **Azure MLflow** skill demonstration (see `otros/skills/improve_skills.txt`) — Azure ML workspace for MLflow-compatible experiment tracking + model registry, AKS for a real (demo-then-teardown) Kubernetes deployment. That phase worked and is documented in the [blog write-up](https://education.forwardforecasting.eu/windward-agent/): real training runs, real registered models, a real AKS deployment verified end-to-end then torn down.
+This project started as a deliberate **Azure MLflow** skill demonstration (see `otros/skills/improve_skills.txt`) — Azure ML workspace for MLflow-compatible experiment tracking + model registry, AKS for a real (demo-then-teardown) Kubernetes deployment. That phase worked and is documented in the [blog write-up](https://fieldnotes.forwardforecasting.eu/windward-agent/): real training runs, real registered models, a real AKS deployment verified end-to-end then torn down.
 
 As of 2026-09-09, the project pivoted toward becoming an actual product (to be combined with an energy-price-prediction service and commercialized), which meant migrating off Azure entirely onto AWS — the account and infrastructure this actually gets operated on. A separate, simpler project will serve as the Azure MLflow demonstration case going forward, so that skill signal isn't lost — it's just no longer this project's job to carry it.
 
