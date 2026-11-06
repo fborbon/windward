@@ -230,7 +230,62 @@
      "source": "Hill_of_Towie_AeroUp_install_dates.csv"
     }
    ]
+  },
+  "delabole": {
+   "turbines": {
+    "source": "Delabole_WT_static.csv (built from the DTU site documentation's turbine list and layout)",
+    "count": 10,
+    "manufacturer": "Winddane (Danish Wind Technology)",
+    "model": "WD34",
+    "rated_power_kw": 400.0,
+    "rotor_diameter_m_in_metadata": 38.8,
+    "hub_heights_m": {
+     "32": [
+      "Delabole 1",
+      "Delabole 2",
+      "Delabole 3",
+      "Delabole 4",
+      "Delabole 5",
+      "Delabole 6",
+      "Delabole 7",
+      "Delabole 8",
+      "Delabole 9",
+      "Delabole 10"
+     ]
+    },
+    "commercial_operations_date": [
+     "1991-12 (month only in the source)"
+    ]
+   },
+   "production_records": {
+    "source": "10-minute turbine SCADA (DTU Data NetCDF, 1993-94 ETSU campaign), farm output = sum of turbine active power",
+    "period": "1993-05-01 to 1994-04-30",
+    "max_10min_farm_output_mw": 4.21,
+    "max_10min_farm_output_at": "1993-12-24 00:40",
+    "turbines_reporting_then": 10,
+    "installed_capacity_mw": 4.0,
+    "max_10min_single_turbine_kw": 495.0,
+    "max_10min_single_turbine": "Delabole_06 at 1993-12-24 03:40",
+    "best_day": {
+     "period": "1993-12-13",
+     "energy_mwh": 91.7
+    },
+    "best_month": null,
+    "best_full_calendar_year": "no calendar year with at least 95% SCADA coverage",
+    "energy_by_calendar_year": {
+     "1993": {
+      "energy_gwh": 4.91,
+      "scada_coverage": 0.388
+     },
+     "1994": {
+      "energy_gwh": 3.1,
+      "scada_coverage": 0.182
+     }
+    },
+    "note": "energy is from turbine SCADA, before the few-% electrical losses to the export meter; a year with scada_coverage well below 1 is partial (data gaps or the export starting/ending mid-year)"
+   },
+   "decommissioning": "No decommissioning or end-of-consent date appears in any source Windward holds for this farm (dataset metadata, SCADA, the indexed PDFs)."
   }
  },
- "generated_at": "2026-10-18T15:37:46+00:00"
+ "generated_at": "2026-11-06T10:51:22+00:00"
 }

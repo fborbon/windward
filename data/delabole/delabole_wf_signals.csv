@@ -1,0 +1,20 @@
+SITE_CODE,CHANNEL_ID,CHANNEL_NAME,MAST_ID,height,SIGNAL_TYPE,MAST_NO,mast_description,mast_height,instrument_manufacturer,instrument_spec,instrument_type,instrument_description
+delabole,300518,dt_44_5,3043,5,tdif,1,NA,44,skye,pt_sensor,term,Skye Instruments, Pt 100 sensor
+delabole,300517,ta_05,3043,5,tabs,1,NA,44,skye,pt_sensor,term,Skye Instruments, Pt 100 sensor
+delabole,300516,wd33_m2,3044,33,d,2,NA,33,vector instruments,w250p,vane,Wind vane
+delabole,300515,wd44_m1,3043,44,d,1,NA,44,vector instruments,w250p,vane,Wind vane
+delabole,300512,ws10_m1,3043,10,s,1,NA,44,vector instruments,a100l2,cup,Low power Vector A100L2 anemometer
+delabole,300511,ws20_m1,3043,20,s,1,NA,44,vector instruments,a100l2,cup,Low power Vector A100L2 anemometer
+delabole,300510,ws33_m1,3043,33,s,1,NA,44,vector instruments,a100l2,cup,Low power Vector A100L2 anemometer
+delabole,300513,ws33_m2,3044,33,s,2,NA,33,vector instruments,a100l2,cup,Low power Vector A100L2 anemometer
+delabole,300509,ws44_m1,3043,44,s,1,NA,44,vector instruments,a100l2,cup,Low power Vector A100L2 anemometer
+delabole,300528,poa01,30159,32,pow,1,WD34-wt01,32,NA,power_converter,wtl,NA
+delabole,300529,poa02,30160,32,pow,2,WD34-wt02,32,NA,power_converter,wtl,NA
+delabole,300530,poa03,30161,32,pow,3,WD34-wt03,32,NA,power_converter,wtl,NA
+delabole,300531,poa04,30162,32,pow,4,WD34-wt04,32,NA,power_converter,wtl,NA
+delabole,300532,poa05,30163,32,pow,5,WD34-wt05,32,NA,power_converter,wtl,NA
+delabole,300533,poa06,30164,32,pow,6,WD34-wt06,32,NA,power_converter,wtl,NA
+delabole,300534,poa07,30165,32,pow,7,WD34-wt07,32,NA,power_converter,wtl,NA
+delabole,300535,poa08,30166,32,pow,8,WD34-wt08,32,NA,power_converter,wtl,NA
+delabole,300536,poa09,30167,32,pow,9,WD34-wt09,32,NA,power_converter,wtl,NA
+delabole,300537,poa10,30168,32,pow,10,WD34-wt10,32,NA,power_converter,wtl,NA

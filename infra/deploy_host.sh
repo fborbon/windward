@@ -22,6 +22,13 @@ if [ -f /etc/systemd/system/mlflow.service ]; then
   systemctl daemon-reload
 fi
 
+# A farm newly added to data_sources/farms.py has no registered model yet: train only those
+# (seconds for a small farm; registered farms are skipped). Never fails the deploy - the farm's
+# /forecast answers "no exported model" until a later deploy trains it.
+with-mlflow docker run --rm --network host -v "$PWD/data:/app/data" --env-file .env \
+  windward-jobs:latest python -m forecasting.train --missing-only \
+  || echo "WARN: training missing farm models failed; their /forecast stays unavailable"
+
 # The API reads the forecast model from data/models/ instead of MLflow (forecasting/model_store.py).
 # Export before swapping the API container, so a failed export leaves the old one running.
 with-mlflow docker run --rm --network host -v "$PWD/data:/app/data" --env-file .env \

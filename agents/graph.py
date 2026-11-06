@@ -131,6 +131,21 @@ def diagnose_node(state: WindwardState) -> dict:
     for turbine_id in over_betz.index:
         t = clean[clean["turbine_id"] == turbine_id]
         displacement_ms = fit_power_curve_displacement(farm_mean_curve, t["wind_speed_ms"], t["power_kw"])
+        if farm.wind_speed_source == "met_mast":
+            # One mast reading stands in for every turbine (Delabole): the turbine sees different
+            # wind than the mast, which is what an IEC 61400-12-1 site calibration corrects for.
+            anomalies.append({
+                "type": "mast_wind_not_representative", "turbine_id": turbine_id,
+                "displacement_ms": round(displacement_ms, 3),
+                "detail": (
+                    f"peak Cp exceeds the Betz limit even after correcting for real air density. This farm has no "
+                    f"nacelle anemometers: every turbine's power is paired with one met-mast cup, so the turbine "
+                    f"sees stronger wind at its own position than the mast records. Its power curve is displaced "
+                    f"{displacement_ms:+.2f} m/s from the farm-mean curve; that is a site-calibration effect "
+                    f"(mast-to-turbine flow difference), not over-unity extraction or a faulty sensor"
+                ),
+            })
+            continue
         anomalies.append({
             "type": "anemometer_calibration_suspect", "turbine_id": turbine_id,
             "displacement_ms": round(displacement_ms, 3),

@@ -26,8 +26,28 @@ def set_tracking():
     mlflow.set_experiment("windward-production-forecast")
 
 
+# Hours where the reanalysis wind is below cut-in yet the farm produced over half its capacity:
+# the weather product missed a local wind event (a front passing between grid points), not a
+# physical relationship. Few, but in the sparse low-wind corner of the feature space one such hour
+# is enough for the trees to learn it: Delabole's 1993-12-25 02:00 (ERA5 0.4 m/s, 3.7 of 4 MW)
+# made the model forecast 1.6-1.9 MW for any hour under 1 m/s.
+REANALYSIS_MISS_WIND_MS = 2.0
+REANALYSIS_MISS_CAPACITY_SHARE = 0.5
+
+
+def drop_reanalysis_misses(farm_id: str, df: pd.DataFrame) -> pd.DataFrame:
+    from data_sources.farms import FARMS
+
+    farm = FARMS[farm_id]
+    capacity_mw = farm.rated_power_kw * len(farm.turbine_ids) / 1000
+    miss = (df["wind_speed_ms"] < REANALYSIS_MISS_WIND_MS) & (df[TARGET_COLUMN] > REANALYSIS_MISS_CAPACITY_SHARE * capacity_mw)
+    return df[~miss]
+
+
 def train(farm_id: str, df: pd.DataFrame, register: bool = True):
     """df: output of forecasting.pipeline.build_training_frame."""
+    n_before = len(df)
+    df = drop_reanalysis_misses(farm_id, df)
     X = df[FEATURE_COLUMNS]
     y = df[TARGET_COLUMN]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -39,6 +59,7 @@ def train(farm_id: str, df: pd.DataFrame, register: bool = True):
         mlflow.log_param("model_type", "GradientBoostingRegressor")
         mlflow.log_params(params)
         mlflow.log_param("n_train_rows", len(X_train))
+        mlflow.log_param("n_dropped_reanalysis_misses", n_before - len(df))
         mlflow.log_param("n_test_rows", len(X_test))
 
         model = GradientBoostingRegressor(**params)
@@ -84,10 +105,38 @@ def train(farm_id: str, df: pd.DataFrame, register: bool = True):
         }
 
 
+def registered_farms() -> set[str]:
+    """farm_ids that already have a registered forecast model in the MLflow registry."""
+    from mlflow.tracking import MlflowClient
+
+    from data_sources.farms import FARMS
+
+    set_tracking()
+    client = MlflowClient()
+    return {f for f in FARMS if client.search_model_versions(f"name='{model_name(f)}'")}
+
+
 if __name__ == "__main__":
+    # python -m forecasting.train                    every farm
+    # python -m forecasting.train --farm delabole    one farm
+    # python -m forecasting.train --missing-only     only farms with no registered model yet; run on
+    #                                                every deploy (infra/deploy_host.sh), so a newly
+    #                                                registered farm gets its model without a manual step
+    import argparse
+
     from data_sources.farms import FARMS
     from forecasting.pipeline import build_training_frame
 
-    for farm in FARMS.values():
-        frame = build_training_frame(farm)
-        train(farm.farm_id, frame)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--farm", action="append", choices=list(FARMS))
+    parser.add_argument("--missing-only", action="store_true")
+    args = parser.parse_args()
+
+    farm_ids = args.farm or list(FARMS)
+    if args.missing_only:
+        done = registered_farms()
+        farm_ids = [f for f in farm_ids if f not in done]
+        print(f"farms without a registered model: {farm_ids or 'none'}")
+    for farm_id in farm_ids:
+        frame = build_training_frame(FARMS[farm_id])
+        train(farm_id, frame)

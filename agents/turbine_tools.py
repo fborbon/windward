@@ -116,6 +116,9 @@ def _union_hours(events: pd.DataFrame) -> float:
 
 
 def _maintenance_stats(farm_id: str, turbine_id: str) -> dict:
+    if not FARMS[farm_id].has_status_log:
+        return {"note": f"{FARMS[farm_id].name}'s dataset has no alarm or status log, so maintenance and outage "
+                        "history is not available for any of its turbines (not zero: unknown)"}
     ev = _events(farm_id)
     t = ev[ev["turbine_id"] == turbine_id]
     maint = t[t["is_maintenance"]].sort_values("start")
@@ -195,7 +198,7 @@ def rank_turbines(farm_id: str, metric: str, analysis: dict) -> dict | str:
         elif metric == "qc_removed_share":
             value = (qc.get(tid) or {}).get("qc_flag")
         else:
-            value = _maintenance_stats(farm_id, tid)[metric]
+            value = _maintenance_stats(farm_id, tid).get(metric)
         if value is None:
             continue
         row = {"turbine_id": tid, metric: round(float(value), 4)}
@@ -217,7 +220,9 @@ def rank_turbines(farm_id: str, metric: str, analysis: dict) -> dict | str:
         "ranking": rows,
         "note": _RANK_NOTES.get(metric),
     }
-    if metric == "forced_outage_hours" and not rows and FARMS[farm_id].data_source == "hill_of_towie":
+    if metric in ("forced_outage_hours", "maintenance_events") and not FARMS[farm_id].has_status_log:
+        out["note"] = "not available at this farm: its dataset has no alarm or status log"
+    elif metric == "forced_outage_hours" and not rows and FARMS[farm_id].data_source == "hill_of_towie":
         out["note"] = ("not identifiable at this farm: the RES alarm export doesn't label stops as forced outages, "
                        "so no turbine can be ranked by forced-outage hours")
     if metric in ("forced_outage_hours", "maintenance_events") and rows:
@@ -235,7 +240,8 @@ _RANK_NOTES = {
     ),
     "peak_cp": (
         "the Betz limit is 0.593. A turbine with over_betz_limit true has a measured peak Cp above it, which is physically "
-        "impossible: it points to the nacelle anemometer reading low (see anomalies), not to a turbine beating Betz. Say "
+        "impossible: it points to the wind reading being low (the nacelle anemometer, or at a farm with no nacelle anemometers "
+        "the met mast standing in for every turbine; see anomalies), not to a turbine beating Betz. Say "
         "so instead of calling it close to the limit."
     ),
 }

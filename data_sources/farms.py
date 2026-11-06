@@ -1,14 +1,15 @@
-"""Farm registry. Every entry is a real, open, CC BY 4.0 SCADA dataset — real turbines,
+"""Farm registry. Every entry is a real, open SCADA dataset — real turbines,
 real coordinates, real production — but not all of them share one export format. Kelmarsh
 and Penmanshiel are both Cubico Sustainable Investments' Greenbyte export
 (data_sources/greenbyte_scada.py); Hill of Towie is RES's own historian export
-(data_sources/hill_of_towie_scada.py), a different file layout entirely. Farm.data_source
+(data_sources/hill_of_towie_scada.py), a different file layout entirely; Delabole is DTU Data's
+NetCDF of a 1993-94 ETSU campaign (data_sources/delabole_scada.py). Farm.data_source
 says which data_sources/<data_source>_scada.py module a farm's zips need — use loader_for()
 rather than importing a *_scada module directly, so callers work for any registered farm."""
 from dataclasses import dataclass
 from pathlib import Path
 
-from data_sources import greenbyte_scada, hill_of_towie_scada
+from data_sources import delabole_scada, greenbyte_scada, hill_of_towie_scada
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
@@ -27,6 +28,8 @@ class Farm:
     scada_zips: list[Path]  # one or more zips covering the analysis period, same turbine set
     source_doi: str
     data_source: str = "greenbyte"  # which data_sources/<data_source>_scada.py module parses scada_zips
+    has_status_log: bool = True  # False: the export has no alarm/status log at all (Delabole)
+    wind_speed_source: str = "nacelle"  # "met_mast": one mast cup stands in for every turbine (Delabole)
 
 
 KELMARSH_FARM = Farm(
@@ -78,12 +81,31 @@ HILL_OF_TOWIE_FARM = Farm(
     data_source="hill_of_towie",
 )
 
-FARMS: dict[str, Farm] = {f.farm_id: f for f in [KELMARSH_FARM, PENMANSHIEL_FARM, HILL_OF_TOWIE_FARM]}
+DELABOLE_FARM = Farm(
+    farm_id="delabole",
+    name="Delabole Wind Farm",
+    lat=50.630492,  # met mast 1, the origin of the site layout (DTU site documentation)
+    lon=-4.708475,
+    bidding_zone_eic="10YGB----------A",
+    turbine_ids=[delabole_scada.turbine_id(i) for i in range(1, 11)],
+    rated_power_kw=400.0,
+    rotor_diameter_m=38.8,
+    manufacturer_model="Winddane WD34",
+    # Not a zip: the NetCDF converted once to a committed CSV (see data_sources/delabole_scada.py).
+    # 1993-05 to 1994-04; no nacelle anemometers (mast 1 at 33 m for every turbine), no status log.
+    scada_zips=[delabole_scada.CSV_PATH],
+    source_doi="10.11583/DTU.14077004",
+    data_source="delabole",
+    has_status_log=False,
+    wind_speed_source="met_mast",
+)
+
+FARMS: dict[str, Farm] = {f.farm_id: f for f in [KELMARSH_FARM, PENMANSHIEL_FARM, HILL_OF_TOWIE_FARM, DELABOLE_FARM]}
 
 # Kept for older imports / synthetic-data code paths.
 DEMO_FARM = KELMARSH_FARM
 
-_LOADER_MODULES = {"greenbyte": greenbyte_scada, "hill_of_towie": hill_of_towie_scada}
+_LOADER_MODULES = {"greenbyte": greenbyte_scada, "hill_of_towie": hill_of_towie_scada, "delabole": delabole_scada}
 
 
 def loader_for(farm: Farm):

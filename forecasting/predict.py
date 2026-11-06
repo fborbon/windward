@@ -23,7 +23,7 @@ def predict_production(farm_id: str = "kelmarsh", horizon_hours: int = 48) -> Fo
 
     model = load_latest_model(model_name(farm_id))
     # trained on farm-level totals (forecasting.pipeline.build_training_frame sums production across turbines)
-    farm_mw = model.predict(df[FEATURE_COLUMNS])
+    farm_mw = model.predict(df[FEATURE_COLUMNS]).clip(min=0)  # trees can dip a few kW below zero in calm hours
 
     return ForecastResult(
         farm_id=farm.farm_id,

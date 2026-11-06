@@ -2,7 +2,7 @@
 
 > **Live:** [windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/) — a real, persistently-running FastAPI service on AWS. A multi-agent AI system for wind farm production forecasting and operations support: classic ML forecasting tracked with self-hosted **MLflow**, a **LangGraph** agent workflow for diagnosis and recommendations, **two independent RAG stacks** (LangChain/FAISS + LlamaIndex) over real turbine data, a **multimodal** vision-LLM blade-inspection pass, and real **DynamoDB** session persistence — exposed via a **FastAPI** service and an **MCP server** so the agent's tools are callable from Claude or any MCP client.
 
-**Status:** end-to-end on **real data**, three farms, running as a real AWS service — real historical weather (Open-Meteo) joined with real turbine production (Kelmarsh + Penmanshiel + Hill of Towie open SCADA datasets, two different export formats), per-farm models trained and registered in a self-hosted MLflow registry (S3-backed). The full LangGraph agent runs for any farm: ingest → forecast → diagnose (physics-based efficiency + anomaly detection) → RAG (real fault-event corpus, Bedrock Titan embeddings, FAISS) → multimodal (real vision-LLM blade check) → investigate (real forecast-error-trend + model-age check, conditionally routing to a retrain recommendation) → recommend/recommend_retrain → explain (Amazon Nova Lite), every run persisted to DynamoDB. Dashboard: **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)** (one tab per farm, real charts, and a live "ask the agent" box — a real tool-calling agent (`agents/qa_agent.py`) that decides per question whether it needs the RAG-grounded maintenance corpus, the farm's current analysis, both, or neither, instead of one stuffed prompt). A fourth tab, **EDP Wind Farm A**, adds real labeled fault case studies (diagnosis/RAG only, no forecasting — see §5). A fifth tab, **DSWE Inland-Offshore**, adds a real on-site-met-mast Measure-Correlate-Predict ratio against live Open-Meteo ERA5 (also diagnosis/RAG, also no disclosed location — see §5). A sixth tab, **Wind Prediction**, is a separate time-series-forecasting breadth showcase - naive baselines through a genuine zero-shot foundation-model forecast (§14) - plus the one part of this project that refreshes live rather than from a frozen SCADA snapshot: real-time Open-Meteo weather. Write-up: **[Teaching an Agent to Read Wind Farms](https://fieldnotes.forwardforecasting.eu/windward-agent/)**.
+**Status:** end-to-end on **real data**, four farms, running as a real AWS service — real historical weather (Open-Meteo) joined with real turbine production (Kelmarsh + Penmanshiel + Hill of Towie + Delabole open SCADA datasets, three different export formats), per-farm models trained and registered in a self-hosted MLflow registry (S3-backed). The full LangGraph agent runs for any farm: ingest → forecast → diagnose (physics-based efficiency + anomaly detection) → RAG (real fault-event corpus, Bedrock Titan embeddings, FAISS) → multimodal (real vision-LLM blade check) → investigate (real forecast-error-trend + model-age check, conditionally routing to a retrain recommendation) → recommend/recommend_retrain → explain (Amazon Nova Lite), every run persisted to DynamoDB. Dashboard: **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)** (one tab per farm, real charts, and a live "ask the agent" box — a real tool-calling agent (`agents/qa_agent.py`) that decides per question whether it needs the RAG-grounded maintenance corpus, the farm's current analysis, both, or neither, instead of one stuffed prompt). A fourth tab, **EDP Wind Farm A**, adds real labeled fault case studies (diagnosis/RAG only, no forecasting — see §5). A fifth tab, **DSWE Inland-Offshore**, adds a real on-site-met-mast Measure-Correlate-Predict ratio against live Open-Meteo ERA5 (also diagnosis/RAG, also no disclosed location — see §5). A sixth tab, **Wind Prediction**, is a separate time-series-forecasting breadth showcase - naive baselines through a genuine zero-shot foundation-model forecast (§14) - plus the one part of this project that refreshes live rather than from a frozen SCADA snapshot: real-time Open-Meteo weather. Write-up: **[Teaching an Agent to Read Wind Farms](https://fieldnotes.forwardforecasting.eu/windward-agent/)**.
 
 **Started as a deliberate skill demonstration** (MLflow, RAG, agentic workflows, MLOps — see §2), then pivoted toward becoming an actual product: now deployed as a persistent service on AWS, with plans to combine it with an energy-price-prediction model and commercialize both.
 
@@ -169,13 +169,21 @@ The four techniques below (in `analysis/efficiency.py`) are standard practice in
 
 ## 5. Data Sources
 
-Farms live in `data_sources/farms.py` (`FARMS` registry). All three are real, open, CC BY 4.0 SCADA datasets, but not all in the same export format: Kelmarsh and Penmanshiel are Cubico Sustainable Investments' Greenbyte export (`data_sources/greenbyte_scada.py`); Hill of Towie is RES's own historian export, one CSV per signal-group table per month instead of one CSV per turbine (`data_sources/hill_of_towie_scada.py`). Callers use `data_sources.farms.loader_for(farm)` to get the right module rather than importing one directly — see `Farm.data_source`.
+Farms live in `data_sources/farms.py` (`FARMS` registry). All four are real, open SCADA datasets, but not all in the same export format: Kelmarsh and Penmanshiel are Cubico Sustainable Investments' Greenbyte export (`data_sources/greenbyte_scada.py`); Hill of Towie is RES's own historian export, one CSV per signal-group table per month instead of one CSV per turbine (`data_sources/hill_of_towie_scada.py`); Delabole is a DTU Data NetCDF4 file (`data_sources/delabole_scada.py`). Callers use `data_sources.farms.loader_for(farm)` to get the right module rather than importing one directly — see `Farm.data_source`.
 
 | Farm | Turbines | Capacity | Location | Dataset |
 |---|---|---|---|---|
 | `kelmarsh` | 6x Senvion MM92 | 12.3 MW | Northamptonshire, UK | [Zenodo DOI 10.5281/zenodo.5841834](https://zenodo.org/records/5841834), 2016 (~98MB) |
 | `penmanshiel` | 14x Senvion MM82 | 28.7 MW | Scottish Borders, UK | [Zenodo DOI 10.5281/zenodo.5946808](https://zenodo.org/records/5946808), 2016 (~185MB, split by turbine group) |
 | `hill_of_towie` | 21x Siemens SWT-2.3-VS-82 | 48.3 MW | Aberdeenshire, Scotland, UK | [Zenodo DOI 10.5281/zenodo.14870023](https://zenodo.org/records/14870023), 2024 only so far (~1GB; the full dataset spans 2016–2024, one ~1-1.6GB zip per year) |
+| `delabole` | 10x Winddane WD34 (400 kW, stall-regulated) | 4.0 MW | North Cornwall, UK | [DTU Data DOI 10.11583/DTU.14077004](https://doi.org/10.11583/DTU.14077004), 1993-05 to 1994-04 (16.5MB NetCDF, converted once to a committed 1MB CSV) |
+
+**Delabole, the odd one out.** The UK's first commercial wind farm (commissioned December 1991), measured for an ETSU/DTI performance study 30 years before the other three. It is in the registry because it tests the pipeline on a genuinely different farm, not because it is like the others:
+- **No nacelle anemometers.** Every turbine is paired with met mast 1's 33 m cup (hub height 32 m). Power curves therefore share one free-stream wind reading, so a peak Cp above Betz here means the turbine sees stronger wind than the mast, a site-calibration effect, and the agent reports it as `mast_wind_not_representative` instead of a nacelle anemometer fault (`Farm.wind_speed_source`).
+- **No alarm or status log.** Maintenance and outage questions answer "not in this dataset", never zero (`Farm.has_status_log`).
+- **About 40% of turbine-samples are missing.** Hourly farm output is the reporting turbines' mean times ten, and hours with fewer than 7 of 10 turbines reporting are dropped: 5,645 usable hours.
+- **Licence.** The DTU Data record says CC BY 4.0; the NetCDF's own metadata says CC BY NC 4.0. Fine for this non-commercial demo with attribution; check before any commercial use.
+- Not in the OpenOA assessment (§15): no substation meter, no curtailment channel, and one year only.
 
 Datasets considered from the same open-SCADA research and excluded, with why: **EDP open dataset** (Mendeley `zjxjnjp3xs`, onshore Portugal — the earlier research pass had mislabeled it as Spain) — real and CC BY 4.0, but discloses no turbine/farm coordinates and no rated power/rotor diameter, which `Farm` requires. **SMARTEOLE** — a wake-steering experiment, not steady farm production. **Aventa AV-7** — a single research turbine, not a farm. **Pedra do Sal / Beberibe** — real coastal farms, but published as SCADA+LiDAR+turbulent-flux NetCDF, a different data model entirely. **Altahullion** — couldn't independently verify this dataset exists under a citable DOI; not added without that.
 
@@ -379,6 +387,9 @@ Neither is used blind: `demo_notebook/`'s own case study (§4-5 there) shows R²
 | Kelmarsh | 1.06 MW | 0.73 |
 | Penmanshiel | 1.98 MW | 0.81 |
 | Hill of Towie | 4.29 MW | 0.74 |
+| Delabole | 0.33 MW | 0.88 |
+
+Delabole's MAE is 8% of its 4 MW capacity (Kelmarsh: 9%, Hill of Towie: 9%). Training drops hours where the reanalysis wind is below 2 m/s yet the farm made more than half its capacity (`forecasting/train.py`, `drop_reanalysis_misses`): the weather product missed a local wind event. Delabole had exactly one, 1993-12-25 02:00 (ERA5 0.4 m/s, 3.7 MW), and it alone made the model forecast 1.6-1.9 MW for any calm hour. A farm added to the registry is trained on its next deploy (`python -m forecasting.train --missing-only` in `infra/deploy_host.sh`).
 
 These are meaningfully harder, more honest numbers than an early synthetic-production prototype's R² 0.95 — real SCADA carries wake effects, curtailment, and downtime the model has to learn around, which is the actual point of using real data.
 
@@ -463,11 +474,11 @@ Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACK
 ## 12. Roadmap
 
 - [x] Data source clients (meteo, price) + Pydantic schemas
-- [x] Real production data — Kelmarsh + Penmanshiel + Hill of Towie open SCADA datasets
+- [x] Real production data — Kelmarsh + Penmanshiel + Hill of Towie + Delabole open SCADA datasets
 - [x] Baseline forecasting model, MLflow experiment tracking, per-farm registered models (§8)
 - [x] Batch inference + FastAPI `/forecast` endpoint
 - [x] LangGraph agent, all 9 nodes real (§4), including a real conditional-routing node (`investigate` → `recommend` or `recommend_retrain`)
-- [x] Multi-farm support — farm registry + per-farm loader dispatch (`data_sources.farms.loader_for`), now spanning two different SCADA export formats (Greenbyte, RES historian); three farms live (Kelmarsh, Penmanshiel, Hill of Towie), each trained, registered, and served through the full agent
+- [x] Multi-farm support — farm registry + per-farm loader dispatch (`data_sources.farms.loader_for`), now spanning three different SCADA export formats (Greenbyte, RES historian, DTU NetCDF); four farms live (Kelmarsh, Penmanshiel, Hill of Towie, Delabole), each trained, registered, and served through the full agent
 - [x] RAG corpus — real turbine fault/status events + reference notes, Bedrock Titan embeddings, FAISS per farm
 - [x] Semantic search — same FAISS index, direct similarity search
 - [x] MCP server — `get_forecast`, `get_recommendation`, `query_maintenance_docs` all implemented
@@ -505,8 +516,9 @@ Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACK
 |---|---|---|
 | **Compute** | FastAPI + agent service (Docker, host networking, 512MB memory limit) on the existing EC2 | $0 marginal — the box is already running. Its fair share of the shared host is by RAM: ~21% (≈$2.50 of ~$11.60 EC2 compute, Oct 1–13 2026) at the old ~560MB footprint; see *Memory footprint* below |
 | **Compute** | MLflow tracking server (on-demand container, `infra/mlflow/`; up only during training/model export, 0MB the rest of the time, was a ~180MB always-on systemd service until 2026-10-17) on the same EC2 | $0 marginal |
+| **Compute** | Training a newly registered farm on deploy (`forecasting.train --missing-only`, `infra/deploy_host.sh`) | $0 marginal - seconds of CPU for Delabole's 5.6K hourly rows, plus one free Open-Meteo archive call; farms that already have a model are skipped |
 | **Storage** | S3 bucket `windward-mlflow-artifacts-ff` (model artifacts, versioned) | Within the AWS always-free tier (5GB/12mo) at this scale; a few cents/month after |
-| **Storage** | Raw SCADA data, FAISS/LlamaIndex indexes | $0 — local disk on the EC2, not cloud storage. Hill of Towie's one-year sample (~1GB) is ~5x the size of both Greenbyte farms combined, still trivial on disk |
+| **Storage** | Raw SCADA data, FAISS/LlamaIndex indexes | $0 — local disk on the EC2, not cloud storage. Hill of Towie's one-year sample (~1GB) is ~5x the size of both Greenbyte farms combined, still trivial on disk. Delabole's converted CSV is 1MB, committed to the repo |
 | **Connectivity** | nginx + Let's Encrypt SSL for `windward.forwardforecasting.eu` | $0 — reuses the existing domain/cert infrastructure |
 | **AI services** | Amazon Nova Lite (`explain_node` narration + multimodal vision) | <$0.01/mo at current call volume ($0.06/$0.24 per MTok in/out) |
 | **AI services** | Amazon Titan Embeddings v2 (RAG index build, one-time per farm unless the corpus changes) | <$0.001 one-time per farm |
@@ -545,6 +557,7 @@ Every SCADA dataset this project uses is a frozen, donated historical snapshot -
 | Kelmarsh SCADA | 2016 (Jan 21 – Dec 31) | No - frozen historical donation |
 | Penmanshiel SCADA | 2016 (Jun 2 – Dec 31) | No - frozen historical donation |
 | Hill of Towie SCADA | 2024 (Jan 1 – Sep 1) | No - frozen historical donation |
+| Delabole SCADA | 1993-05 – 1994-04 | No - frozen historical campaign |
 | EDP Wind Farm A | 2022-08 – 2023-08 (22 anonymized windows) | No - frozen historical donation |
 | **ERA5 / Open-Meteo weather** | Historical archive back to 1940, **plus a live forecast API** | **Yes - genuinely live** |
 

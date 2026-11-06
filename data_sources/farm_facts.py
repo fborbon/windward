@@ -23,7 +23,11 @@ _STATIC = {
     "kelmarsh": DATA_DIR / "kelmarsh" / "Kelmarsh_WT_static.csv",
     "penmanshiel": DATA_DIR / "penmanshiel" / "Penmanshiel_WT_static.csv",
     "hill_of_towie": DATA_DIR / "hill_of_towie" / "Hill_of_Towie_turbine_metadata.csv",
+    "delabole": DATA_DIR / "delabole" / "Delabole_WT_static.csv",
 }
+# The DTU site documentation gives Delabole's commissioning as "December 1991", no day; the
+# static CSV carries the 1st only because the column needs a date.
+_COMMISSIONING_MONTH_ONLY = {"delabole": "1991-12 (month only in the source)"}
 _AEROUP = DATA_DIR / "hill_of_towie" / "Hill_of_Towie_AeroUp_install_dates.csv"
 
 # A day/month/year only counts toward a record when the SCADA covers it almost fully, so a
@@ -38,21 +42,28 @@ def _turbines(farm_id: str) -> dict:
     cod = pd.to_datetime(df["Commercial Operations Date"], dayfirst=farm_id != "hill_of_towie")
     hub = df.groupby("Hub Height (m)")[name_col].apply(list)
     return {
-        "source": f"{_STATIC[farm_id].name} (the dataset's turbine metadata)",
+        "source": f"{_STATIC[farm_id].name} (" + ("built from the DTU site documentation's turbine list and layout"
+                                                   if farm_id == "delabole" else "the dataset's turbine metadata") + ")",
         "count": int(len(df)),
         "manufacturer": df["Manufacturer"].iloc[0],
         "model": df["Model"].iloc[0],
         "rated_power_kw": float(df["Rated power (kW)"].iloc[0]),
         "rotor_diameter_m_in_metadata": float(df["Rotor Diameter (m)"].iloc[0]),
         "hub_heights_m": {f"{h:g}": names for h, names in hub.items()},
-        "commercial_operations_date": sorted({d.date().isoformat() for d in cod}),
+        "commercial_operations_date": [_COMMISSIONING_MONTH_ONLY[farm_id]] if farm_id in _COMMISSIONING_MONTH_ONLY
+                                      else sorted({d.date().isoformat() for d in cod}),
     }
 
 
 def _records(farm_id: str) -> dict:
-    scada = pd.read_pickle(CACHE_DIR / f"{farm_id}_scada.pkl")
-    if isinstance(scada, tuple):
-        scada = scada[0]
+    if FARMS[farm_id].data_source == "delabole":
+        # Small enough to read straight from the committed CSV; it never went through OpenOA.
+        from data_sources.delabole_scada import scada_10min_for_records
+        scada = scada_10min_for_records()
+    else:
+        scada = pd.read_pickle(CACHE_DIR / f"{farm_id}_scada.pkl")
+        if isinstance(scada, tuple):
+            scada = scada[0]
     n_turbines = len(FARMS[farm_id].turbine_ids)
     by_time = scada.groupby("time")["WTUR_W"].agg(["sum", "count"])
     by_time["mwh"] = by_time["sum"] / 1000 / 6
@@ -83,7 +94,8 @@ def _records(farm_id: str) -> dict:
     full_years = {y: a for y, a in annual.items() if a["scada_coverage"] >= MIN_COVERAGE}
     best_year = max(full_years, key=lambda y: full_years[y]["energy_gwh"]) if full_years else None
     return {
-        "source": "10-minute turbine SCADA (the OpenOA input, README §15), farm output = sum of turbine active power",
+        "source": ("10-minute turbine SCADA (DTU Data NetCDF, 1993-94 ETSU campaign)" if FARMS[farm_id].data_source == "delabole"
+                   else "10-minute turbine SCADA (the OpenOA input, README §15)") + ", farm output = sum of turbine active power",
         "period": f"{scada['time'].min():%Y-%m-%d} to {scada['time'].max():%Y-%m-%d}",
         "max_10min_farm_output_mw": round(float(by_time.loc[peak_t, "sum"]) / 1000, 2),
         "max_10min_farm_output_at": f"{peak_t:%Y-%m-%d %H:%M}",

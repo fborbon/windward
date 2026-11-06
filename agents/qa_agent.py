@@ -173,8 +173,9 @@ _SYSTEM_PROMPT = (
 # named the second-highest turbine, and called a Cp above the limit "close to it".
 _ANALYSIS_NOTE = (
     "efficiency_summary is not sorted: for best/worst/highest across turbines call rank_turbines. The Betz "
-    "limit is 0.593; a peak_cp above it (over_betz true) is physically impossible and points to the nacelle "
-    "anemometer reading low (see anomalies), not to a turbine beating Betz."
+    "limit is 0.593; a peak_cp above it (over_betz true) is physically impossible and points to the wind reading "
+    "being low (the nacelle anemometer, or the met mast at a farm without nacelle anemometers; see anomalies), not "
+    "to a turbine beating Betz."
 )
 
 def _highlights(analysis: dict) -> dict:
