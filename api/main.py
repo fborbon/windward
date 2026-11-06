@@ -343,26 +343,34 @@ def edp_ask(request: EdpAskRequest):
         raise HTTPException(400, "question must be 1-500 characters")
 
     from agents.llm_router import complete
-    from rag.edp_retriever import get_retriever
+    from data_sources.edp_scada import detector_summary, load_events
 
-    # 8, not 4: questions here are often "which faults of type X", which span farms (farm B's three
-    # transformer cases never reached the model with 4)
-    docs = get_retriever(k=8).invoke(request.question.strip())
-    context = "\n".join(f"- {d.page_content}" for d in docs) or "(no matching case studies found)"
+    # The whole case table, not retrieved snippets: questions here are mostly "which faults of type
+    # X did it catch", which need every case (retrieving 4 or 8 left cases out and invited the model
+    # to fill gaps). 95 rows is ~3K tokens, ~$0.0002 a question on Nova Lite.
+    rows = []
+    for event_id, e in load_events().iterrows():
+        if e["event_label"] == "anomaly":
+            outcome = f"CAUGHT {e['lead_hours']:.0f} h before the event end" if e["detected"] else "MISSED"
+        else:
+            outcome = "FALSE ALARM" if e["detected"] else "correctly quiet"
+        rows.append(f"#{event_id} | farm {e['farm']} | turbine {e['asset']} | {e['event_label']} | "
+                    f"{e['event_description'] or '-'} | {outcome}")
+    sc = detector_summary()["scores"]
     prompt = (
-        "You are the Windward analysis agent for the CARE to Compare benchmark: 95 real, anonymized "
-        "wind turbine fault case studies from three farms (A: EDP onshore, Portugal; B and C: offshore, "
-        "Germany), diagnosis only, no forecasting, since locations and rated power are undisclosed. "
-        "Each case also records whether Windward's normal-behaviour detector caught it. "
-        "Answer the visitor's question using ONLY the case studies below; if none are relevant, "
-        "say so plainly rather than guessing. A case's fault type is the operator's root cause as written: "
-        "don't relabel it (a converter failure is not a transformer fault), and the sensors listed are the "
-        "model's pointers, not the cause. If the cases shown may not be all of them, say so. "
-        "Keep the answer under 120 words, plain English.\n\n"
-        f"Case studies:\n{context}\n\nQuestion: {request.question.strip()}"
+        "You are the Windward analysis agent for the CARE to Compare benchmark: 95 real, anonymized wind turbine "
+        "fault case studies from three farms (A: EDP onshore, Portugal; B and C: offshore, Germany), diagnosis only. "
+        "Each row gives the operator's root cause (for anomaly cases) and the outcome of Windward's normal-behaviour "
+        f"detector. Its CARE score is {sc['all']['care']} overall (A {sc['A']['care']}, B {sc['B']['care']}, "
+        f"C {sc['C']['care']}); the benchmark paper's autoencoder scores 0.66, random guessing 0.5.\n"
+        "Answer using ONLY this table. A case's fault type is the operator's root cause as written: match the "
+        "question's fault type against that text and don't relabel (a converter failure is not a transformer fault). "
+        "Check every row before saying none or all. Cite case numbers. Under 120 words, plain English.\n\n"
+        "Case | farm | turbine | label | operator's root cause | detector\n" + "\n".join(rows)
+        + f"\n\nQuestion: {request.question.strip()}"
     )
     response = complete([{"role": "user", "content": prompt}])
-    return {"answer": response.choices[0].message.content, "sources": [d.metadata.get("source", "?") for d in docs]}
+    return {"answer": response.choices[0].message.content, "sources": ["care-case-table (95 cases)", "internal-reference:care-detector"]}
 
 
 # --- DSWE Inland-Offshore Wind Farm Dataset1: real turbine+met-mast data, diagnosis/RAG only,
