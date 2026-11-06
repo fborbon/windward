@@ -349,13 +349,15 @@ def edp_ask(request: EdpAskRequest):
     # X did it catch", which need every case (retrieving 4 or 8 left cases out and invited the model
     # to fill gaps). 95 rows is ~3K tokens, ~$0.0002 a question on Nova Lite.
     rows = []
-    for event_id, e in load_events().iterrows():
+    events = load_events()
+    events = events.assign(_g=events["subsystem"].fillna("(normal case)")).sort_values(["_g", "farm"])
+    for event_id, e in events.iterrows():
         if e["event_label"] == "anomaly":
             outcome = f"CAUGHT {e['lead_hours']:.0f} h before the event end" if e["detected"] else "MISSED"
         else:
             outcome = "FALSE ALARM" if e["detected"] else "correctly quiet"
         rows.append(f"#{event_id} | farm {e['farm']} | turbine {e['asset']} | {e['event_label']} | "
-                    f"{e['event_description'] or '-'} | {outcome}")
+                    f"{e['subsystem'] or '-'} | {e['event_description'] or '-'} | {outcome}")
     sc = detector_summary()["scores"]
     prompt = (
         "You are the Windward analysis agent for the CARE to Compare benchmark: 95 real, anonymized wind turbine "
@@ -363,10 +365,10 @@ def edp_ask(request: EdpAskRequest):
         "Each row gives the operator's root cause (for anomaly cases) and the outcome of Windward's normal-behaviour "
         f"detector. Its CARE score is {sc['all']['care']} overall (A {sc['A']['care']}, B {sc['B']['care']}, "
         f"C {sc['C']['care']}); the benchmark paper's autoencoder scores 0.66, random guessing 0.5.\n"
-        "Answer using ONLY this table. A case's fault type is the operator's root cause as written: match the "
-        "question's fault type against that text and don't relabel (a converter failure is not a transformer fault). "
+        "Answer using ONLY this table, grouped by subsystem (assigned from the operator's wording). To answer about a "
+        "fault type, take exactly the rows whose subsystem column matches it, and no others. "
         "Check every row before saying none or all. Cite case numbers. Under 120 words, plain English.\n\n"
-        "Case | farm | turbine | label | operator's root cause | detector\n" + "\n".join(rows)
+        "Case | farm | turbine | label | subsystem | operator's root cause | detector\n" + "\n".join(rows)
         + f"\n\nQuestion: {request.question.strip()}"
     )
     response = complete([{"role": "user", "content": prompt}])

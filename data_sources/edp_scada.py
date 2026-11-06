@@ -48,6 +48,30 @@ def load_payload() -> dict:
     return _payload(PAYLOAD_PATH.stat().st_mtime)
 
 
+# Keyword rules from the operators' own wording, first match wins; a grouping aid for the agent,
+# so "which hydraulic faults" is a column match instead of the model reading 95 free-text causes.
+SUBSYSTEM_RULES = [
+    ("transformer", ("transformer",)),
+    ("hydraulic", ("hydraul",)),
+    ("generator bearing", ("generator bearing",)),
+    ("rotor or main bearing", ("rotor bearing", "rotorbearing", "main bearing")),
+    ("gearbox", ("gear",)),
+    ("pitch system", ("pitch", "axis", "beckhoff", "blade", "battery")),  # hub batteries back up the pitch drives
+    ("converter", ("converter", "dc-link", "dc link")),
+    ("yaw system", ("yaw",)),
+    ("cooling", ("cooling",)),
+    ("communication", ("communication",)),
+    ("brake", ("brake", "bremse")),
+]
+
+
+def subsystem(description: str | None) -> str | None:
+    if not description:
+        return None
+    text = description.lower()
+    return next((name for name, keys in SUBSYSTEM_RULES if any(k in text for k in keys)), "other")
+
+
 def load_events(farm: str | None = None) -> pd.DataFrame:
     """One row per case: farm, turbine (anonymised asset id), label, operator's root cause where
     given, event-window duration, and whether the detector caught it."""
@@ -57,7 +81,8 @@ def load_events(farm: str | None = None) -> pd.DataFrame:
             continue
         d = c["detector"]
         rows.append({"event_id": c["event_id"], "farm": c["farm"], "asset": c["turbine_id"], "event_label": c["label"],
-                     "event_description": c["description"], "duration_hours": c["duration_hours"],
+                     "event_description": c["description"], "subsystem": subsystem(c["description"]),
+                     "duration_hours": c["duration_hours"],
                      "detected": d["detected"], "lead_hours": d["lead_hours"]})
     return pd.DataFrame(rows).set_index("event_id")
 

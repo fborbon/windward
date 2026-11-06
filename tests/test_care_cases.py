@@ -54,3 +54,13 @@ def test_corpus_has_a_document_per_case_plus_references():
     assert len(docs) == 95 + 3
     assert any("Wind Farm C (offshore, Germany)" in d.page_content for d in docs)
     assert load_case(load_events().index[0]) is not None
+
+
+def test_subsystem_tags_follow_the_operator_wording():
+    from data_sources.edp_scada import subsystem
+    assert subsystem("Failure due to Rotorbrake and Hydraulic problemes") == "hydraulic"  # first rule wins
+    assert subsystem("high temperature in transformer cell") == "transformer"
+    assert subsystem("21002 : Axis 1 DC-link voltage low, batt") == "pitch system"  # a pitch axis drive
+    assert subsystem("Converter Failure from 17.11 12:30 - 18.11. 13:57, Fuse Filter Supply") == "converter"
+    assert subsystem("WEC in failure - hub battery charger defect") == "pitch system"
+    assert subsystem(None) is None
