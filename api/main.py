@@ -357,9 +357,9 @@ def edp_ask(request: EdpAskRequest):
         missed = g[~g["detected"]]
         lines.append(
             f"{name}: {len(g)} fault cases; caught {len(caught)}"
-            + (" (" + ", ".join(f"#{i} farm {r['farm']} {r['lead_hours']:.0f} h early: {r['event_description']}" for i, r in caught.iterrows()) + ")" if len(caught) else "")
+            + (" (" + ", ".join(f"#{i} (farm {r['farm']}, alarm {r['lead_hours']:.0f} hours before the fault: {r['event_description']})" for i, r in caught.iterrows()) + ")" if len(caught) else "")
             + f"; missed {len(missed)}"
-            + (" (" + ", ".join(f"#{i} farm {r['farm']}: {r['event_description']}" for i, r in missed.iterrows()) + ")" if len(missed) else ""))
+            + (" (" + ", ".join(f"#{i} (farm {r['farm']}: {r['event_description']})" for i, r in missed.iterrows()) + ")" if len(missed) else ""))
     for farm, g in events.groupby("farm"):
         a_ = g[g["event_label"] == "anomaly"]
         n_ = g[g["event_label"] == "normal"]
@@ -378,7 +378,7 @@ def edp_ask(request: EdpAskRequest):
         "and don't move a case between caught and missed. Under 120 words, plain English.\n\n" + "\n".join(lines)
         + f"\n\nQuestion: {request.question.strip()}"
     )
-    response = complete([{"role": "user", "content": prompt}])
+    response = complete([{"role": "user", "content": prompt}], temperature=0)
     return {"answer": response.choices[0].message.content, "sources": ["care-case-summaries (95 cases)", "internal-reference:care-detector"]}
 
 
