@@ -345,7 +345,9 @@ def edp_ask(request: EdpAskRequest):
     from agents.llm_router import complete
     from rag.edp_retriever import get_retriever
 
-    docs = get_retriever().invoke(request.question.strip())
+    # 8, not 4: questions here are often "which faults of type X", which span farms (farm B's three
+    # transformer cases never reached the model with 4)
+    docs = get_retriever(k=8).invoke(request.question.strip())
     context = "\n".join(f"- {d.page_content}" for d in docs) or "(no matching case studies found)"
     prompt = (
         "You are the Windward analysis agent for the CARE to Compare benchmark: 95 real, anonymized "
@@ -353,7 +355,10 @@ def edp_ask(request: EdpAskRequest):
         "Germany), diagnosis only, no forecasting, since locations and rated power are undisclosed. "
         "Each case also records whether Windward's normal-behaviour detector caught it. "
         "Answer the visitor's question using ONLY the case studies below; if none are relevant, "
-        "say so plainly rather than guessing. Keep the answer under 120 words, plain English.\n\n"
+        "say so plainly rather than guessing. A case's fault type is the operator's root cause as written: "
+        "don't relabel it (a converter failure is not a transformer fault), and the sensors listed are the "
+        "model's pointers, not the cause. If the cases shown may not be all of them, say so. "
+        "Keep the answer under 120 words, plain English.\n\n"
         f"Case studies:\n{context}\n\nQuestion: {request.question.strip()}"
     )
     response = complete([{"role": "user", "content": prompt}])
