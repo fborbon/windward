@@ -2,7 +2,7 @@
 
 > **Live:** [windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/) — a real, persistently-running FastAPI service on AWS. A multi-agent AI system for wind farm production forecasting and operations support: classic ML forecasting tracked with self-hosted **MLflow**, a **LangGraph** agent workflow for diagnosis and recommendations, **two independent RAG stacks** (LangChain/FAISS + LlamaIndex) over real turbine data, a **multimodal** vision-LLM blade-inspection pass, and real **DynamoDB** session persistence — exposed via a **FastAPI** service and an **MCP server** so the agent's tools are callable from Claude or any MCP client.
 
-**Status:** end-to-end on **real data**, eight farms in four countries, running as a real AWS service — real historical weather (Open-Meteo) joined with real turbine production (Kelmarsh + Penmanshiel + Hill of Towie + Delabole + Nørrekær Enge II + Pedra do Sal + Beberibe + SMARTEOLE open SCADA datasets, five different export formats), per-farm models trained and registered in a self-hosted MLflow registry (S3-backed). The full LangGraph agent runs for any farm: ingest → forecast → diagnose (physics-based efficiency + anomaly detection) → RAG (real fault-event corpus, Bedrock Titan embeddings, FAISS) → multimodal (real vision-LLM blade check) → investigate (real forecast-error-trend + model-age check, conditionally routing to a retrain recommendation) → recommend/recommend_retrain → explain (Amazon Nova Lite), every run persisted to DynamoDB. Dashboard: **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)** (one tab per farm, real charts, and a live "ask the agent" box — a real tool-calling agent (`agents/qa_agent.py`) that decides per question whether it needs the RAG-grounded maintenance corpus, the farm's current analysis, both, or neither, instead of one stuffed prompt). A fourth tab, **EDP Wind Farm A**, adds real labeled fault case studies (diagnosis/RAG only, no forecasting — see §5). A fifth tab, **DSWE Inland-Offshore**, adds a real on-site-met-mast Measure-Correlate-Predict ratio against live Open-Meteo ERA5 (also diagnosis/RAG, also no disclosed location — see §5). A sixth tab, **Wind Prediction**, is a separate time-series-forecasting breadth showcase - naive baselines through a genuine zero-shot foundation-model forecast (§14) - plus the one part of this project that refreshes live rather than from a frozen SCADA snapshot: real-time Open-Meteo weather. Write-up: **[Teaching an Agent to Read Wind Farms](https://fieldnotes.forwardforecasting.eu/windward-agent/)**.
+**Status:** end-to-end on **real data**, eight farms in four countries, running as a real AWS service — real historical weather (Open-Meteo) joined with real turbine production (Kelmarsh + Penmanshiel + Hill of Towie + Delabole + Nørrekær Enge II + Pedra do Sal + Beberibe + SMARTEOLE open SCADA datasets, five different export formats), per-farm models trained and registered in a self-hosted MLflow registry (S3-backed). The full LangGraph agent runs for any farm: ingest → forecast → diagnose (physics-based efficiency + anomaly detection) → RAG (real fault-event corpus, Bedrock Titan embeddings, FAISS) → multimodal (real vision-LLM blade check) → investigate (real forecast-error-trend + model-age check, conditionally routing to a retrain recommendation) → recommend/recommend_retrain → explain (Amazon Nova Lite), every run persisted to DynamoDB. Dashboard: **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)** (one tab per farm, real charts, and a live "ask the agent" box — a real tool-calling agent (`agents/qa_agent.py`) that decides per question whether it needs the RAG-grounded maintenance corpus, the farm's current analysis, both, or neither, instead of one stuffed prompt). A fourth tab, **CARE to Compare**, adds 95 real labelled fault case studies from three farms (EDP's onshore farm in Portugal and two German offshore farms), with a normal-behaviour fault detector scored on the benchmark's own CARE score (diagnosis only, no forecasting: see §5, §20). A fifth tab, **DSWE Inland-Offshore**, adds a real on-site-met-mast Measure-Correlate-Predict ratio against live Open-Meteo ERA5 (also diagnosis/RAG, also no disclosed location — see §5). A sixth tab, **Wind Prediction**, is a separate time-series-forecasting breadth showcase - naive baselines through a genuine zero-shot foundation-model forecast (§14) - plus the one part of this project that refreshes live rather than from a frozen SCADA snapshot: real-time Open-Meteo weather. Write-up: **[Teaching an Agent to Read Wind Farms](https://fieldnotes.forwardforecasting.eu/windward-agent/)**.
 
 **What two 1990s research farms added (2026-11).** Two farms from DTU Data's open archive joined the three modern UK ones, chosen because they are *different*, not similar:
 
@@ -42,6 +42,7 @@
 17. [RAG Evaluation: 35 Questions, Graded and Fixed](#17-rag-evaluation-35-questions-graded-and-fixed)
 18. [Nørrekær Enge: What a 1993 Wake Experiment Teaches](#18-nørrekær-enge-what-a-1993-wake-experiment-teaches)
 19. [Three Single-Line Farms: Trade Winds and Wake Steering](#19-three-single-line-farms-trade-winds-and-wake-steering)
+20. [CARE to Compare: Early Fault Detection, Scored](#20-care-to-compare-early-fault-detection-scored)
 
 ---
 
@@ -225,16 +226,24 @@ Datasets considered and excluded, with why: **EDP open dataset** (Mendeley `zjxj
 
 **CARE to Compare** (Zenodo 10958775) was excluded for the same reason on an earlier pass — 2 of its 3 farms are anonymized with no public coordinates, and its third (Wind Farm A) is the same underlying EDP data. That objection still holds for the *forecasting* pipeline, but doesn't block a diagnosis/RAG-only addition — see below.
 
-### EDP Wind Farm A — diagnosis/RAG only, no forecasting
+### CARE to Compare: 95 labelled fault cases from three farms, diagnosis only
 
-Added separately from the `FARMS` registry (`data_sources/edp_scada.py`, `rag/edp_incident_corpus.py`, `rag/edp_retriever.py`, `/edp/*` API routes) rather than shoehorned into it: Wind Farm A, from the **CARE-to-Compare** benchmark ([Zenodo doi:10.5281/zenodo.15846963](https://zenodo.org/records/15846963), CC BY-SA 4.0; [Gück et al. 2024](https://doi.org/10.3390/data9120138)), is EDP's own onshore Portugal wind farm — the original edp.com/en/innovation/data "Wind Farm 1" (whose own download links are currently broken on EDP's live site — verified with a real browser, not just curl) — but anonymized: no coordinates, no rated power/rotor diameter, no real calendar timestamps, and power/energy channels are rescaled to a normalized fraction rather than real kW. `Farm` requires real coordinates (for the Open-Meteo weather join) and rated power/rotor diameter (for Cp/capacity-factor), so this dataset can't back `agents/graph.py`'s forecast pipeline — but wind speed and turbine status codes are real and unscaled, and it has something the other three farms don't: **22 real, independently labeled case studies** (11 with a real root-cause description — gearbox failure, generator bearing failure, transformer failure, hydraulic group), each a ~1-year anonymized SCADA window ending in one labeled anomaly or normal event. That's real ground truth for anomaly detection, which is exactly what it's used for: its own RAG corpus (`rag/edp_incident_corpus.py`, same LangChain/FAISS/Bedrock-Titan pipeline as the other farms) and a real binned power curve + operational-status breakdown per case study, served at `/edp/events`, `/edp/events/{id}`, `/edp/ask`, and its own dashboard tab — no forecast, no LangGraph run, no MLflow model.
+Added separately from the `FARMS` registry (`data_sources/care_scada.py`, `data_sources/edp_scada.py`, `analysis/care_nbm.py`, `rag/edp_incident_corpus.py`, `/edp/*` API routes, its own dashboard tab). The **CARE to Compare** benchmark (Fraunhofer IEE; [Zenodo doi:10.5281/zenodo.15846963](https://zenodo.org/records/15846963), CC BY-SA 4.0; [Gück et al. 2024](https://doi.org/10.3390/data9120138)) has 95 cases on 36 turbines:
 
-To reproduce (766MB for just this farm's slice — the full CARE-to-Compare archive is 5.5GB across all three of its farms, two of which don't back this project):
+| Farm | Where | Turbines | Cases (anomaly / normal) | Columns |
+|---|---|---|---|---|
+| A | EDP's onshore farm, Portugal (the original edp.com "Wind Farm 1") | 5 | 12 / 10 | 86 |
+| B | offshore, Germany | 9 | 6 / 9 | 257 |
+| C | offshore, Germany | 22 | 27 / 31 | 957 |
+
+Each case is one turbine's year of 10-minute SCADA ("train" rows), then a "prediction" window holding one labelled event: an anomaly leading up to a fault, usually with the operator's root cause ("high temperature in transformer cell", "Axis 3 not ready-to-operate", "Valve in water cooling system was left in wrong position"), or normal behaviour. All three farms are anonymised: no coordinates, no rated power, timestamps shifted per file, power rescaled. So none of it can feed the forecast pipeline (no location to fetch weather for); what it has that the eight `FARMS` don't is **ground truth for fault detection**. The tab started with farm A alone; B and C were added 2026-11 together with a detector (§20).
+
+The archive is 5.5 GB zipped and about 20 GB unpacked, more than the API host should carry. So `analysis/care_nbm.py` reads each case straight out of the zip, offline, and writes one 1.25 MB payload (`dashboard/data/care_payload.json`: per case the power curve, status breakdown, detector result, hourly criticality and top sensors) that the API serves. The host needs no raw CARE data.
+
 ```bash
-curl -sL -o /tmp/care.zip "https://zenodo.org/api/records/15846963/files/CARE_To_Compare.zip/content"
-unzip "/tmp/care.zip" "CARE_To_Compare/Wind Farm A/*" -d data/edp_wind_farm_a_raw
-mv "data/edp_wind_farm_a_raw/CARE_To_Compare/Wind Farm A/datasets" data/edp_wind_farm_a/
-rm -rf data/edp_wind_farm_a_raw /tmp/care.zip
+mkdir -p data/care_raw && curl -sL -o data/care_raw/CARE_To_Compare.zip \
+    "https://zenodo.org/records/15846963/files/CARE_To_Compare.zip?download=1"
+python -m analysis.care_nbm      # ~20 minutes for all 95 cases
 ```
 
 ### DSWE Inland-Offshore Wind Farm Dataset1 — diagnosis/RAG plus a real Measure-Correlate-Predict ratio
@@ -547,6 +556,7 @@ Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACK
 - [x] **OpenOA operational assessment** (§15) - NREL/NLR's OpenOA run offline in its own venv on the full multi-year data: electrical losses for all three farms (turbines vs the substation PMU / grid station; the datasets' "Grid Meter" channel rejected as non-physical), Monte Carlo long-term AEP for Kelmarsh/Penmanshiel by both the benchmark's monthly linear method and Bodini et al. 2021's daily GAM with temperature, a one-component-at-a-time uncertainty breakdown against the root-sum-of-squares shortcut (Bodini & Optis 2020), wake losses, and static yaw misalignment with a consistency gate that marks unstable estimates inconclusive. Wake results feed `diagnose` (neighbor-underperformance flags now say whether wake explains the gap) and `recommend` (the lowest-capacity-factor turbine's rationale notes its wake loss). OpenOA's SCADA filters ported into the live diagnosis (`analysis/qc.py`), verified identical to OpenOA's own output
 - [x] **Technical-document PDF RAG** (§16) - real turbine manufacturer documents and public offshore-wind tender/leasing PDFs, page-cited answers, verified datasheet spec extraction cross-checked against the farm registry; `search_technical_documents` in "Ask the agent", `query_technical_documents` on the MCP server
 - [x] **RAG evaluation** (§17) - 35 test questions in two sets across every tool, graded before and after; fixes for every failure found (farm facts from the dataset metadata and full SCADA history, whole-page PDF reading, citation re-checking, ranking notes, answer cleaning). Own dashboard tab. Set 1: 5/15 -> 13/15 correct on the review; set 2 (20 new questions, written after set 1's fixes): 12/20 -> 20/20. Nova Lite kept after a model comparison
+- [ ] CARE to Compare: a nonlinear normal-behaviour model (the paper's autoencoder scores 0.66 against this PCA baseline's 0.58, §20), and farm B's six faults, none of which any setting tried here detected
 - [ ] ERA5 100 m wind as a forecast feature: lifts Beberibe's wind-output correlation from 0.47 to 0.59 (§8) but changes nothing at Pedra do Sal or Kelmarsh; worth it only with a retrain-and-compare of all eight farms
 - [ ] Two answers the fixes didn't reach (§17.3): the EnergyUp answer drops the sheet's Bachmann-controller scope note, and the ScotWind answer sometimes pads its list with explanations the PDF doesn't give
 - [ ] Senvion MM82/MM92 original datasheets and the Kelmarsh/Penmanshiel planning Environmental Statements: not publicly hosted (§16.4)
@@ -576,6 +586,8 @@ Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACK
 | **AI services** | `search_technical_documents` per question (§16, §17) | One Titan query embedding + one Nova Lite call over 20-26K characters (the farm's manufacturer documents in full plus up to four whole matching pages, ~6-7K tokens): ~$0.0005 per question, up from ~$0.0002 with 5 bare chunks |
 | **AI services** | RAG evaluation run (§17) | 35 questions, one to three Nova Lite tool rounds each: ~$0.012 per full run against Nova Lite, run by hand when the agent changes (a 15-question Nova 2 Lite comparison run cost ~$0.02) |
 | **Compute** | Farm facts export (`data_sources/farm_facts.py`, §17) | $0 - a few seconds offline over the cached SCADA; the API reads an 8KB JSON |
+| **Compute** | CARE to Compare detector precompute (`analysis/care_nbm.py`, §20) | $0 - about 20 minutes offline on a laptop for 95 cases; the API serves the 1.25MB JSON it writes, and the 5.5GB archive stays on the laptop |
+| **AI services** | CARE to Compare RAG index (98 documents, Titan embeddings, built once on the first question) | <$0.001 one-time |
 | **Storage** | PDFs (~20MB) + their FAISS index (~2MB) | $0 - local disk on the EC2 (`data/pdfs/`, `data/pdf_index/`, both gitignored) |
 | **AI services** | DynamoDB `windward-agent-sessions` (on-demand billing) | $0 — within the AWS always-free tier (25GB + 25 RCU/WCU) at this scale |
 
@@ -1057,3 +1069,43 @@ Steering moved energy from SMV6 to SMV5, as designed. Whether the pair came out 
 One year in Brazil and three months in France, period of record only. The Brazilian turbine positions are inferred, so per-turbine wake losses there are indicative. The wind direction at SMARTEOLE comes from nacelles, not a mast.
 
     python -m operational_assessment.line_wake_study   # recompute all three, writes into dashboard/data/operational_payload.json
+
+## 20. CARE to Compare: Early Fault Detection, Scored
+
+Every anomaly Windward flagged before this was power-curve based: a turbine producing less than its neighbours or its own curve. The CARE to Compare cases (§5) allow the standard method for catching faults *before* they cost output: a **normal-behaviour model** learns how a turbine's sensors normally relate to each other, and flags rows where those relationships break, scored against labelled outcomes with the benchmark's own metric.
+
+### 20.1 The detector, fixed before scoring
+
+`analysis/care_nbm.py`, one model per case (that turbine's own year):
+1. Inputs: the 10-minute averages (min/max/std left out, the dataset FAQ calls them unreliable, especially in farm B); angles as sin/cos; counters dropped; columns over 20% missing or without variance dropped; gaps filled with the training median; standardised. 56 inputs in farm A, about 60 in B, about 250 in C.
+2. Training rows: the case's "train" rows in normal operation (status 0).
+3. Model: PCA keeping 95% of the variance, fitted on the first 80% of those rows; a row's anomaly score is its mean squared reconstruction error.
+4. Threshold: the 99th percentile of that score on the held-out last 20% (still normal operation).
+5. Event decision: the benchmark's criticality counter (+1 per flagged row in normal operation, -1 per unflagged one), alarm at 72, i.e. 12 hours of net anomalies.
+
+### 20.2 The score
+
+The CARE score (`analysis/care_score.py`, implemented from the paper and the benchmark's documentation, unit-tested on hand-computed cases) is (Coverage + 2 × Accuracy + Reliability + Earliness) / 5: pointwise F0.5 inside anomaly windows, accuracy on normal cases (counted twice, so false alarms are expensive), event-wise F0.5, and how early in the window the flags come. It is 0 if nothing is detected. For farm A the status is ignored at scoring time, as the benchmark specifies.
+
+| | CARE | Faults caught | False alarms | Coverage | Accuracy | Reliability | Earliness |
+|---|---|---|---|---|---|---|---|
+| Farm A | 0.54 | 2 of 12 | 0 of 10 | 0.17 | 0.99 | 0.50 | 0.04 |
+| Farm B | 0.00 | 0 of 6 | 0 of 9 | 0.07 | 0.99 | 0.00 | 0.05 |
+| Farm C | 0.62 | 12 of 27 | 9 of 31 | 0.37 | 0.87 | 0.54 | 0.43 |
+| **All 95** | **0.58** | **14 of 45** | **9 of 50** | 0.28 | 0.92 | 0.51 | 0.28 |
+| *Paper: random* | *0.50* | | | | | | |
+| *Paper: autoencoder per farm* | *0.66* | | | | | | |
+
+Better than random, short of the paper's autoencoder (arXiv 2404.10320v2; scores can vary on reproduction, the authors note). The detector is cautious: on A and B it almost never fires, so it raises no false alarms but catches only 2 of 18 faults, and farm B scores 0 because nothing at all was detected there. On C it catches 12 of 27, with a median lead of about 9 days before the event end across all 14 caught (from 4.5 hours to 63 days).
+
+**How much the settings matter.** Scored on the same labels (so this is not a tuned result), variance 90-99% and threshold percentile 90-99.9% give 0.54 to 0.61. Looser thresholds help a little, and nothing in that range reaches 0.66, so the gap is the linear model, not the threshold. That's on the roadmap.
+
+### 20.3 Where it looks: the top sensors
+
+For each case the tab lists the three inputs carrying most of the reconstruction error in the event window. By a manual read (a judgement, not a metric), they name the failed subsystem in about 8 of 12 farm A cases, 3 of 6 in B and roughly 10 of 27 in C, including several faults the detector itself missed. Examples: farm A's transformer failure puts *Temperature in HV transformer* first; B's "high temperature in transformer cell" puts *Transformer cell temperature* second; C's converter failure puts *DC link voltage converter* first, its hydraulic failure *Hydraulic pressure*, its "valve in water cooling system left in wrong position" *Water conductivity*, and its "Axis 1 DC-link voltage low" the three axes' *Direct current link voltage*. The misses are mostly faults without a matching sensor in the averages (communication faults, a missing grease collector, a brake-disc grounding issue).
+
+So even where the alarm stays quiet, the model's error points an engineer at the right subsystem more often than not. Each case's answer in "Ask the agent" carries this, together with whether the detector caught the case.
+
+### 20.4 Limits
+
+One model per case means one model per turbine-year, not the paper's one per farm. Farm A's status labels come from the failure log, so they filter training data but not scoring. The CARE score here is a reimplementation; small differences from the reference code are possible (the earliness weights are continuous rather than sampled).

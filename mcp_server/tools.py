@@ -220,8 +220,9 @@ def get_farm_facts(farm_id: str) -> dict:
 
 
 def query_edp_incidents(question: str) -> str:
-    """RAG over EDP Wind Farm A's real labeled fault case studies (22 anonymized turbine
-    windows, 11 with a real root-cause description) — see rag/edp_incident_corpus.py. Separate
+    """RAG over the CARE to Compare case studies (95 anonymized turbine cases from three farms,
+    with operator root causes and the normal-behaviour detector's outcome), see
+    rag/edp_incident_corpus.py. Separate
     from query_maintenance_docs because this corpus isn't keyed to a Farm dataclass entry."""
     from rag.edp_retriever import get_retriever as get_edp_retriever
 

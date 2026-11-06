@@ -1,7 +1,8 @@
-"""LangChain retrieval over the EDP Wind Farm A incident corpus (rag/edp_incident_corpus.py).
+"""LangChain retrieval over the CARE to Compare case-study corpus (rag/edp_incident_corpus.py).
 Separate from rag/langchain_retriever.py because this corpus isn't keyed to a Farm dataclass
-entry — Wind Farm A has no disclosed coordinates or rated power (see data_sources/edp_scada.py)
-so it doesn't go through data_sources.farms.FARMS at all.
+entry: the three farms have no disclosed coordinates or rated power (data_sources/edp_scada.py).
+The index lives under a name tied to the corpus version, so a corpus change builds a new one
+instead of serving the old Farm-A-only index.
 """
 from pathlib import Path
 
@@ -10,7 +11,7 @@ from langchain_community.vectorstores import FAISS
 from rag.edp_incident_corpus import build_corpus
 from rag.embeddings import BedrockTitanEmbeddings
 
-INDEX_DIR = Path(__file__).resolve().parent.parent / "data" / "rag_index" / "edp_wind_farm_a"
+INDEX_DIR = Path(__file__).resolve().parent.parent / "data" / "rag_index" / "care_to_compare_v2"
 
 _cache: FAISS | None = None
 

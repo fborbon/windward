@@ -286,60 +286,51 @@ def ask(farm_id: str, request: AskRequest):
     return answer_question(farm_id, request.question.strip(), analysis)
 
 
-# --- EDP Wind Farm A: real labeled fault case studies, diagnosis/RAG only, no forecasting ---
+# --- CARE to Compare case studies (farms A, B, C): real labelled fault cases, diagnosis/RAG only ---
 # (no disclosed coordinates or rated power to forecast against — see data_sources/edp_scada.py).
 # Deliberately not part of data_sources.farms.FARMS or the /farms, /forecast, /analysis routes
 # above, which all assume a Farm with real lat/lon/rated_power.
 
 
 @app.get("/edp/events")
-def edp_events():
+def edp_events(farm: str | None = None):
+    """The CARE to Compare case studies (farms A, B, C; data_sources/edp_scada.py), optionally one farm."""
     from data_sources.edp_scada import load_events
 
-    events = load_events()
+    if farm is not None and farm not in ("A", "B", "C"):
+        raise HTTPException(400, "farm must be A, B or C")
+    events = load_events(farm)
     return [
         {
             "event_id": int(event_id),
+            "farm": row["farm"],
             "turbine_id": str(row["asset"]),
             "label": row["event_label"],
             "description": row["event_description"] if pd.notna(row["event_description"]) else None,
             "duration_hours": round(row["duration_hours"], 1),
+            "detected": bool(row["detected"]),
+            "lead_hours": _clean(row["lead_hours"]),
         }
         for event_id, row in events.iterrows()
     ]
 
 
+@app.get("/edp/detector")
+def edp_detector():
+    """The normal-behaviour detector's CARE score per farm and overall (analysis/care_nbm.py)."""
+    from data_sources.edp_scada import detector_summary
+
+    return detector_summary()
+
+
 @app.get("/edp/events/{event_id}")
 def edp_event_detail(event_id: int):
-    from analysis.efficiency import binned_power_curve, smooth_power_curve
-    from data_sources.edp_scada import STATUS_LABELS, load_event_series, load_events
+    from data_sources.edp_scada import load_case
 
-    events = load_events()
-    if event_id not in events.index:
+    case = load_case(event_id)
+    if case is None:
         raise HTTPException(404, f"unknown event_id {event_id}")
-    event = events.loc[event_id]
-    series = load_event_series(event_id)
-    curve = binned_power_curve(series, power_col="power_frac")
-    smooth = smooth_power_curve(series, curve.index.values, power_col="power_frac")
-    status_counts = series["status_type_id"].value_counts().sort_index()
-
-    return {
-        "event_id": event_id,
-        "turbine_id": str(event["asset"]),
-        "label": event["event_label"],
-        "description": event["event_description"] if pd.notna(event["event_description"]) else None,
-        "duration_hours": round(event["duration_hours"], 1),
-        "rows_observed": len(series),
-        "power_curve": [
-            {"wind_speed_bin": _clean(idx), "mean_power_frac": _clean(row["mean_power_kw"]), "sample_count": int(row["sample_count"])}
-            for idx, row in curve.iterrows()
-            if not pd.isna(row["mean_power_kw"])
-        ],
-        "power_curve_smooth": [
-            {"wind_speed_bin": _clean(idx), "mean_power_frac": _clean(v)} for idx, v in smooth.items() if not pd.isna(v)
-        ],
-        "status_breakdown": {STATUS_LABELS.get(int(sid), str(sid)): int(count) for sid, count in status_counts.items()},
-    }
+    return case
 
 
 class EdpAskRequest(BaseModel):
@@ -357,9 +348,10 @@ def edp_ask(request: EdpAskRequest):
     docs = get_retriever().invoke(request.question.strip())
     context = "\n".join(f"- {d.page_content}" for d in docs) or "(no matching case studies found)"
     prompt = (
-        "You are the Windward analysis agent for EDP Wind Farm A, a real, anonymized wind "
-        "turbine fault-detection benchmark (22 labeled real case studies, diagnosis/RAG only — "
-        "no forecasting, since the source farm's location and rated power are undisclosed). "
+        "You are the Windward analysis agent for the CARE to Compare benchmark: 95 real, anonymized "
+        "wind turbine fault case studies from three farms (A: EDP onshore, Portugal; B and C: offshore, "
+        "Germany), diagnosis only, no forecasting, since locations and rated power are undisclosed. "
+        "Each case also records whether Windward's normal-behaviour detector caught it. "
         "Answer the visitor's question using ONLY the case studies below; if none are relevant, "
         "say so plainly rather than guessing. Keep the answer under 120 words, plain English.\n\n"
         f"Case studies:\n{context}\n\nQuestion: {request.question.strip()}"

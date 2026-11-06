@@ -194,7 +194,7 @@
 </main>
 
 <footer>
-  <span>Data: Kelmarsh, Penmanshiel &amp; Hill of Towie wind farm SCADA, CC BY 4.0. Delabole SCADA via DTU Data (ETSU/DTI, 1993-94). Nørrekær Enge II via DTU Data (Risø, 1991-93). Pedra do Sal &amp; Beberibe via Zenodo (Federal University of Santa Catarina, 2013-14), CC BY-SA 4.0; turbine positions &copy; OpenStreetMap contributors, ODbL. SMARTEOLE (Sole du Moulin Vieux, 2020) via Zenodo, Etalab Open Licence 2.0. EDP Wind Farm A via CARE-to-Compare, CC BY-SA 4.0. DSWE Inland-Offshore dataset (Yu Ding, "Data Science for Wind Energy"), CC BY 4.0.</span>
+  <span>Data: Kelmarsh, Penmanshiel &amp; Hill of Towie wind farm SCADA, CC BY 4.0. Delabole SCADA via DTU Data (ETSU/DTI, 1993-94). Nørrekær Enge II via DTU Data (Risø, 1991-93). Pedra do Sal &amp; Beberibe via Zenodo (Federal University of Santa Catarina, 2013-14), CC BY-SA 4.0; turbine positions &copy; OpenStreetMap contributors, ODbL. SMARTEOLE (Sole du Moulin Vieux, 2020) via Zenodo, Etalab Open Licence 2.0. Fault case studies (EDP Wind Farm A and two German offshore farms) via CARE to Compare, Fraunhofer IEE, CC BY-SA 4.0. DSWE Inland-Offshore dataset (Yu Ding, "Data Science for Wind Energy"), CC BY 4.0.</span>
   <span><a href="https://forwardforecasting.eu" target="_blank" rel="noopener">Forward Forecasting</a></span>
 </footer>
 
@@ -468,8 +468,8 @@ async function loadFarms(){
       <span class="meta">${f.turbine_count} turbines · ${f.total_capacity_mw} MW</span>
     </div>`).join("") + `
     <div class="tab" data-farm="${EDP_FARM_ID}">
-      <span class="name">EDP Wind Farm A</span>
-      <span class="meta">5 turbines · fault case studies</span>
+      <span class="name">CARE to Compare</span>
+      <span class="meta">36 turbines · 95 fault cases</span>
     </div>` + `
     <div class="tab" data-farm="${DSWE_FARM_ID}">
       <span class="name">DSWE Inland-Offshore</span>
@@ -648,43 +648,76 @@ function renderOperational(card, o){
   }
 }
 
-// ---------- EDP Wind Farm A: real labeled fault case studies, diagnosis/RAG only ----------
+// ---------- CARE to Compare: 95 labelled fault case studies from three farms, diagnosis only ----------
+let EDP_FILTER = "all";
 async function selectEdp(panel){
   panel.innerHTML = `<div class="skeleton"><span class="spinner"></span> Loading real fault case studies…</div>`;
-  const res = await fetch(`${API}/edp/events`);
+  const [res, det] = await Promise.all([fetch(`${API}/edp/events`), fetch(`${API}/edp/detector`)]);
   if(!res.ok){ panel.innerHTML = `<div class="card">Failed to load: ${res.status}</div>`; return; }
   const events = await res.json();
+  const detector = det.ok ? await det.json() : null;
   if(ACTIVE_FARM !== EDP_FARM_ID) return;
-  renderEdp(panel, events);
+  renderEdp(panel, events, detector);
 }
 
-function renderEdp(panel, events){
+function edpOutcome(e){
+  if(e.label === "anomaly") return e.detected ? `<span class="pill ok">caught${e.lead_hours!=null ? ", "+fmt(e.lead_hours,0)+" h early" : ""}</span>` : `<span class="pill">missed</span>`;
+  return e.detected ? `<span class="pill flag">false alarm</span>` : `<span class="pill ok">quiet</span>`;
+}
+
+function renderEdpRows(events){
+  const rows = events.filter(e => EDP_FILTER === "all" || e.farm === EDP_FILTER);
+  document.getElementById("edp-event-rows").innerHTML = rows.map(e => `
+    <tr class="edp-event-row" data-event="${e.event_id}" style="cursor:pointer;">
+      <td class="mono">#${e.event_id}</td>
+      <td>${e.farm}</td>
+      <td>${esc(e.turbine_id)}</td>
+      <td>${e.label==="anomaly" ? '<span class="pill flag">anomaly</span>' : '<span class="pill ok">normal</span>'}</td>
+      <td>${esc(e.description || "—")}</td>
+      <td>${edpOutcome(e)}</td>
+    </tr>`).join("");
+  document.querySelectorAll(".edp-event-row").forEach(row => {
+    row.addEventListener("click", () => loadEdpEvent(parseInt(row.dataset.event, 10)));
+  });
+}
+
+function renderEdpDetector(d){
+  if(!d) return `<div class="desc">Detector results not exported yet.</div>`;
+  const sc = d.scores, ref = d.reference;
+  const row = (k, label) => `<tr><td>${label}</td><td class="num">${fmt(sc[k].care,2)}</td><td class="num">${sc[k].anomalies_detected} / ${sc[k].anomaly_events}</td><td class="num">${sc[k].false_alarms} / ${sc[k].normal_events}</td><td class="num">${fmt(sc[k].coverage,2)}</td><td class="num">${fmt(sc[k].accuracy,2)}</td><td class="num">${fmt(sc[k].reliability,2)}</td><td class="num">${fmt(sc[k].earliness,2)}</td></tr>`;
+  return `
+    <div class="kpis">
+      <div class="kpi"><div class="v">${fmt(sc.all.care,2)}</div><div class="l">CARE score, all 95 cases</div></div>
+      <div class="kpi"><div class="v">${fmt(ref.autoencoder_per_farm_paper,2)}</div><div class="l">Paper's autoencoder</div></div>
+      <div class="kpi"><div class="v">${fmt(ref.random,2)}</div><div class="l">Random guessing</div></div>
+    </div>
+    <div class="desc">${esc(d.method)}</div>
+    <table><thead><tr><th>Farm</th><th class="num">CARE</th><th class="num">Faults caught</th><th class="num">False alarms</th><th class="num">Coverage</th><th class="num">Accuracy</th><th class="num">Reliability</th><th class="num">Earliness</th></tr></thead>
+      <tbody>${row("A","A · EDP onshore, Portugal")}${row("B","B · offshore, Germany")}${row("C","C · offshore, Germany")}${row("all","All")}</tbody></table>
+    <div class="desc">CARE = (Coverage + 2 × Accuracy + Reliability + Earliness) / 5, as defined by the benchmark (Gück et al. 2024). Accuracy is on normal cases, so false alarms cost twice. Reference scores: ${esc(ref.note)}.</div>`;
+}
+
+function renderEdp(panel, events, detector){
+  const counts = f => events.filter(e => f === "all" || e.farm === f).length;
   panel.innerHTML = `
   <div class="grid">
     <div>
       <div class="card">
-        <h2>Real labeled fault case studies</h2>
+        <h2>Real labelled fault case studies</h2>
         <div class="desc">
-          EDP's own onshore wind farm in Portugal, from the CARE-to-Compare benchmark
-          (<a href="https://doi.org/10.5281/zenodo.15846963" target="_blank" rel="noopener">Zenodo</a>,
-          CC BY-SA 4.0) — 22 real, independent 10-minute SCADA windows, each ending in one real
-          labeled event. Anonymized: turbine identity, exact coordinates, rated power/rotor
-          diameter, and calendar timestamps are all stripped, and power readings are rescaled
-          to a normalized fraction rather than real kW — so this farm backs diagnosis and RAG
-          only, no forecasting (there's no real location to fetch matching weather for).
+          The CARE to Compare benchmark (Fraunhofer IEE,
+          <a href="https://doi.org/10.5281/zenodo.15846963" target="_blank" rel="noopener">Zenodo</a>, CC BY-SA 4.0):
+          95 cases on 36 turbines from three farms: A, EDP's onshore farm in Portugal, and B and C, two offshore farms in
+          Germany. Each case is one turbine's year of 10-minute SCADA ending in one labelled event: an anomaly leading up to
+          a fault, often with the operator's root cause, or normal behaviour. All anonymised (no coordinates, no rated power,
+          shifted timestamps, rescaled power), so diagnosis only, no forecasting.
+        </div>
+        <div class="ask" style="margin:10px 0;">
+          ${["all","A","B","C"].map(f => `<button class="edp-filter" data-f="${f}" style="${f===EDP_FILTER?"":"opacity:.55"}">${f==="all"?"All":"Farm "+f} (${counts(f)})</button>`).join("")}
         </div>
         <table>
-          <thead><tr><th>Case</th><th>Turbine</th><th>Label</th><th>Cause</th><th class="num">Duration</th></tr></thead>
-          <tbody id="edp-event-rows">
-            ${events.map(e => `
-              <tr class="edp-event-row" data-event="${e.event_id}" style="cursor:pointer;">
-                <td class="mono">#${e.event_id}</td>
-                <td>${e.turbine_id}</td>
-                <td>${e.label==="anomaly" ? '<span class="pill flag">anomaly</span>' : '<span class="pill ok">normal</span>'}</td>
-                <td>${e.description || "—"}</td>
-                <td class="num">${fmt(e.duration_hours,0)}h</td>
-              </tr>`).join("")}
-          </tbody>
+          <thead><tr><th>Case</th><th>Farm</th><th>Turbine</th><th>Label</th><th>Operator's cause</th><th>Detector</th></tr></thead>
+          <tbody id="edp-event-rows"></tbody>
         </table>
       </div>
 
@@ -692,21 +725,33 @@ function renderEdp(panel, events){
         <h2 id="edp-detail-title">Case study</h2>
         <div class="desc" id="edp-detail-desc"></div>
         <div class="kpis" id="edp-status-kpis"></div>
+        <h3 style="margin-top:14px;">What the detector saw</h3>
+        <div class="desc" id="edp-detector-desc"></div>
+        <div class="chart-wrap"><canvas id="chart-edp-crit"></canvas></div>
+        <div class="legend">
+          <span><span class="swatch" style="background:${GOLD}"></span>Criticality (alarm at 72), hourly, hours relative to the event end</span>
+        </div>
+        <table id="edp-sensors"></table>
+        <h3 style="margin-top:14px;">Power curve</h3>
         <div class="chart-wrap"><canvas id="chart-edp-curve"></canvas></div>
         <div class="legend">
           <span><span class="swatch" style="background:${GOLD}"></span>Binned (IEC 61400-12-1)</span>
           <span><span class="swatch" style="background:${GOOD}"></span>Smooth (AMK kernel regression)</span>
         </div>
-        <div class="desc" style="margin-top:8px;">Power (y-axis) is a normalized fraction of rated capacity, not real kW — see above.</div>
+        <div class="desc" style="margin-top:8px;">Power (y-axis) is rescaled by the anonymisation, not real kW.</div>
       </div>
     </div>
 
     <div>
       <div class="card">
+        <h2>Normal-behaviour detector</h2>
+        ${renderEdpDetector(detector)}
+      </div>
+      <div class="card">
         <h2>Ask the agent</h2>
-        <div class="desc">Grounded in these 22 real case studies' fault descriptions — answered live, on this box.</div>
+        <div class="desc">Grounded in the 95 case studies: operators' fault descriptions and what the detector made of each.</div>
         <div class="ask">
-          <input id="edp-ask-input" type="text" maxlength="500" placeholder="e.g. which turbines had a gearbox failure?">
+          <input id="edp-ask-input" type="text" maxlength="500" placeholder="e.g. which transformer faults did the detector catch?">
           <button id="edp-ask-btn">Ask</button>
         </div>
         <div class="ask-answer" id="edp-ask-answer"></div>
@@ -715,9 +760,12 @@ function renderEdp(panel, events){
     </div>
   </div>`;
 
-  panel.querySelectorAll(".edp-event-row").forEach(row => {
-    row.addEventListener("click", () => loadEdpEvent(parseInt(row.dataset.event, 10)));
-  });
+  renderEdpRows(events);
+  panel.querySelectorAll(".edp-filter").forEach(b => b.addEventListener("click", () => {
+    EDP_FILTER = b.dataset.f;
+    panel.querySelectorAll(".edp-filter").forEach(x => x.style.opacity = x.dataset.f === EDP_FILTER ? "" : ".55");
+    renderEdpRows(events);
+  }));
 
   const askBtn = document.getElementById("edp-ask-btn");
   const askInput = document.getElementById("edp-ask-input");
@@ -754,17 +802,27 @@ async function loadEdpEvent(eventId){
   const res = await fetch(`${API}/edp/events/${eventId}`);
   if(!res.ok) return;
   const d = await res.json();
-  document.getElementById("edp-detail-title").textContent = `Case study #${d.event_id} — turbine ${d.turbine_id}`;
+  const det = d.detector;
+  document.getElementById("edp-detail-title").textContent = `Case study #${d.event_id}: farm ${d.farm}, turbine ${d.turbine_id}`;
   document.getElementById("edp-detail-desc").textContent =
-    `${d.label==="anomaly" ? "Anomaly" : "Normal"} event${d.description ? " — "+d.description : ""}, ` +
-    `${d.rows_observed.toLocaleString()} real 10-minute readings over ${fmt(d.duration_hours,0)} hours.`;
-  const statusKpis = document.getElementById("edp-status-kpis");
-  statusKpis.innerHTML = Object.entries(d.status_breakdown).map(([label,count]) => `
-    <div class="kpi"><div class="v">${count.toLocaleString()}</div><div class="l">${label}</div></div>`).join("");
+    `${d.label==="anomaly" ? "Anomaly" : "Normal"} event${d.description ? ": "+d.description : ""}. ` +
+    `${d.rows_observed.toLocaleString()} 10-minute readings, the last ${d.prediction_rows.toLocaleString()} scored; event window ${fmt(d.duration_hours,0)} hours.`;
+  document.getElementById("edp-status-kpis").innerHTML = Object.entries(d.status_breakdown).map(([label,count]) => `
+    <div class="kpi"><div class="v">${count.toLocaleString()}</div><div class="l">${esc(label)}</div></div>`).join("");
+  const verdict = d.label === "anomaly"
+    ? (det.detected ? `Caught: criticality reached 72 ${fmt(det.lead_hours,0)} hours before the event end.` : `Missed: criticality peaked at ${det.max_criticality}, below the alarm at 72.`)
+    : (det.detected ? `False alarm: criticality reached ${det.max_criticality} on a normal case.` : `Correctly quiet: criticality peaked at ${det.max_criticality}.`);
+  document.getElementById("edp-detector-desc").textContent =
+    `${verdict} PCA model on ${det.n_features} inputs (${det.n_components} components), trained on this turbine's own normal rows.` +
+    (det.coverage!=null ? ` Coverage ${fmt(det.coverage,2)}, earliness ${fmt(det.earliness,2)}.` : det.accuracy!=null ? ` Accuracy ${fmt(det.accuracy,2)}.` : "");
+  drawLineChart(document.getElementById("chart-edp-crit"), [{data: det.hourly.criticality, color: GOLD}],
+    {labelFmt:v=>v.toFixed(0), yUnit:"Criticality", xUnit:`Hours ${det.hourly.hours_to_event_end[0]} to ${det.hourly.hours_to_event_end.at(-1)} (0 = event end)`});
+  document.getElementById("edp-sensors").innerHTML = `<thead><tr><th>${d.label==="anomaly" ? "Sensors carrying most of the error in the event window" : "Sensors carrying most of the error"}</th><th class="num">Share</th></tr></thead><tbody>` +
+    det.top_sensors.map(t => `<tr><td>${esc(t.description || t.sensor)} <span class="mono" style="opacity:.6">${esc(t.sensor)}</span></td><td class="num">${fmt(t.share_of_error_pct,0)}%</td></tr>`).join("") + "</tbody>";
   drawLineChart(document.getElementById("chart-edp-curve"), [
     {data: d.power_curve.map(p=>p.mean_power_frac), color: GOLD},
     {data: d.power_curve_smooth.map(p=>p.mean_power_frac), color: GOOD},
-  ], {labelFmt:v=>v.toFixed(2), yUnit:"Power (fraction of rated capacity)", xUnit:"Wind speed (m/s)"});
+  ], {labelFmt:v=>v.toFixed(2), yUnit:"Power (rescaled)", xUnit:"Wind speed (m/s)"});
 }
 
 // ---------- DSWE Inland-Offshore: real turbine+met-mast data, Measure-Correlate-Predict ----------

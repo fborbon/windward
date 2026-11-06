@@ -44,8 +44,8 @@ def get_farm_facts(farm_id: str) -> dict:
 
 @mcp.tool()
 def query_edp_incidents(question: str) -> str:
-    """Ask a question against EDP Wind Farm A's real labeled fault case studies (22
-    anonymized turbine windows, diagnosis/RAG only, no forecasting for this farm)."""
+    """Ask a question against the CARE to Compare fault case studies (95 anonymized turbine
+    cases from three farms, A onshore Portugal and B, C offshore Germany; diagnosis only)."""
     return tools.query_edp_incidents(question)
 
 
