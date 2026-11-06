@@ -345,34 +345,41 @@ def edp_ask(request: EdpAskRequest):
     from agents.llm_router import complete
     from data_sources.edp_scada import detector_summary, load_events
 
-    # The whole case table, not retrieved snippets: questions here are mostly "which faults of type
-    # X did it catch", which need every case (retrieving 4 or 8 left cases out and invited the model
-    # to fill gaps). 95 rows is ~3K tokens, ~$0.0002 a question on Nova Lite.
-    rows = []
+    # Every case, counted in code: questions here are mostly "which faults of type X did it catch".
+    # Retrieved snippets (4, then 8) left cases out and the model filled the gaps; a full 95-row table
+    # was misread (outcomes swapped between rows). So the grouping and counting happen here and the
+    # model only phrases the answer. ~2K tokens, ~$0.0002 a question on Nova Lite.
     events = load_events()
-    events = events.assign(_g=events["subsystem"].fillna("(normal case)")).sort_values(["_g", "farm"])
-    for event_id, e in events.iterrows():
-        if e["event_label"] == "anomaly":
-            outcome = f"CAUGHT {e['lead_hours']:.0f} h before the event end" if e["detected"] else "MISSED"
-        else:
-            outcome = "FALSE ALARM" if e["detected"] else "correctly quiet"
-        rows.append(f"#{event_id} | farm {e['farm']} | turbine {e['asset']} | {e['event_label']} | "
-                    f"{e['subsystem'] or '-'} | {e['event_description'] or '-'} | {outcome}")
+    anomalies = events[events["event_label"] == "anomaly"]
+    lines = []
+    for name, g in anomalies.fillna({"subsystem": "unspecified"}).groupby("subsystem"):
+        caught = g[g["detected"]]
+        missed = g[~g["detected"]]
+        lines.append(
+            f"{name}: {len(g)} fault cases; caught {len(caught)}"
+            + (" (" + ", ".join(f"#{i} farm {r['farm']} {r['lead_hours']:.0f} h early: {r['event_description']}" for i, r in caught.iterrows()) + ")" if len(caught) else "")
+            + f"; missed {len(missed)}"
+            + (" (" + ", ".join(f"#{i} farm {r['farm']}: {r['event_description']}" for i, r in missed.iterrows()) + ")" if len(missed) else ""))
+    for farm, g in events.groupby("farm"):
+        a_ = g[g["event_label"] == "anomaly"]
+        n_ = g[g["event_label"] == "normal"]
+        fa = n_[n_["detected"]]
+        lines.append(f"farm {farm}: {len(a_)} fault cases, {int(a_['detected'].sum())} caught; {len(n_)} normal cases, "
+                     f"{len(fa)} false alarms" + (" (" + ", ".join(f"#{i}" for i in fa.index) + ")" if len(fa) else ""))
     sc = detector_summary()["scores"]
     prompt = (
         "You are the Windward analysis agent for the CARE to Compare benchmark: 95 real, anonymized wind turbine "
         "fault case studies from three farms (A: EDP onshore, Portugal; B and C: offshore, Germany), diagnosis only. "
-        "Each row gives the operator's root cause (for anomaly cases) and the outcome of Windward's normal-behaviour "
+        "The summaries give the operators' root causes and the outcome of Windward's normal-behaviour "
         f"detector. Its CARE score is {sc['all']['care']} overall (A {sc['A']['care']}, B {sc['B']['care']}, "
         f"C {sc['C']['care']}); the benchmark paper's autoencoder scores 0.66, random guessing 0.5.\n"
-        "Answer using ONLY this table, grouped by subsystem (assigned from the operator's wording). To answer about a "
-        "fault type, take exactly the rows whose subsystem column matches it, and no others. "
-        "Check every row before saying none or all. Cite case numbers. Under 120 words, plain English.\n\n"
-        "Case | farm | turbine | label | subsystem | operator's root cause | detector\n" + "\n".join(rows)
+        "Answer using ONLY the summaries below: one line per faulty subsystem (assigned from the operator's wording), "
+        "then one per farm. They are complete and already counted; copy case numbers, counts and lead times exactly "
+        "and don't move a case between caught and missed. Under 120 words, plain English.\n\n" + "\n".join(lines)
         + f"\n\nQuestion: {request.question.strip()}"
     )
     response = complete([{"role": "user", "content": prompt}])
-    return {"answer": response.choices[0].message.content, "sources": ["care-case-table (95 cases)", "internal-reference:care-detector"]}
+    return {"answer": response.choices[0].message.content, "sources": ["care-case-summaries (95 cases)", "internal-reference:care-detector"]}
 
 
 # --- DSWE Inland-Offshore Wind Farm Dataset1: real turbine+met-mast data, diagnosis/RAG only,
