@@ -407,6 +407,8 @@ Neither is used blind: `demo_notebook/`'s own case study (§4-5 there) shows R²
 
 Delabole's MAE is 8% of its 4 MW capacity (Kelmarsh: 9%, Hill of Towie: 9%). Training drops hours where the reanalysis wind is below 2 m/s yet the farm made more than half its capacity (`forecasting/train.py`, `drop_reanalysis_misses`): the weather product missed a local wind event. Delabole had exactly one, 1993-12-25 02:00 (ERA5 0.4 m/s, 3.7 MW), and it alone made the model forecast 1.6-1.9 MW for any calm hour. A farm added to the registry is trained on its next deploy (`python -m forecasting.train --missing-only` in `infra/deploy_host.sh`).
 
+**A note on the dashboard's "Mean abs. error" figure.** That KPI is the mean of |actual - predicted| / predicted over every analysed hour (`api/main.py`). Dividing by the prediction makes it explode on calm hours: a 0.02 MW forecast against a 0.12 MW actual counts as a 500% error, although it is off by only 0.1 MW. Nørrekær Enge II's live figure reads about 530% for that reason. Its 12,352 analysed hours come from the continuous park meter and include many calm ones, where both actual and predicted output sit near zero. The model's MAE and R² in the table above are the measures to trust, and the same card's means agree (2.09 MW actual, 2.08 MW predicted). The metric has always been computed this way for every farm; it is a display quirk, not a broken model.
+
 These are meaningfully harder, more honest numbers than an early synthetic-production prototype's R² 0.95 — real SCADA carries wake effects, curtailment, and downtime the model has to learn around, which is the actual point of using real data.
 
 ## 9. Blade Inspection

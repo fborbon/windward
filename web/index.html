@@ -1262,6 +1262,7 @@ function renderAnalysis(panel, farmId, a){
           <span><span class="swatch" style="background:${GOLD}"></span>Actual</span>
           <span><span class="swatch" style="background:${GOOD}"></span>Predicted</span>
         </div>
+        <div class="desc" style="margin:10px 0 0;">Mean abs. error is each hour's |actual - predicted| divided by the prediction, so calm hours with near-zero forecasts inflate it (0.1 MW off a 0.02 MW forecast counts as 500%). On a farm with many calm hours, such as Nørrekær Enge II, it reads in the hundreds of percent; that is a display quirk, not a broken model. Compare the two means instead.</div>
       </div>
 
       <div class="card">
