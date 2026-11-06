@@ -3,13 +3,14 @@ real coordinates, real production — but not all of them share one export forma
 and Penmanshiel are both Cubico Sustainable Investments' Greenbyte export
 (data_sources/greenbyte_scada.py); Hill of Towie is RES's own historian export
 (data_sources/hill_of_towie_scada.py), a different file layout entirely; Delabole is DTU Data's
-NetCDF of a 1993-94 ETSU campaign (data_sources/delabole_scada.py). Farm.data_source
+NetCDF of a 1993-94 ETSU campaign (data_sources/delabole_scada.py); Nørrekær Enge II is a Risø
+1991-93 wake campaign, DTU NetCDF too (data_sources/norrekaer_scada.py). Farm.data_source
 says which data_sources/<data_source>_scada.py module a farm's zips need — use loader_for()
 rather than importing a *_scada module directly, so callers work for any registered farm."""
 from dataclasses import dataclass
 from pathlib import Path
 
-from data_sources import delabole_scada, greenbyte_scada, hill_of_towie_scada
+from data_sources import delabole_scada, greenbyte_scada, hill_of_towie_scada, norrekaer_scada
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
@@ -100,12 +101,30 @@ DELABOLE_FARM = Farm(
     wind_speed_source="met_mast",
 )
 
-FARMS: dict[str, Farm] = {f.farm_id: f for f in [KELMARSH_FARM, PENMANSHIEL_FARM, HILL_OF_TOWIE_FARM, DELABOLE_FARM]}
+NORREKAER_FARM = Farm(
+    farm_id="norrekaer_enge",
+    name="Nørrekær Enge II Wind Farm",
+    lat=57.010,  # centre of the layout (report Appendix 5 UTM, see data_sources/norrekaer_scada.py)
+    lon=9.421,
+    bidding_zone_eic="10YDK-1--------W",  # DK1, West Denmark
+    # 40 of 42: A1 and F6 log nacelle wind and yaw but no power in this dataset
+    turbine_ids=[norrekaer_scada.turbine_id(t) for t in norrekaer_scada.POWER_TURBINES],
+    rated_power_kw=300.0,
+    rotor_diameter_m=28.0,
+    manufacturer_model="Nordtank NTK 300F",
+    scada_zips=[norrekaer_scada.CSV_PATH],
+    source_doi="10.11583/DTU.19076756",
+    data_source="norrekaer",
+    has_status_log=False,
+)
+
+FARMS: dict[str, Farm] = {f.farm_id: f for f in [KELMARSH_FARM, PENMANSHIEL_FARM, HILL_OF_TOWIE_FARM, DELABOLE_FARM, NORREKAER_FARM]}
 
 # Kept for older imports / synthetic-data code paths.
 DEMO_FARM = KELMARSH_FARM
 
-_LOADER_MODULES = {"greenbyte": greenbyte_scada, "hill_of_towie": hill_of_towie_scada, "delabole": delabole_scada}
+_LOADER_MODULES = {"greenbyte": greenbyte_scada, "hill_of_towie": hill_of_towie_scada, "delabole": delabole_scada,
+                   "norrekaer": norrekaer_scada}
 
 
 def loader_for(farm: Farm):

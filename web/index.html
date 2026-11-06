@@ -194,7 +194,7 @@
 </main>
 
 <footer>
-  <span>Data: Kelmarsh, Penmanshiel &amp; Hill of Towie wind farm SCADA, CC BY 4.0. Delabole SCADA via DTU Data (ETSU/DTI, 1993-94). EDP Wind Farm A via CARE-to-Compare, CC BY-SA 4.0. DSWE Inland-Offshore dataset (Yu Ding, "Data Science for Wind Energy"), CC BY 4.0.</span>
+  <span>Data: Kelmarsh, Penmanshiel &amp; Hill of Towie wind farm SCADA, CC BY 4.0. Delabole SCADA via DTU Data (ETSU/DTI, 1993-94). Nørrekær Enge II via DTU Data (Risø, 1991-93). EDP Wind Farm A via CARE-to-Compare, CC BY-SA 4.0. DSWE Inland-Offshore dataset (Yu Ding, "Data Science for Wind Energy"), CC BY 4.0.</span>
   <span><a href="https://forwardforecasting.eu" target="_blank" rel="noopener">Forward Forecasting</a></span>
 </footer>
 
@@ -530,7 +530,46 @@ async function loadOperational(farmId){
   renderOperational(card, await res.json());
 }
 
+function renderWakeStudy(card, o){
+  const wl = o.wake_losses || {}, ws = o.wake_study || {};
+  const pct = v => v==null ? "—" : (v>0?"":"")+fmt(v,1)+"%";
+  const turb = Object.entries(wl.turbines||{}).sort((a,b)=>b[1].lt_pct-a[1].lt_pct);
+  const peaks = ws.wake_peaks_200_300_deg || {}, coast = ws.row_a_coastal_fetch_255_285 || {}, grad = ws.south_north_site_gradient || {};
+  const line1 = ws.line_1_from_west || {}, rowS = ws.row_a_from_south || {};
+  const gradRow = g => Object.entries((g||{}).power_pct_of_row_mean_south_to_north||{}).map(([k,v])=>`${k} ${fmt(v,0)}`).join(" · ");
+  const rel = o => Object.entries(o||{}).map(([k,v])=>`${k} ${fmt(v,0)}`).join(" · ");
+  card.innerHTML = `
+    <h2>Measured wake study (not OpenOA)</h2>
+    <div class="desc">Wake losses measured directly: for every 10-minute record, the wind direction comes from upstream met mast M1, the turbines with no other turbine upstream (±20°, 20 rotor diameters) are the freestream reference, and every turbine's energy is compared with theirs. ${fmt(wl.n_records,0)} records, 1991-12 to 1993-06. Checked against Risø's own 1993 analysis (Højstrup et al., Risø-I-684(EN)).</div>
+    <div class="kpis">
+      <div class="kpi"><div class="v">${pct(wl.plant_por_pct)}</div><div class="l">Farm wake loss (5-90% of rated)</div></div>
+      <div class="kpi"><div class="v">${(peaks.bins_deg||[]).filter(d=>d!==280).map(d=>fmt(d,0)+"°").join(" ")}</div><div class="l">Measured wake peaks (report: 218° 258° 293°)</div></div>
+      <div class="kpi"><div class="v">+${fmt(coast.a7_vs_a2_pct,0)}%</div><div class="l">A7 vs A2, westerly wind (report: &gt;17% end to end)</div></div>
+    </div>
+    <h3 style="margin-top:14px;">What the data says, next to the 1993 report</h3>
+    <ul class="desc">
+      <li><b>Wake directions reproduced.</b> Loss peaks at ${(peaks.bins_deg||[]).map((d,i)=>fmt(d,0)+"° ("+fmt(peaks.loss_pct[i],1)+"%)").join(", ")}; Risø's park-output dips were at 218°, 258° and 293°.</li>
+      <li><b>Line A1&ndash;F1 at 258°</b> (${line1.n_records} records, ${fmt(line1.mean_ref_ws_ms,1)} m/s): nacelle wind relative to A1: ${rel(line1.nacelle_wind_pct_of_first)}. It drops, recovers at row D after the 730 m gap, then drops again, as in the report's figure 10.</li>
+      <li><b>A site gradient, not only wakes.</b> The unwaked front row produces more toward its northern end whichever side the wind comes from: westerly, row A: ${gradRow(grad.westerly_front_row_A)}; easterly, row F: ${gradRow(grad.easterly_front_row_F)} (% of row mean, south to north). Terrain and villages lie just south of the farm, open water to the north.</li>
+      <li><b>A likely answer to the report's open question.</b> With wind straight along row A from the south, power falls for turbines 2&ndash;4 and then recovers (here: ${Object.entries(rowS.mean_power_kw||{}).map(([k,v])=>k+" "+fmt(v,0)+" kW").join(" · ")}), which the authors were "somewhat at a loss to explain". The same south-to-north gradient explains it.</li>
+      <li><b>The worst directions are along the rows.</b> The rows run 166&deg;/346&deg;; with the wind straight down all six at once the farm loses ${fmt(((ws.row_aligned_wake_loss||{})["165"]||{}).loss_pct,1)}% (165&deg;) and ${fmt(((ws.row_aligned_wake_loss||{})["345"]||{}).loss_pct,1)}% (345&deg;, only ${((ws.row_aligned_wake_loss||{})["345"]||{}).n_records} records), the chart's two biggest peaks, but those directions carry under 1% of the energy.</li>
+      <li><b>So the worst turbine isn't broken.</b> F1 sits at the sheltered southern end <i>and</i> last on line 1 in the prevailing wind; negative wake losses at the northern row ends are the same gradient.</li>
+    </ul>
+    <div class="chart-wrap"><canvas id="chart-wake-wd"></canvas></div>
+    <div class="legend"><span><span class="swatch" style="background:${GOLD}"></span>Farm wake loss by wind direction, 0° to 355° in 5° bins (gaps: too few records)</span></div>
+    <h3 style="margin-top:14px;">Per-turbine wake loss: largest and smallest</h3>
+    <table><thead><tr><th>Turbine</th><th class="num">Wake loss</th></tr></thead>
+      <tbody>${turb.slice(0,8).map(([t,v])=>`<tr><td>${t}</td><td class="num">${pct(v.lt_pct)}</td></tr>`).join("")}
+        <tr><td colspan="2" class="desc">&hellip; ${turb.length-13} more &hellip;</td></tr>
+        ${turb.slice(-5).map(([t,v])=>`<tr><td>${t}</td><td class="num">${pct(v.lt_pct)}</td></tr>`).join("")}</tbody></table>
+    <div class="desc">${o.method_note || ""}</div>`;
+  const bd = (wl.by_direction||[]).map(b=>b.plant_por_pct);
+  if(bd.length) drawLineChart(document.getElementById("chart-wake-wd"), [{data: bd, color:GOLD}],
+    {labelFmt:v=>v.toFixed(0), yUnit:"Wake loss (%)", xUnit:"Wind direction (0° to 355°)"});
+}
+
 function renderOperational(card, o){
+  if(o.method === "measured_wake_study") return renderWakeStudy(card, o);
   const el = o.electrical_losses || {}, aep = o.aep || {}, wl = o.wake_losses || {}, ym = o.yaw_misalignment || {};
   const m = aep.monthly_linear || {}, d = aep.daily_gam_temperature || {};
   const yawStatus = o.yaw_status || {};

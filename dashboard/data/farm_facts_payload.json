@@ -285,7 +285,96 @@
     "note": "energy is from turbine SCADA, before the few-% electrical losses to the export meter; a year with scada_coverage well below 1 is partial (data gaps or the export starting/ending mid-year)"
    },
    "decommissioning": "No decommissioning or end-of-consent date appears in any source Windward holds for this farm (dataset metadata, SCADA, the indexed PDFs)."
+  },
+  "norrekaer_enge": {
+   "turbines": {
+    "source": "Ris\u00f8 report Ris\u00f8-I-684(EN) Appendix 1 (specs) and 5 (UTM positions); 40 of 42 turbines log power",
+    "count": 40,
+    "manufacturer": "Nordtank",
+    "model": "NTK 300F",
+    "rated_power_kw": 300.0,
+    "rotor_diameter_m_in_metadata": 28.0,
+    "hub_heights_m": {
+     "31": [
+      "Norrekaer A2",
+      "Norrekaer A3",
+      "Norrekaer A4",
+      "Norrekaer A5",
+      "Norrekaer A6",
+      "Norrekaer A7",
+      "Norrekaer B1",
+      "Norrekaer B2",
+      "Norrekaer B3",
+      "Norrekaer B4",
+      "Norrekaer B5",
+      "Norrekaer B6",
+      "Norrekaer B7",
+      "Norrekaer C1",
+      "Norrekaer C2",
+      "Norrekaer C3",
+      "Norrekaer C4",
+      "Norrekaer C5",
+      "Norrekaer C6",
+      "Norrekaer C7",
+      "Norrekaer D1",
+      "Norrekaer D2",
+      "Norrekaer D3",
+      "Norrekaer D4",
+      "Norrekaer D5",
+      "Norrekaer D6",
+      "Norrekaer D7",
+      "Norrekaer E1",
+      "Norrekaer E2",
+      "Norrekaer E3",
+      "Norrekaer E4",
+      "Norrekaer E5",
+      "Norrekaer E6",
+      "Norrekaer E7",
+      "Norrekaer F1",
+      "Norrekaer F2",
+      "Norrekaer F3",
+      "Norrekaer F4",
+      "Norrekaer F5",
+      "Norrekaer F7"
+     ]
+    },
+    "commercial_operations_date": [
+     "1991 (year only: commissioning ran through summer 1991, Ris\u00f8 report section 5)"
+    ]
+   },
+   "production_records": {
+    "source": "10-minute turbine SCADA (DTU Data NetCDF, 1991-93 Ris\u00f8 campaign; only runs with hub wind above ~2.5 m/s were logged, so totals and coverage undercount by design), farm output = sum of turbine active power",
+    "period": "1991-12-22 to 1993-06-27",
+    "max_10min_farm_output_mw": 13.47,
+    "max_10min_farm_output_at": "1991-12-24 01:56",
+    "turbines_reporting_then": 40,
+    "installed_capacity_mw": 12.0,
+    "max_10min_single_turbine_kw": 366.1,
+    "max_10min_single_turbine": "Norrekaer_B5 at 1992-04-19 07:34",
+    "best_day": {
+     "period": "1993-01-22",
+     "energy_mwh": 236.8
+    },
+    "best_month": null,
+    "best_full_calendar_year": "no calendar year with at least 95% SCADA coverage",
+    "energy_by_calendar_year": {
+     "1991": {
+      "energy_gwh": 0.63,
+      "scada_coverage": 0.013
+     },
+     "1992": {
+      "energy_gwh": 11.58,
+      "scada_coverage": 0.311
+     },
+     "1993": {
+      "energy_gwh": 5.66,
+      "scada_coverage": 0.142
+     }
+    },
+    "note": "energy is from turbine SCADA, before the few-% electrical losses to the export meter; a year with scada_coverage well below 1 is partial (data gaps or the export starting/ending mid-year)"
+   },
+   "decommissioning": "No decommissioning or end-of-consent date appears in any source Windward holds for this farm (dataset metadata, SCADA, the indexed PDFs)."
   }
  },
- "generated_at": "2026-11-06T10:51:22+00:00"
+ "generated_at": "2026-11-06T13:27:21+00:00"
 }

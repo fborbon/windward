@@ -1821,6 +1821,771 @@
     "caveat": "OpenOA's StaticYawMisalignment is not yet validated against turbines with known static yaw misalignment; it relies on nacelle wind speed, which itself is affected by yaw misalignment. Treat as a screening indicator, not a calibration value.",
     "vane_std_deg": 7.44
    }
+  },
+  "norrekaer_enge": {
+   "method": "measured_wake_study",
+   "method_note": "Not OpenOA: wake losses measured directly against geometrically freestream turbines per 10-minute record (wind direction from met mast M1), see operational_assessment/norrekaer_wake_study.py. Period of record only (1991-12 to 1993-06, Ris\u00f8-selected runs), so lt_pct equals por_pct. Per-turbine values also carry a site gradient (output rises ~25-50% from the south to the north end of a row in both westerly and easterly wind, see wake_study.south_north_site_gradient): a negative value at a northern row end is that gradient, not a turbine beating freestream.",
+   "aep": {
+    "skipped": "no substation meter, curtailment or availability channels, and the turbine channels only exist for Ris\u00f8-selected runs; the wake study below is measured directly instead"
+   },
+   "wake_losses": {
+    "plant_por_pct": 5.8,
+    "plant_lt_pct": 5.8,
+    "turbines": {
+     "Norrekaer_A2": {
+      "por_pct": 2.95,
+      "lt_pct": 2.95
+     },
+     "Norrekaer_A3": {
+      "por_pct": 5.76,
+      "lt_pct": 5.76
+     },
+     "Norrekaer_A4": {
+      "por_pct": 2.94,
+      "lt_pct": 2.94
+     },
+     "Norrekaer_A5": {
+      "por_pct": -1.18,
+      "lt_pct": -1.18
+     },
+     "Norrekaer_A6": {
+      "por_pct": -3.47,
+      "lt_pct": -3.47
+     },
+     "Norrekaer_A7": {
+      "por_pct": -5.01,
+      "lt_pct": -5.01
+     },
+     "Norrekaer_B1": {
+      "por_pct": 5.93,
+      "lt_pct": 5.93
+     },
+     "Norrekaer_B2": {
+      "por_pct": 7.12,
+      "lt_pct": 7.12
+     },
+     "Norrekaer_B3": {
+      "por_pct": 8.72,
+      "lt_pct": 8.72
+     },
+     "Norrekaer_B4": {
+      "por_pct": 7.87,
+      "lt_pct": 7.87
+     },
+     "Norrekaer_B5": {
+      "por_pct": 6.99,
+      "lt_pct": 6.99
+     },
+     "Norrekaer_B6": {
+      "por_pct": 0.1,
+      "lt_pct": 0.1
+     },
+     "Norrekaer_B7": {
+      "por_pct": -6.14,
+      "lt_pct": -6.14
+     },
+     "Norrekaer_C1": {
+      "por_pct": 7.91,
+      "lt_pct": 7.91
+     },
+     "Norrekaer_C2": {
+      "por_pct": 8.25,
+      "lt_pct": 8.25
+     },
+     "Norrekaer_C3": {
+      "por_pct": 10.29,
+      "lt_pct": 10.29
+     },
+     "Norrekaer_C4": {
+      "por_pct": 12.82,
+      "lt_pct": 12.82
+     },
+     "Norrekaer_C5": {
+      "por_pct": 6.1,
+      "lt_pct": 6.1
+     },
+     "Norrekaer_C6": {
+      "por_pct": 4.41,
+      "lt_pct": 4.41
+     },
+     "Norrekaer_C7": {
+      "por_pct": -2.68,
+      "lt_pct": -2.68
+     },
+     "Norrekaer_D1": {
+      "por_pct": 9.7,
+      "lt_pct": 9.7
+     },
+     "Norrekaer_D2": {
+      "por_pct": 7.27,
+      "lt_pct": 7.27
+     },
+     "Norrekaer_D3": {
+      "por_pct": 6.61,
+      "lt_pct": 6.61
+     },
+     "Norrekaer_D4": {
+      "por_pct": 9.73,
+      "lt_pct": 9.73
+     },
+     "Norrekaer_D5": {
+      "por_pct": 3.55,
+      "lt_pct": 3.55
+     },
+     "Norrekaer_D6": {
+      "por_pct": 1.34,
+      "lt_pct": 1.34
+     },
+     "Norrekaer_D7": {
+      "por_pct": -4.16,
+      "lt_pct": -4.16
+     },
+     "Norrekaer_E1": {
+      "por_pct": 9.44,
+      "lt_pct": 9.44
+     },
+     "Norrekaer_E2": {
+      "por_pct": 11.18,
+      "lt_pct": 11.18
+     },
+     "Norrekaer_E3": {
+      "por_pct": 4.71,
+      "lt_pct": 4.71
+     },
+     "Norrekaer_E4": {
+      "por_pct": 11.61,
+      "lt_pct": 11.61
+     },
+     "Norrekaer_E5": {
+      "por_pct": 13.31,
+      "lt_pct": 13.31
+     },
+     "Norrekaer_E6": {
+      "por_pct": 8.26,
+      "lt_pct": 8.26
+     },
+     "Norrekaer_E7": {
+      "por_pct": 0.4,
+      "lt_pct": 0.4
+     },
+     "Norrekaer_F1": {
+      "por_pct": 16.5,
+      "lt_pct": 16.5
+     },
+     "Norrekaer_F2": {
+      "por_pct": 12.99,
+      "lt_pct": 12.99
+     },
+     "Norrekaer_F3": {
+      "por_pct": 10.67,
+      "lt_pct": 10.67
+     },
+     "Norrekaer_F4": {
+      "por_pct": 10.37,
+      "lt_pct": 10.37
+     },
+     "Norrekaer_F5": {
+      "por_pct": 7.2,
+      "lt_pct": 7.2
+     },
+     "Norrekaer_F7": {
+      "por_pct": 1.33,
+      "lt_pct": 1.33
+     }
+    },
+    "by_direction": [
+     {
+      "wd_deg": 0.0,
+      "plant_por_pct": 10.07,
+      "energy_share_pct": 0.21,
+      "n_records": 65
+     },
+     {
+      "wd_deg": 5.0,
+      "plant_por_pct": 6.53,
+      "energy_share_pct": 0.45,
+      "n_records": 123
+     },
+     {
+      "wd_deg": 10.0,
+      "plant_por_pct": 6.86,
+      "energy_share_pct": 0.57,
+      "n_records": 126
+     },
+     {
+      "wd_deg": 15.0,
+      "plant_por_pct": 7.4,
+      "energy_share_pct": 0.59,
+      "n_records": 131
+     },
+     {
+      "wd_deg": 20.0,
+      "plant_por_pct": 4.09,
+      "energy_share_pct": 0.67,
+      "n_records": 130
+     },
+     {
+      "wd_deg": 25.0,
+      "plant_por_pct": 3.37,
+      "energy_share_pct": 0.78,
+      "n_records": 150
+     },
+     {
+      "wd_deg": 30.0,
+      "plant_por_pct": 9.15,
+      "energy_share_pct": 1.14,
+      "n_records": 219
+     },
+     {
+      "wd_deg": 35.0,
+      "plant_por_pct": 13.87,
+      "energy_share_pct": 0.92,
+      "n_records": 219
+     },
+     {
+      "wd_deg": 40.0,
+      "plant_por_pct": 3.85,
+      "energy_share_pct": 0.91,
+      "n_records": 201
+     },
+     {
+      "wd_deg": 45.0,
+      "plant_por_pct": 2.4,
+      "energy_share_pct": 0.8,
+      "n_records": 192
+     },
+     {
+      "wd_deg": 50.0,
+      "plant_por_pct": 5.24,
+      "energy_share_pct": 0.47,
+      "n_records": 161
+     },
+     {
+      "wd_deg": 55.0,
+      "plant_por_pct": 1.14,
+      "energy_share_pct": 0.61,
+      "n_records": 174
+     },
+     {
+      "wd_deg": 60.0,
+      "plant_por_pct": -1.09,
+      "energy_share_pct": 0.65,
+      "n_records": 185
+     },
+     {
+      "wd_deg": 65.0,
+      "plant_por_pct": 5.38,
+      "energy_share_pct": 0.68,
+      "n_records": 184
+     },
+     {
+      "wd_deg": 70.0,
+      "plant_por_pct": 14.34,
+      "energy_share_pct": 0.59,
+      "n_records": 181
+     },
+     {
+      "wd_deg": 75.0,
+      "plant_por_pct": 16.21,
+      "energy_share_pct": 0.83,
+      "n_records": 246
+     },
+     {
+      "wd_deg": 80.0,
+      "plant_por_pct": 8.24,
+      "energy_share_pct": 0.82,
+      "n_records": 255
+     },
+     {
+      "wd_deg": 85.0,
+      "plant_por_pct": 2.75,
+      "energy_share_pct": 0.59,
+      "n_records": 188
+     },
+     {
+      "wd_deg": 90.0,
+      "plant_por_pct": 3.31,
+      "energy_share_pct": 0.47,
+      "n_records": 167
+     },
+     {
+      "wd_deg": 95.0,
+      "plant_por_pct": 0.93,
+      "energy_share_pct": 0.48,
+      "n_records": 156
+     },
+     {
+      "wd_deg": 100.0,
+      "plant_por_pct": -1.05,
+      "energy_share_pct": 0.64,
+      "n_records": 173
+     },
+     {
+      "wd_deg": 105.0,
+      "plant_por_pct": 0.59,
+      "energy_share_pct": 0.88,
+      "n_records": 210
+     },
+     {
+      "wd_deg": 110.0,
+      "plant_por_pct": 5.83,
+      "energy_share_pct": 0.87,
+      "n_records": 205
+     },
+     {
+      "wd_deg": 115.0,
+      "plant_por_pct": 6.54,
+      "energy_share_pct": 0.52,
+      "n_records": 137
+     },
+     {
+      "wd_deg": 120.0,
+      "plant_por_pct": 1.56,
+      "energy_share_pct": 0.38,
+      "n_records": 132
+     },
+     {
+      "wd_deg": 125.0,
+      "plant_por_pct": 3.71,
+      "energy_share_pct": 0.44,
+      "n_records": 151
+     },
+     {
+      "wd_deg": 130.0,
+      "plant_por_pct": 4.29,
+      "energy_share_pct": 0.27,
+      "n_records": 69
+     },
+     {
+      "wd_deg": 135.0,
+      "plant_por_pct": 3.82,
+      "energy_share_pct": 0.43,
+      "n_records": 110
+     },
+     {
+      "wd_deg": 140.0,
+      "plant_por_pct": 1.88,
+      "energy_share_pct": 0.66,
+      "n_records": 175
+     },
+     {
+      "wd_deg": 145.0,
+      "plant_por_pct": -2.39,
+      "energy_share_pct": 0.75,
+      "n_records": 190
+     },
+     {
+      "wd_deg": 150.0,
+      "plant_por_pct": -1.42,
+      "energy_share_pct": 0.97,
+      "n_records": 267
+     },
+     {
+      "wd_deg": 155.0,
+      "plant_por_pct": 6.49,
+      "energy_share_pct": 0.82,
+      "n_records": 213
+     },
+     {
+      "wd_deg": 160.0,
+      "plant_por_pct": 20.75,
+      "energy_share_pct": 0.69,
+      "n_records": 166
+     },
+     {
+      "wd_deg": 165.0,
+      "plant_por_pct": 25.42,
+      "energy_share_pct": 0.74,
+      "n_records": 217
+     },
+     {
+      "wd_deg": 170.0,
+      "plant_por_pct": 11.14,
+      "energy_share_pct": 0.85,
+      "n_records": 214
+     },
+     {
+      "wd_deg": 175.0,
+      "plant_por_pct": -0.74,
+      "energy_share_pct": 1.1,
+      "n_records": 253
+     },
+     {
+      "wd_deg": 180.0,
+      "plant_por_pct": -7.09,
+      "energy_share_pct": 1.46,
+      "n_records": 366
+     },
+     {
+      "wd_deg": 185.0,
+      "plant_por_pct": 1.58,
+      "energy_share_pct": 1.79,
+      "n_records": 407
+     },
+     {
+      "wd_deg": 190.0,
+      "plant_por_pct": 3.44,
+      "energy_share_pct": 1.39,
+      "n_records": 364
+     },
+     {
+      "wd_deg": 195.0,
+      "plant_por_pct": 5.96,
+      "energy_share_pct": 1.08,
+      "n_records": 290
+     },
+     {
+      "wd_deg": 200.0,
+      "plant_por_pct": 3.42,
+      "energy_share_pct": 1.7,
+      "n_records": 395
+     },
+     {
+      "wd_deg": 205.0,
+      "plant_por_pct": 1.31,
+      "energy_share_pct": 1.38,
+      "n_records": 357
+     },
+     {
+      "wd_deg": 210.0,
+      "plant_por_pct": 3.88,
+      "energy_share_pct": 1.47,
+      "n_records": 396
+     },
+     {
+      "wd_deg": 215.0,
+      "plant_por_pct": 11.81,
+      "energy_share_pct": 1.86,
+      "n_records": 462
+     },
+     {
+      "wd_deg": 220.0,
+      "plant_por_pct": 8.9,
+      "energy_share_pct": 2.43,
+      "n_records": 522
+     },
+     {
+      "wd_deg": 225.0,
+      "plant_por_pct": 1.6,
+      "energy_share_pct": 2.65,
+      "n_records": 522
+     },
+     {
+      "wd_deg": 230.0,
+      "plant_por_pct": -0.13,
+      "energy_share_pct": 2.96,
+      "n_records": 559
+     },
+     {
+      "wd_deg": 235.0,
+      "plant_por_pct": 1.64,
+      "energy_share_pct": 3.93,
+      "n_records": 742
+     },
+     {
+      "wd_deg": 240.0,
+      "plant_por_pct": -1.3,
+      "energy_share_pct": 5.29,
+      "n_records": 930
+     },
+     {
+      "wd_deg": 245.0,
+      "plant_por_pct": -1.99,
+      "energy_share_pct": 4.17,
+      "n_records": 800
+     },
+     {
+      "wd_deg": 250.0,
+      "plant_por_pct": 7.15,
+      "energy_share_pct": 3.96,
+      "n_records": 888
+     },
+     {
+      "wd_deg": 255.0,
+      "plant_por_pct": 16.32,
+      "energy_share_pct": 3.67,
+      "n_records": 904
+     },
+     {
+      "wd_deg": 260.0,
+      "plant_por_pct": 13.14,
+      "energy_share_pct": 3.86,
+      "n_records": 865
+     },
+     {
+      "wd_deg": 265.0,
+      "plant_por_pct": 5.7,
+      "energy_share_pct": 3.82,
+      "n_records": 813
+     },
+     {
+      "wd_deg": 270.0,
+      "plant_por_pct": 0.03,
+      "energy_share_pct": 3.26,
+      "n_records": 690
+     },
+     {
+      "wd_deg": 275.0,
+      "plant_por_pct": 4.38,
+      "energy_share_pct": 3.79,
+      "n_records": 689
+     },
+     {
+      "wd_deg": 280.0,
+      "plant_por_pct": 6.04,
+      "energy_share_pct": 3.5,
+      "n_records": 626
+     },
+     {
+      "wd_deg": 285.0,
+      "plant_por_pct": 5.24,
+      "energy_share_pct": 3.85,
+      "n_records": 590
+     },
+     {
+      "wd_deg": 290.0,
+      "plant_por_pct": 9.51,
+      "energy_share_pct": 3.27,
+      "n_records": 541
+     },
+     {
+      "wd_deg": 295.0,
+      "plant_por_pct": 13.65,
+      "energy_share_pct": 1.98,
+      "n_records": 390
+     },
+     {
+      "wd_deg": 300.0,
+      "plant_por_pct": 8.19,
+      "energy_share_pct": 1.63,
+      "n_records": 289
+     },
+     {
+      "wd_deg": 305.0,
+      "plant_por_pct": 5.32,
+      "energy_share_pct": 1.63,
+      "n_records": 275
+     },
+     {
+      "wd_deg": 310.0,
+      "plant_por_pct": 8.3,
+      "energy_share_pct": 0.9,
+      "n_records": 180
+     },
+     {
+      "wd_deg": 315.0,
+      "plant_por_pct": 9.82,
+      "energy_share_pct": 0.83,
+      "n_records": 183
+     },
+     {
+      "wd_deg": 320.0,
+      "plant_por_pct": 8.21,
+      "energy_share_pct": 0.71,
+      "n_records": 153
+     },
+     {
+      "wd_deg": 325.0,
+      "plant_por_pct": 7.91,
+      "energy_share_pct": 0.42,
+      "n_records": 91
+     },
+     {
+      "wd_deg": 330.0,
+      "plant_por_pct": 8.29,
+      "energy_share_pct": 0.28,
+      "n_records": 68
+     },
+     {
+      "wd_deg": 335.0,
+      "plant_por_pct": 11.92,
+      "energy_share_pct": 0.32,
+      "n_records": 76
+     },
+     {
+      "wd_deg": 340.0,
+      "plant_por_pct": 25.14,
+      "energy_share_pct": 0.14,
+      "n_records": 52
+     },
+     {
+      "wd_deg": 345.0,
+      "plant_por_pct": 37.26,
+      "energy_share_pct": 0.11,
+      "n_records": 42
+     },
+     {
+      "wd_deg": 350.0,
+      "plant_por_pct": 26.44,
+      "energy_share_pct": 0.1,
+      "n_records": 36
+     },
+     {
+      "wd_deg": 355.0,
+      "plant_por_pct": 15.6,
+      "energy_share_pct": 0.17,
+      "n_records": 55
+     }
+    ],
+    "n_records": 21943
+   },
+   "wake_study": {
+    "row_a_from_south": {
+     "direction_deg": 166.0,
+     "n_records": 223,
+     "mean_ref_ws_ms": 7.42,
+     "nacelle_wind_pct_of_first": {
+      "A1": 100.0,
+      "A2": 96.9,
+      "A3": 94.6,
+      "A4": 96.2,
+      "A5": 94.2,
+      "A6": 97.8,
+      "A7": 95.1
+     },
+     "mean_power_kw": {
+      "A2": 39.1,
+      "A3": 34.3,
+      "A4": 41.2,
+      "A5": 43.0,
+      "A6": 45.2,
+      "A7": 48.2
+     }
+    },
+    "row_a_from_north": {
+     "direction_deg": 346.0,
+     "n_records": 11,
+     "mean_ref_ws_ms": 7.11,
+     "nacelle_wind_pct_of_first": {
+      "A7": 100.0,
+      "A6": 93.8,
+      "A5": 92.7,
+      "A4": 95.0,
+      "A3": 95.0,
+      "A2": 95.1,
+      "A1": 92.6
+     },
+     "mean_power_kw": {
+      "A7": 190.5,
+      "A6": 154.9,
+      "A5": 150.6,
+      "A4": 151.1,
+      "A3": 149.6,
+      "A2": 156.3
+     }
+    },
+    "line_1_from_west": {
+     "direction_deg": 258.0,
+     "n_records": 1041,
+     "mean_ref_ws_ms": 7.7,
+     "nacelle_wind_pct_of_first": {
+      "A1": 100.0,
+      "B1": 98.3,
+      "C1": 96.1,
+      "D1": 97.4,
+      "E1": 87.6,
+      "F1": 91.2
+     },
+     "mean_power_kw": {
+      "B1": 40.1,
+      "C1": 35.7,
+      "D1": 48.2,
+      "E1": 38.9,
+      "F1": 32.3
+     }
+    },
+    "row_a_coastal_fetch_255_285": {
+     "n_records": 3294,
+     "power_pct_of_row_mean": {
+      "A2": 85.2,
+      "A3": 91.1,
+      "A4": 98.7,
+      "A5": 104.2,
+      "A6": 108.7,
+      "A7": 112.2
+     },
+     "a7_vs_a2_pct": 31.6
+    },
+    "south_north_site_gradient": {
+     "westerly_front_row_A": {
+      "n_records": 3294,
+      "power_pct_of_row_mean_south_to_north": {
+       "A2": 85.2,
+       "A3": 91.1,
+       "A4": 98.7,
+       "A5": 104.2,
+       "A6": 108.7,
+       "A7": 112.2
+      }
+     },
+     "easterly_front_row_F": {
+      "n_records": 1049,
+      "power_pct_of_row_mean_south_to_north": {
+       "F1": 72.2,
+       "F2": 87.1,
+       "F3": 99.9,
+       "F4": 106.7,
+       "F5": 109.1,
+       "F7": 125.1
+      }
+     }
+    },
+    "wake_peaks_200_300_deg": {
+     "bins_deg": [
+      215.0,
+      255.0,
+      280.0,
+      295.0
+     ],
+     "loss_pct": [
+      11.8,
+      16.3,
+      6.0,
+      13.7
+     ],
+     "report_fig13_dips_deg": [
+      218,
+      258,
+      293
+     ]
+    },
+    "row_aligned_wake_loss": {
+     "165": {
+      "loss_pct": 25.42,
+      "n_records": 217,
+      "energy_share_pct": 0.74
+     },
+     "345": {
+      "loss_pct": 37.26,
+      "n_records": 42,
+      "energy_share_pct": 0.11
+     }
+    },
+    "m2_vs_m1_wind_pct_by_30deg": {
+     "0": 97.9,
+     "30": 81.7,
+     "60": 111.4,
+     "90": 100.7,
+     "120": 93.5,
+     "150": 96.8,
+     "180": 91.3,
+     "210": 90.1,
+     "240": 92.6,
+     "270": 99.7,
+     "300": 96.8,
+     "330": 149.5
+    },
+    "yaw_misalignment_median_deg": {
+     "farm_median": -1.5,
+     "largest_abs": {
+      "E5": 7.3,
+      "D1": 5.1,
+      "D4": 4.7,
+      "E4": 4.6,
+      "D3": 4.4
+     }
+    }
+   }
   }
  },
  "generated_at": "2026-10-05T07:32:19+00:00",

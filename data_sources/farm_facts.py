@@ -24,10 +24,12 @@ _STATIC = {
     "penmanshiel": DATA_DIR / "penmanshiel" / "Penmanshiel_WT_static.csv",
     "hill_of_towie": DATA_DIR / "hill_of_towie" / "Hill_of_Towie_turbine_metadata.csv",
     "delabole": DATA_DIR / "delabole" / "Delabole_WT_static.csv",
+    "norrekaer_enge": None,  # built from the report's specs and UTM table, see data_sources/norrekaer_scada.py
 }
 # The DTU site documentation gives Delabole's commissioning as "December 1991", no day; the
 # static CSV carries the 1st only because the column needs a date.
-_COMMISSIONING_MONTH_ONLY = {"delabole": "1991-12 (month only in the source)"}
+_COMMISSIONING_MONTH_ONLY = {"delabole": "1991-12 (month only in the source)",
+                             "norrekaer_enge": "1991 (year only: commissioning ran through summer 1991, Risø report section 5)"}
 _AEROUP = DATA_DIR / "hill_of_towie" / "Hill_of_Towie_AeroUp_install_dates.csv"
 
 # A day/month/year only counts toward a record when the SCADA covers it almost fully, so a
@@ -36,14 +38,20 @@ MIN_COVERAGE = 0.95
 
 
 def _turbines(farm_id: str) -> dict:
-    df = pd.read_csv(_STATIC[farm_id], encoding="utf-8-sig").dropna(how="all")
-    df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
+    if _STATIC[farm_id] is None:
+        from data_sources.farms import loader_for
+        df = loader_for(FARMS[farm_id]).load_turbine_static(farm_id).reset_index()
+    else:
+        df = pd.read_csv(_STATIC[farm_id], encoding="utf-8-sig").dropna(how="all")
+        df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
     name_col = "Title" if "Title" in df else "Turbine Name"
     cod = pd.to_datetime(df["Commercial Operations Date"], dayfirst=farm_id != "hill_of_towie")
     hub = df.groupby("Hub Height (m)")[name_col].apply(list)
     return {
-        "source": f"{_STATIC[farm_id].name} (" + ("built from the DTU site documentation's turbine list and layout"
-                                                   if farm_id == "delabole" else "the dataset's turbine metadata") + ")",
+        "source": ("Risø report Risø-I-684(EN) Appendix 1 (specs) and 5 (UTM positions); 40 of 42 turbines log power"
+                   if _STATIC[farm_id] is None else
+                   f"{_STATIC[farm_id].name} (" + ("built from the DTU site documentation's turbine list and layout"
+                                                   if farm_id == "delabole" else "the dataset's turbine metadata") + ")"),
         "count": int(len(df)),
         "manufacturer": df["Manufacturer"].iloc[0],
         "model": df["Model"].iloc[0],
@@ -56,10 +64,10 @@ def _turbines(farm_id: str) -> dict:
 
 
 def _records(farm_id: str) -> dict:
-    if FARMS[farm_id].data_source == "delabole":
+    if FARMS[farm_id].data_source in ("delabole", "norrekaer"):
         # Small enough to read straight from the committed CSV; it never went through OpenOA.
-        from data_sources.delabole_scada import scada_10min_for_records
-        scada = scada_10min_for_records()
+        from data_sources.farms import loader_for
+        scada = loader_for(FARMS[farm_id]).scada_10min_for_records()
     else:
         scada = pd.read_pickle(CACHE_DIR / f"{farm_id}_scada.pkl")
         if isinstance(scada, tuple):
@@ -94,7 +102,9 @@ def _records(farm_id: str) -> dict:
     full_years = {y: a for y, a in annual.items() if a["scada_coverage"] >= MIN_COVERAGE}
     best_year = max(full_years, key=lambda y: full_years[y]["energy_gwh"]) if full_years else None
     return {
-        "source": ("10-minute turbine SCADA (DTU Data NetCDF, 1993-94 ETSU campaign)" if FARMS[farm_id].data_source == "delabole"
+        "source": ("10-minute turbine SCADA (DTU Data NetCDF, 1991-93 Risø campaign; only runs with hub wind above "
+                   "~2.5 m/s were logged, so totals and coverage undercount by design)" if FARMS[farm_id].data_source == "norrekaer"
+                   else "10-minute turbine SCADA (DTU Data NetCDF, 1993-94 ETSU campaign)" if FARMS[farm_id].data_source == "delabole"
                    else "10-minute turbine SCADA (the OpenOA input, README §15)") + ", farm output = sum of turbine active power",
         "period": f"{scada['time'].min():%Y-%m-%d} to {scada['time'].max():%Y-%m-%d}",
         "max_10min_farm_output_mw": round(float(by_time.loc[peak_t, "sum"]) / 1000, 2),

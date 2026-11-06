@@ -21,3 +21,5 @@ data/operational_cache/
 .venv-tsdemo/
 data/wind_speed_cache/
 data/delabole/*.nc
+data/norrekaer_enge/*.nc
+data/norrekaer_enge/*.pdf

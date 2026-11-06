@@ -29,6 +29,7 @@
 15. [Operational Assessment (OpenOA)](#15-operational-assessment-openoa)
 16. [Technical Documents: PDF RAG over Datasheets and Tenders](#16-technical-documents-pdf-rag-over-datasheets-and-tenders)
 17. [RAG Evaluation: 35 Questions, Graded and Fixed](#17-rag-evaluation-35-questions-graded-and-fixed)
+18. [Nørrekær Enge: What a 1993 Wake Experiment Teaches](#18-nørrekær-enge-what-a-1993-wake-experiment-teaches)
 
 ---
 
@@ -169,7 +170,7 @@ The four techniques below (in `analysis/efficiency.py`) are standard practice in
 
 ## 5. Data Sources
 
-Farms live in `data_sources/farms.py` (`FARMS` registry). All four are real, open SCADA datasets, but not all in the same export format: Kelmarsh and Penmanshiel are Cubico Sustainable Investments' Greenbyte export (`data_sources/greenbyte_scada.py`); Hill of Towie is RES's own historian export, one CSV per signal-group table per month instead of one CSV per turbine (`data_sources/hill_of_towie_scada.py`); Delabole is a DTU Data NetCDF4 file (`data_sources/delabole_scada.py`). Callers use `data_sources.farms.loader_for(farm)` to get the right module rather than importing one directly — see `Farm.data_source`.
+Farms live in `data_sources/farms.py` (`FARMS` registry). All five are real, open SCADA datasets, but not all in the same export format: Kelmarsh and Penmanshiel are Cubico Sustainable Investments' Greenbyte export (`data_sources/greenbyte_scada.py`); Hill of Towie is RES's own historian export, one CSV per signal-group table per month instead of one CSV per turbine (`data_sources/hill_of_towie_scada.py`); Delabole and Nørrekær Enge II are DTU Data NetCDF4 files (`data_sources/delabole_scada.py`, `data_sources/norrekaer_scada.py`). Callers use `data_sources.farms.loader_for(farm)` to get the right module rather than importing one directly — see `Farm.data_source`.
 
 | Farm | Turbines | Capacity | Location | Dataset |
 |---|---|---|---|---|
@@ -177,6 +178,7 @@ Farms live in `data_sources/farms.py` (`FARMS` registry). All four are real, ope
 | `penmanshiel` | 14x Senvion MM82 | 28.7 MW | Scottish Borders, UK | [Zenodo DOI 10.5281/zenodo.5946808](https://zenodo.org/records/5946808), 2016 (~185MB, split by turbine group) |
 | `hill_of_towie` | 21x Siemens SWT-2.3-VS-82 | 48.3 MW | Aberdeenshire, Scotland, UK | [Zenodo DOI 10.5281/zenodo.14870023](https://zenodo.org/records/14870023), 2024 only so far (~1GB; the full dataset spans 2016–2024, one ~1-1.6GB zip per year) |
 | `delabole` | 10x Winddane WD34 (400 kW, stall-regulated) | 4.0 MW | North Cornwall, UK | [DTU Data DOI 10.11583/DTU.14077004](https://doi.org/10.11583/DTU.14077004), 1993-05 to 1994-04 (16.5MB NetCDF, converted once to a committed 1MB CSV) |
+| `norrekaer_enge` | 40 of 42x Nordtank NTK 300F (300 kW, stall) | 12.0 MW | Limfjord, North Jutland, Denmark | [DTU Data DOI 10.11583/DTU.19076756](https://doi.org/10.11583/DTU.19076756), 1991-12 to 1993-06 (151MB NetCDF, converted once to committed 5.0MB + 0.4MB CSVs) |
 
 **Delabole, the odd one out.** The UK's first commercial wind farm (commissioned December 1991), measured for an ETSU/DTI performance study 30 years before the other three. It is in the registry because it tests the pipeline on a genuinely different farm, not because it is like the others:
 - **No nacelle anemometers.** Every turbine is paired with met mast 1's 33 m cup (hub height 32 m). Power curves therefore share one free-stream wind reading, so a peak Cp above Betz here means the turbine sees stronger wind than the mast, a site-calibration effect, and the agent reports it as `mast_wind_not_representative` instead of a nacelle anemometer fault (`Farm.wind_speed_source`).
@@ -184,6 +186,13 @@ Farms live in `data_sources/farms.py` (`FARMS` registry). All four are real, ope
 - **About 40% of turbine-samples are missing.** Hourly farm output is the reporting turbines' mean times ten, and hours with fewer than 7 of 10 turbines reporting are dropped: 5,645 usable hours.
 - **Licence.** The DTU Data record says CC BY 4.0; the NetCDF's own metadata says CC BY NC 4.0. Fine for this non-commercial demo with attribution; check before any commercial use.
 - Not in the OpenOA assessment (§15): no substation meter, no curtailment channel, and one year only.
+
+**Nørrekær Enge II, the wake laboratory.** Risø instrumented this farm in 1991-93 specifically to study wakes and turbulence: 42 turbines in six rows on flat reclaimed seabed, a hub-height mast upstream (M1) and one deep inside the farm (M2). It's in the registry to learn from, and what it teaches is in §18. Specifics:
+- **Nacelle anemometer and yaw misalignment for every turbine**, so the standard power-curve and Betz checks apply (`wind_speed_source="nacelle"`). Power for 40 of 42: A1 and F6, the strain-gauged turbines next to the masts, have no power channel in this dataset.
+- **Turbine positions** come from the Risø report's Appendix 5 UTM table, checked against its Appendix 4 distance table (`tests/test_norrekaer.py`); the DTU page's own layout list is partly corrupted. The UTM is most likely ED50, so absolute positions are good to about 200 m; relative positions are exact.
+- **Production is the continuous park meter, not the turbine sum.** Risø logged turbine channels only for runs above about 2.5 m/s at the masts: 4,981 windy hours, biased high. The `park` channel runs continuously (12,352 hours, calm ones included), equals 1.05x the 40-turbine sum (that's 42/40, correlation 1.00), and is scaled by 40/42. A model trained on the turbine sum would never have seen a calm hour.
+- **Per-turbine capacity factors** in the analysis still come from the turbine channels, so they read high (about 32% against the farm's real 17%): compare them with each other, not with other farms.
+- No alarm/status log (`has_status_log=False`). Same licence caveat as Delabole: CC BY 4.0 on the DTU record, CC BY NC 4.0 in the NetCDF.
 
 Datasets considered from the same open-SCADA research and excluded, with why: **EDP open dataset** (Mendeley `zjxjnjp3xs`, onshore Portugal — the earlier research pass had mislabeled it as Spain) — real and CC BY 4.0, but discloses no turbine/farm coordinates and no rated power/rotor diameter, which `Farm` requires. **SMARTEOLE** — a wake-steering experiment, not steady farm production. **Aventa AV-7** — a single research turbine, not a farm. **Pedra do Sal / Beberibe** — real coastal farms, but published as SCADA+LiDAR+turbulent-flux NetCDF, a different data model entirely. **Altahullion** — couldn't independently verify this dataset exists under a citable DOI; not added without that.
 
@@ -388,6 +397,7 @@ Neither is used blind: `demo_notebook/`'s own case study (§4-5 there) shows R²
 | Penmanshiel | 1.98 MW | 0.81 |
 | Hill of Towie | 4.29 MW | 0.74 |
 | Delabole | 0.33 MW | 0.88 |
+| Nørrekær Enge II | 0.71 MW | 0.86 |
 
 Delabole's MAE is 8% of its 4 MW capacity (Kelmarsh: 9%, Hill of Towie: 9%). Training drops hours where the reanalysis wind is below 2 m/s yet the farm made more than half its capacity (`forecasting/train.py`, `drop_reanalysis_misses`): the weather product missed a local wind event. Delabole had exactly one, 1993-12-25 02:00 (ERA5 0.4 m/s, 3.7 MW), and it alone made the model forecast 1.6-1.9 MW for any calm hour. A farm added to the registry is trained on its next deploy (`python -m forecasting.train --missing-only` in `infra/deploy_host.sh`).
 
@@ -474,11 +484,11 @@ Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACK
 ## 12. Roadmap
 
 - [x] Data source clients (meteo, price) + Pydantic schemas
-- [x] Real production data — Kelmarsh + Penmanshiel + Hill of Towie + Delabole open SCADA datasets
+- [x] Real production data — Kelmarsh + Penmanshiel + Hill of Towie + Delabole + Nørrekær Enge II open SCADA datasets
 - [x] Baseline forecasting model, MLflow experiment tracking, per-farm registered models (§8)
 - [x] Batch inference + FastAPI `/forecast` endpoint
 - [x] LangGraph agent, all 9 nodes real (§4), including a real conditional-routing node (`investigate` → `recommend` or `recommend_retrain`)
-- [x] Multi-farm support — farm registry + per-farm loader dispatch (`data_sources.farms.loader_for`), now spanning three different SCADA export formats (Greenbyte, RES historian, DTU NetCDF); four farms live (Kelmarsh, Penmanshiel, Hill of Towie, Delabole), each trained, registered, and served through the full agent
+- [x] Multi-farm support — farm registry + per-farm loader dispatch (`data_sources.farms.loader_for`), now spanning three different SCADA export formats (Greenbyte, RES historian, DTU NetCDF); five farms live (Kelmarsh, Penmanshiel, Hill of Towie, Delabole, Nørrekær Enge II), each trained, registered, and served through the full agent
 - [x] RAG corpus — real turbine fault/status events + reference notes, Bedrock Titan embeddings, FAISS per farm
 - [x] Semantic search — same FAISS index, direct similarity search
 - [x] MCP server — `get_forecast`, `get_recommendation`, `query_maintenance_docs` all implemented
@@ -518,10 +528,11 @@ Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACK
 | **Compute** | MLflow tracking server (on-demand container, `infra/mlflow/`; up only during training/model export, 0MB the rest of the time, was a ~180MB always-on systemd service until 2026-10-17) on the same EC2 | $0 marginal |
 | **Compute** | Training a newly registered farm on deploy (`forecasting.train --missing-only`, `infra/deploy_host.sh`) | $0 marginal - seconds of CPU for Delabole's 5.6K hourly rows, plus one free Open-Meteo archive call; farms that already have a model are skipped |
 | **Storage** | S3 bucket `windward-mlflow-artifacts-ff` (model artifacts, versioned) | Within the AWS always-free tier (5GB/12mo) at this scale; a few cents/month after |
-| **Storage** | Raw SCADA data, FAISS/LlamaIndex indexes | $0 — local disk on the EC2, not cloud storage. Hill of Towie's one-year sample (~1GB) is ~5x the size of both Greenbyte farms combined, still trivial on disk. Delabole's converted CSV is 1MB, committed to the repo |
+| **Storage** | Raw SCADA data, FAISS/LlamaIndex indexes | $0 — local disk on the EC2, not cloud storage. Hill of Towie's one-year sample (~1GB) is ~5x the size of both Greenbyte farms combined, still trivial on disk. Delabole's converted CSV is 1MB and Nørrekær Enge's 5.4MB, both committed to the repo |
 | **Connectivity** | nginx + Let's Encrypt SSL for `windward.forwardforecasting.eu` | $0 — reuses the existing domain/cert infrastructure |
 | **AI services** | Amazon Nova Lite (`explain_node` narration + multimodal vision) | <$0.01/mo at current call volume ($0.06/$0.24 per MTok in/out) |
 | **AI services** | Amazon Titan Embeddings v2 (RAG index build, one-time per farm unless the corpus changes) | <$0.001 one-time per farm |
+| **Compute** | Nørrekær Enge measured wake study (§18) | $0 - about 2 seconds offline over the committed CSV; writes a few KB into the operational payload |
 | **Compute** | OpenOA operational assessment (§15) | $0 - run offline on a laptop, roughly an hour for all three farms; the service only serves the resulting static JSON (~tens of KB) |
 | **Data** | Open-Meteo ERA5/CERRA reanalysis for OpenOA | $0 - free archive API, fetched once and cached locally |
 | **AI services** | `/ask` per-turbine tools (§15.6) | No new model calls: the same Nova Lite tool-calling loop, two more tools whose results are computed locally; at most one or two extra round trips per question, well under a cent a month at current volume |
@@ -923,3 +934,49 @@ Nova 2 Lite was no better here: it dropped the PDF citations as well, and wrote 
 - **References can go stale** (q34). The live analysis is recomputed on each deploy, so the forecast error moved from 50.4% to 52.3-52.6% between runs. A reference tied to a live value checks the claim (direction, a percentage of the right size), not the exact number.
 
 Re-run with `python -m rag_eval.run --label final` after an agent change (`--ids q21,q34 --merge` re-runs a few), then `python -m rag_eval.export`.
+
+## 18. Nørrekær Enge: What a 1993 Wake Experiment Teaches
+
+Risø built Nørrekær Enge II's measurement campaign to study wakes, and published its own analysis (Højstrup, Courtney, Christensen & Sanderhoff, *Full Scale Measurements in Wind-Turbine Arrays*, Risø-I-684(EN), March 1993, [PDF on DTU's documentation site](https://gitlab.windenergy.dtu.dk/fair-data/winddata-revamp/winddata-documentation/-/raw/master/wind_farm/norre_m2/norrekaer_windfarm.pdf)). That makes it a test with an answer key: run Windward's pipeline on the same data and see whether it finds what Risø found.
+
+### 18.1 A measured wake study instead of OpenOA
+
+OpenOA (§15) needs a substation meter, reanalysis and years of data; this farm has none of the first and only 18 months of the rest. What it has instead is an upstream mast with a vane and turbines on a clean grid, so the freestream reference can be chosen geometrically (`operational_assessment/norrekaer_wake_study.py`):
+
+1. Wind direction from M1's 31 m vane (M2's when M1 is missing).
+2. Freestream turbines for that direction: nothing upstream within ±20° and 20 rotor diameters.
+3. Each turbine's energy against the freestream mean, for records where that mean is 5-90% of rated (above it every turbine is at rated and wakes cost nothing), at least 3 freestream turbines and 35 of 40 reporting: 21,943 10-minute records.
+
+The result goes into the same `wake_losses` structure OpenOA fills, so the agent's existing wake-versus-fault logic uses it unchanged, labelled "the measured wake study" rather than OpenOA. The dashboard's operational card shows it as such.
+
+### 18.2 What it found, next to the report
+
+| Question | Risø 1993 | Windward, same data |
+|---|---|---|
+| Directions where the farm loses most to wakes | Park-output dips at 218°, 258°, 293° (fig. 13) | Loss peaks at 215° (11.8%), 255° (16.3%), 280° (6.0%), 295° (13.7%) |
+| Wind along line A1-F1 (258°) | Power drops, recovers at row D after the wide gap, drops again (fig. 10) | Nacelle wind vs A1: A1 100 · B1 98 · C1 96 · D1 97 · E1 88 · F1 91 (1,041 records), same shape |
+| Coastal fetch along row A, westerly wind | Over 17% between the row ends, A7 (nearest the fjord) highest | A7 makes 31.6% more than A2 |
+| Wind straight along row A from the south (166°) | Power falls for turbines 2-4 then recovers; "somewhat at a loss to explain it" (fig. 11) | Same recovery: A2 39 · A3 34 · A4 41 · A5 43 · A6 45 · A7 48 |
+| Wind straight down all six rows (rows run 166°/346°) | Row A studied alone (figs. 11-12) | The farm's two worst directions: 25.4% loss at 165°, 37.3% at 345° (42 records); under 1% of the energy |
+| Farm wake loss | Not stated as one number | 5.8% (5-90% of rated) |
+
+### 18.3 What it adds: a site gradient explains the open question
+
+The unwaked front row produces more toward its northern end *whichever side the wind comes from*, which a wake can't do (% of row mean, south to north):
+
+- Westerly wind, row A: A2 85 · A3 91 · A4 99 · A5 104 · A6 109 · A7 112
+- Easterly wind, row F: F1 72 · F2 87 · F3 100 · F4 107 · F5 109 · F7 125
+
+The report's own site description has the cause: terrain up to 40 m and villages immediately south of the farm, open water (the Limfjord) to the north. That same gradient is the likely reason row A "recovers" in southerly wind, the effect the authors couldn't explain: the further north along the row, the stronger the wind, which offsets the growing wake deficit after turbine 4.
+
+### 18.4 What it changed in Windward
+
+- **The worst turbine isn't broken.** Before the wake study, the live analysis recommended inspecting F1, the lowest capacity factor, and flagged C4, D1, D4 and F1 for underperforming their neighbours. F1 is the worst-placed turbine twice over: last on line 1 in the prevailing west-south-west wind, and at the sheltered southern end. With the study in place, every one of those flags says "part of the gap is likely wake, not a fault", and the /ask agent answers "is F1 broken?" with its wake loss instead of a fault. Largest wake losses: F1 16.5%, E5 13.3%, F2 13.0%, C4 12.8%.
+- **Negative wake losses mean the reference is wrong, not that a turbine beats physics.** The northern row ends come out at D7 -4.2%, A7 -5.0%, B7 -6.1%: the freestream reference averages turbines from both ends of the gradient. A careful wake study (and OpenOA's, on hilly sites like Hill of Towie) needs a terrain or speed-up correction; this one documents the limit instead of hiding it.
+- **The training target has to be unbiased.** The turbine channels exist only for windy runs; a forecast model trained on them would never see a calm hour. The continuous park meter fixed that (§5).
+
+### 18.5 Limits
+
+18 months of Risø-selected runs, not a long-term record; direction from one vane (M1), which is itself waked from the north (M2 reads 150% of M1 in the 330-360° sector); positions from a 1993 ED50 UTM table. The `*_ym` yaw misalignment channel is stored but not used for flags: the farm median is -1.5°, with E5 the largest at 7.3°, but it's measured against the mast's direction, which isn't the direction at each turbine.
+
+    python -m operational_assessment.norrekaer_wake_study   # recompute, writes into dashboard/data/operational_payload.json

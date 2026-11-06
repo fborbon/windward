@@ -1,0 +1,131 @@
+SITE_CODE,CHANNEL_ID,CHANNEL_NAME,MAST_ID,HEIGHT,SIGNAL_TYPE,MANUFACTURER,MODEL_SPEC,INSTR_TYPE,Model_Description
+norre,300818,connect,3052,31,wt,nordtank,connected,wtl,Number of wind turbines connected
+norre,300799,d31_1,3052,31,d,riso,wind vane,vane,
+norre,300801,d34_2,3053,34,d,riso,wind vane,vane,
+norre,300816,park,3052,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300785,s31_1,3052,31,s,risoe,70,cup,
+norre,300792,s31_2,3053,31,s,risoe,70,cup,
+norre,300657,a1_wsn,30171,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300658,a1_ym,30171,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300659,a2_pow,30172,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300660,a2_wsn,30172,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300661,a2_ym,30172,31.5,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300662,a3_pow,30173,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300663,a3_wsn,30173,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300664,a3_ym,30173,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300665,a4_pow,30174,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300666,a4_wsn,30174,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300667,a4_ym,30174,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300668,a5_pow,30175,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300669,a5_wsn,30175,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300670,a5_ym,30175,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300671,a6_pow,30176,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300672,a6_wsn,30176,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300673,a6_ym,30176,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300674,a7_pow,30177,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300675,a7_wsn,30177,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300676,a7_ym,30177,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300677,b1_pow,30178,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300678,b1_wsn,30178,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300679,b1_ym,30178,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300680,b2_pow,30179,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300681,b2_wsn,30179,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300682,b2_ym,30179,31.5,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300683,b3_pow,30180,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300684,b3_wsn,30180,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300685,b3_ym,30180,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300686,b4_pow,30181,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300687,b4_wsn,30181,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300688,b4_ym,30181,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300689,b5_pow,30182,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300690,b5_wsn,30182,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300691,b5_ym,30182,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300692,b6_pow,30183,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300693,b6_wsn,30183,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300694,b6_ym,30183,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300695,b7_pow,30184,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300696,b7_wsn,30184,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300697,b7_ym,30184,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300698,c1_pow,30185,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300700,c1_wsn,30185,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300701,c1_ym,30185,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300702,c2_pow,30186,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300703,c2_wsn,30186,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300704,c2_ym,30186,31.5,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300705,c3_pow,30187,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300706,c3_wsn,30187,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300707,c3_ym,30187,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300708,c4_pow,30188,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300709,c4_wsn,30188,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300710,c4_ym,30188,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300711,c5_pow,30189,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300712,c5_wsn,30189,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300713,c5_ym,30189,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300714,c6_pow,30190,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300715,c6_wsn,30190,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300716,c6_ym,30190,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300717,c7_pow,30191,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300718,c7_wsn,30191,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300719,c7_ym,30191,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300720,d1_pow,30192,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300721,d1_wsn,30192,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300722,d1_ym,30192,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300723,d2_pow,30193,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300724,d2_wsn,30193,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300725,d2_ym,30193,31.5,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300726,d3_pow,30194,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300727,d3_wsn,30194,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300728,d3_ym,30194,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300729,d4_pow,30195,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300730,d4_wsn,30195,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300731,d4_ym,30195,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300732,d5_pow,30196,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300733,d5_wsn,30196,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300734,d5_ym,30196,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300735,d6_pow,30197,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300736,d6_wsn,30197,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300737,d6_ym,30197,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300738,d7_pow,30198,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300739,d7_wsn,30198,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300740,d7_ym,30198,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300741,e1_pow,30199,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300742,e1_wsn,30199,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300743,e1_ym,30199,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300744,e2_pow,30200,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300745,e2_wsn,30200,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300746,e2_ym,30200,31.5,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300747,e3_pow,30201,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300748,e3_wsn,30201,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300749,e3_ym,30201,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300750,e4_pow,30202,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300751,e4_wsn,30202,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300752,e4_ym,30202,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300753,e5_pow,30203,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300754,e5_wsn,30203,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300755,e5_ym,30203,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300756,e6_pow,30204,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300757,e6_wsn,30204,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300758,e6_ym,30204,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300759,e7_pow,30205,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300760,e7_wsn,30205,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300761,e7_ym,30205,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300762,f1_pow,30206,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300763,f1_wsn,30206,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300764,f1_ym,30206,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300765,f2_pow,30207,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300766,f2_wsn,30207,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300767,f2_ym,30207,31.5,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300768,f3_pow,30208,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300769,f3_wsn,30208,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300770,f3_ym,30208,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300771,f4_pow,30209,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300772,f4_wsn,30209,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300773,f4_ym,30209,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300774,f5_pow,30210,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300775,f5_wsn,30210,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300776,f5_ym,30210,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300778,f6_wsn,30213,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300779,f6_ym,30213,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment
+norre,300780,f7_pow,30214,31,pow,deif,inwat_ngs,wtl,DEIF Watt-converter, type INWAT NGS
+norre,300781,f7_wsn,30214,31,s,nordtank,Unknown,cup,Nacelle wind speed from control system.
+norre,300782,f7_ym,30214,31,yp,risoe,P2061a,wtl,derived_yaw_misalignment

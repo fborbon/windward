@@ -179,7 +179,7 @@ def diagnose_node(state: WindwardState) -> dict:
             if wake is not None and farm_wake is not None:
                 anomaly["wake_loss_lt_pct"] = wake
                 anomaly["detail"] += (
-                    f"; OpenOA puts this turbine's long-term wake loss at {wake:.1f}% vs {farm_wake:.1f}% farm-wide"
+                    f"; {_wake_source(operational)} puts this turbine's wake loss at {wake:.1f}% vs {farm_wake:.1f}% farm-wide"
                     + (", so part of the gap is likely wake, not a fault" if wake > farm_wake else ", so wake doesn't explain the gap")
                 )
             anomalies.append(anomaly)
@@ -272,6 +272,12 @@ def _route_after_investigation(state: WindwardState) -> str:
     return "recommend_retrain" if state["investigation"]["recommend_retrain"] else "recommend"
 
 
+def _wake_source(operational: dict | None) -> str:
+    """Who measured the wake loss: OpenOA's long-term estimate for most farms, a direct measurement
+    against freestream turbines for Nørrekær Enge (operational_assessment/norrekaer_wake_study.py)."""
+    return "the measured wake study" if (operational or {}).get("method") == "measured_wake_study" else "OpenOA (long-term)"
+
+
 def recommend_node(state: WindwardState) -> dict:
     eff = state["efficiency_summary"]
     worst = eff["capacity_factor"].idxmin()
@@ -286,7 +292,7 @@ def recommend_node(state: WindwardState) -> dict:
     farm_wake = ((operational or {}).get("wake_losses") or {}).get("plant_lt_pct")
     if wake is not None and farm_wake is not None and wake > farm_wake:
         rationale += (
-            f" OpenOA attributes {wake:.1f}% long-term wake loss to it vs {farm_wake:.1f}% farm-wide, so part of the "
+            f" {_wake_source(operational)} attributes {wake:.1f}% wake loss to it vs {farm_wake:.1f}% farm-wide, so part of the "
             f"shortfall is its position in the layout; check its forced-outage history before assuming damage."
         )
     return {
