@@ -797,6 +797,7 @@ function renderEdp(panel, events, detector){
 async function loadEdpEvent(eventId){
   const card = document.getElementById("edp-detail-card");
   card.style.display = "block";
+  card.scrollIntoView({behavior:"smooth", block:"start"});  // it sits below the 95-row table
   document.getElementById("edp-detail-title").textContent = `Case study #${eventId}`;
   document.getElementById("edp-detail-desc").textContent = "Loading…";
   const res = await fetch(`${API}/edp/events/${eventId}`);
