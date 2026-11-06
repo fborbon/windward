@@ -4,13 +4,16 @@ and Penmanshiel are both Cubico Sustainable Investments' Greenbyte export
 (data_sources/greenbyte_scada.py); Hill of Towie is RES's own historian export
 (data_sources/hill_of_towie_scada.py), a different file layout entirely; Delabole is DTU Data's
 NetCDF of a 1993-94 ETSU campaign (data_sources/delabole_scada.py); Nørrekær Enge II is a Risø
-1991-93 wake campaign, DTU NetCDF too (data_sources/norrekaer_scada.py). Farm.data_source
+1991-93 wake campaign, DTU NetCDF too (data_sources/norrekaer_scada.py); Pedra do Sal and Beberibe
+are a Brazilian university campaign's NetCDFs (data_sources/brazil_coastal_scada.py); SMARTEOLE is
+a French wake-steering experiment's 1-minute CSVs (data_sources/smarteole_scada.py). Farm.data_source
 says which data_sources/<data_source>_scada.py module a farm's zips need — use loader_for()
 rather than importing a *_scada module directly, so callers work for any registered farm."""
 from dataclasses import dataclass
 from pathlib import Path
 
-from data_sources import delabole_scada, greenbyte_scada, hill_of_towie_scada, norrekaer_scada
+from data_sources import (brazil_coastal_scada, delabole_scada, greenbyte_scada, hill_of_towie_scada, norrekaer_scada,
+                          smarteole_scada)
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
@@ -21,7 +24,7 @@ class Farm:
     name: str
     lat: float
     lon: float
-    bidding_zone_eic: str  # ENTSO-E bidding zone
+    bidding_zone_eic: str  # ENTSO-E bidding zone; "" outside the ENTSO-E area (Brazil)
     turbine_ids: list[str]
     rated_power_kw: float
     rotor_diameter_m: float
@@ -118,13 +121,62 @@ NORREKAER_FARM = Farm(
     has_status_log=False,
 )
 
-FARMS: dict[str, Farm] = {f.farm_id: f for f in [KELMARSH_FARM, PENMANSHIEL_FARM, HILL_OF_TOWIE_FARM, DELABOLE_FARM, NORREKAER_FARM]}
+PEDRA_DO_SAL_FARM = Farm(
+    farm_id="pedra_do_sal",
+    name="Pedra do Sal Wind Farm",
+    lat=-2.8282,  # centre of the 20 OpenStreetMap turbine positions (data/brazil_coastal)
+    lon=-41.7091,
+    bidding_zone_eic="",  # Brazil: no ENTSO-E zone
+    turbine_ids=[brazil_coastal_scada.turbine_id("pedra_do_sal", i) for i in range(1, 21)],
+    rated_power_kw=900.0,
+    rotor_diameter_m=44.0,
+    manufacturer_model="Enercon E-44",
+    scada_zips=[brazil_coastal_scada.csv_path("pedra_do_sal")],
+    source_doi="10.5281/zenodo.1475197",
+    data_source="brazil_coastal",
+    has_status_log=False,
+)
+
+BEBERIBE_FARM = Farm(
+    farm_id="beberibe",
+    name="Beberibe Wind Farm",
+    lat=-4.1946,  # centre of the 32 OpenStreetMap turbine positions
+    lon=-38.0779,
+    bidding_zone_eic="",
+    turbine_ids=[brazil_coastal_scada.turbine_id("beberibe", i) for i in range(1, 33)],
+    rated_power_kw=800.0,
+    rotor_diameter_m=48.0,
+    manufacturer_model="Enercon E-48",
+    scada_zips=[brazil_coastal_scada.csv_path("beberibe")],
+    source_doi="10.5281/zenodo.1475197",
+    data_source="brazil_coastal",
+    has_status_log=False,
+)
+
+SMARTEOLE_FARM = Farm(
+    farm_id="smarteole",
+    name="Sole du Moulin Vieux (SMARTEOLE)",
+    lat=49.8406,  # mean of the 7 turbine coordinates in the dataset
+    lon=2.8008,
+    bidding_zone_eic="10YFR-RTE------C",  # France
+    turbine_ids=[smarteole_scada.turbine_id(i) for i in range(1, 8)],
+    rated_power_kw=2050.0,
+    rotor_diameter_m=82.0,
+    manufacturer_model="Senvion MM82",
+    scada_zips=[smarteole_scada.CSV_PATH],  # 2020-02-17 to 2020-05-24, stopped minutes removed by the owners
+    source_doi="10.5281/zenodo.7342466",
+    data_source="smarteole",
+    has_status_log=False,
+)
+
+FARMS: dict[str, Farm] = {f.farm_id: f for f in [KELMARSH_FARM, PENMANSHIEL_FARM, HILL_OF_TOWIE_FARM, DELABOLE_FARM, NORREKAER_FARM,
+                                                 PEDRA_DO_SAL_FARM, BEBERIBE_FARM, SMARTEOLE_FARM]}
 
 # Kept for older imports / synthetic-data code paths.
 DEMO_FARM = KELMARSH_FARM
 
 _LOADER_MODULES = {"greenbyte": greenbyte_scada, "hill_of_towie": hill_of_towie_scada, "delabole": delabole_scada,
-                   "norrekaer": norrekaer_scada}
+                   "norrekaer": norrekaer_scada, "brazil_coastal": brazil_coastal_scada, "smarteole": smarteole_scada}
 
 
 def loader_for(farm: Farm):

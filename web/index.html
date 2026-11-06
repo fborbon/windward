@@ -194,7 +194,7 @@
 </main>
 
 <footer>
-  <span>Data: Kelmarsh, Penmanshiel &amp; Hill of Towie wind farm SCADA, CC BY 4.0. Delabole SCADA via DTU Data (ETSU/DTI, 1993-94). Nørrekær Enge II via DTU Data (Risø, 1991-93). EDP Wind Farm A via CARE-to-Compare, CC BY-SA 4.0. DSWE Inland-Offshore dataset (Yu Ding, "Data Science for Wind Energy"), CC BY 4.0.</span>
+  <span>Data: Kelmarsh, Penmanshiel &amp; Hill of Towie wind farm SCADA, CC BY 4.0. Delabole SCADA via DTU Data (ETSU/DTI, 1993-94). Nørrekær Enge II via DTU Data (Risø, 1991-93). Pedra do Sal &amp; Beberibe via Zenodo (Federal University of Santa Catarina, 2013-14), CC BY-SA 4.0; turbine positions &copy; OpenStreetMap contributors, ODbL. SMARTEOLE (Sole du Moulin Vieux, 2020) via Zenodo, Etalab Open Licence 2.0. EDP Wind Farm A via CARE-to-Compare, CC BY-SA 4.0. DSWE Inland-Offshore dataset (Yu Ding, "Data Science for Wind Energy"), CC BY 4.0.</span>
   <span><a href="https://forwardforecasting.eu" target="_blank" rel="noopener">Forward Forecasting</a></span>
 </footer>
 
@@ -530,7 +530,29 @@ async function loadOperational(farmId){
   renderOperational(card, await res.json());
 }
 
+function renderLineWakeStudy(card, o){
+  const wl = o.wake_losses || {};
+  const pct = v => v==null ? "—" : fmt(v,1)+"%";
+  const turb = Object.entries(wl.turbines||{}).sort((a,b)=>b[1].lt_pct-a[1].lt_pct);
+  card.innerHTML = `
+    <h2>${esc(o.title || "Measured wake study (not OpenOA)")}</h2>
+    <div class="desc">${esc(o.description || "")}</div>
+    <div class="kpis">${(o.kpis||[]).map(k=>`<div class="kpi"><div class="v">${esc(k.value)}</div><div class="l">${esc(k.label)}</div></div>`).join("")}</div>
+    <h3 style="margin-top:14px;">What the data says</h3>
+    <ul class="desc">${(o.findings||[]).map(f=>`<li>${esc(f)}</li>`).join("")}</ul>
+    <div class="chart-wrap"><canvas id="chart-wake-wd"></canvas></div>
+    <div class="legend"><span><span class="swatch" style="background:${GOLD}"></span>Farm wake loss by wind direction, 0° to 355° in 5° bins (gaps: too few records)</span></div>
+    <h3 style="margin-top:14px;">Per-turbine wake loss</h3>
+    <table><thead><tr><th>Turbine</th><th class="num">Wake loss</th></tr></thead>
+      <tbody>${(turb.length > 13 ? [...turb.slice(0,8), null, ...turb.slice(-5)] : turb).map(r=> r ? `<tr><td>${r[0]}</td><td class="num">${pct(r[1].lt_pct)}</td></tr>` : `<tr><td colspan="2" class="desc">&hellip; ${turb.length-13} more &hellip;</td></tr>`).join("")}</tbody></table>
+    <div class="desc">${esc(o.method_note || "")}</div>`;
+  const bd = (wl.by_direction||[]).map(b=>b.plant_por_pct);
+  if(bd.length) drawLineChart(document.getElementById("chart-wake-wd"), [{data: bd, color:GOLD}],
+    {labelFmt:v=>v.toFixed(0), yUnit:"Wake loss (%)", xUnit:"Wind direction (0° to 355°)"});
+}
+
 function renderWakeStudy(card, o){
+  if(o.study === "line_farm") return renderLineWakeStudy(card, o);
   const wl = o.wake_losses || {}, ws = o.wake_study || {};
   const pct = v => v==null ? "—" : (v>0?"":"")+fmt(v,1)+"%";
   const turb = Object.entries(wl.turbines||{}).sort((a,b)=>b[1].lt_pct-a[1].lt_pct);

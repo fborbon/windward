@@ -2,13 +2,18 @@
 
 > **Live:** [windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/) — a real, persistently-running FastAPI service on AWS. A multi-agent AI system for wind farm production forecasting and operations support: classic ML forecasting tracked with self-hosted **MLflow**, a **LangGraph** agent workflow for diagnosis and recommendations, **two independent RAG stacks** (LangChain/FAISS + LlamaIndex) over real turbine data, a **multimodal** vision-LLM blade-inspection pass, and real **DynamoDB** session persistence — exposed via a **FastAPI** service and an **MCP server** so the agent's tools are callable from Claude or any MCP client.
 
-**Status:** end-to-end on **real data**, five farms, running as a real AWS service — real historical weather (Open-Meteo) joined with real turbine production (Kelmarsh + Penmanshiel + Hill of Towie + Delabole + Nørrekær Enge II open SCADA datasets, three different export formats), per-farm models trained and registered in a self-hosted MLflow registry (S3-backed). The full LangGraph agent runs for any farm: ingest → forecast → diagnose (physics-based efficiency + anomaly detection) → RAG (real fault-event corpus, Bedrock Titan embeddings, FAISS) → multimodal (real vision-LLM blade check) → investigate (real forecast-error-trend + model-age check, conditionally routing to a retrain recommendation) → recommend/recommend_retrain → explain (Amazon Nova Lite), every run persisted to DynamoDB. Dashboard: **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)** (one tab per farm, real charts, and a live "ask the agent" box — a real tool-calling agent (`agents/qa_agent.py`) that decides per question whether it needs the RAG-grounded maintenance corpus, the farm's current analysis, both, or neither, instead of one stuffed prompt). A fourth tab, **EDP Wind Farm A**, adds real labeled fault case studies (diagnosis/RAG only, no forecasting — see §5). A fifth tab, **DSWE Inland-Offshore**, adds a real on-site-met-mast Measure-Correlate-Predict ratio against live Open-Meteo ERA5 (also diagnosis/RAG, also no disclosed location — see §5). A sixth tab, **Wind Prediction**, is a separate time-series-forecasting breadth showcase - naive baselines through a genuine zero-shot foundation-model forecast (§14) - plus the one part of this project that refreshes live rather than from a frozen SCADA snapshot: real-time Open-Meteo weather. Write-up: **[Teaching an Agent to Read Wind Farms](https://fieldnotes.forwardforecasting.eu/windward-agent/)**.
+**Status:** end-to-end on **real data**, eight farms in four countries, running as a real AWS service — real historical weather (Open-Meteo) joined with real turbine production (Kelmarsh + Penmanshiel + Hill of Towie + Delabole + Nørrekær Enge II + Pedra do Sal + Beberibe + SMARTEOLE open SCADA datasets, five different export formats), per-farm models trained and registered in a self-hosted MLflow registry (S3-backed). The full LangGraph agent runs for any farm: ingest → forecast → diagnose (physics-based efficiency + anomaly detection) → RAG (real fault-event corpus, Bedrock Titan embeddings, FAISS) → multimodal (real vision-LLM blade check) → investigate (real forecast-error-trend + model-age check, conditionally routing to a retrain recommendation) → recommend/recommend_retrain → explain (Amazon Nova Lite), every run persisted to DynamoDB. Dashboard: **[windward.forwardforecasting.eu](https://windward.forwardforecasting.eu/)** (one tab per farm, real charts, and a live "ask the agent" box — a real tool-calling agent (`agents/qa_agent.py`) that decides per question whether it needs the RAG-grounded maintenance corpus, the farm's current analysis, both, or neither, instead of one stuffed prompt). A fourth tab, **EDP Wind Farm A**, adds real labeled fault case studies (diagnosis/RAG only, no forecasting — see §5). A fifth tab, **DSWE Inland-Offshore**, adds a real on-site-met-mast Measure-Correlate-Predict ratio against live Open-Meteo ERA5 (also diagnosis/RAG, also no disclosed location — see §5). A sixth tab, **Wind Prediction**, is a separate time-series-forecasting breadth showcase - naive baselines through a genuine zero-shot foundation-model forecast (§14) - plus the one part of this project that refreshes live rather than from a frozen SCADA snapshot: real-time Open-Meteo weather. Write-up: **[Teaching an Agent to Read Wind Farms](https://fieldnotes.forwardforecasting.eu/windward-agent/)**.
 
 **What two 1990s research farms added (2026-11).** Two farms from DTU Data's open archive joined the three modern UK ones, chosen because they are *different*, not similar:
 
 - **Delabole** (Cornwall, 1993-94, the UK's first commercial wind farm) has no nacelle anemometers and no fault log. Windward now handles both honestly: a peak power coefficient above the Betz limit is reported as the met mast not matching the turbine's wind, not as a broken sensor, and outage questions answer "not in this dataset" instead of zero. One bad weather hour in its 1993 data (0.4 m/s in the reanalysis, 3.7 MW at the farm) had taught the model to forecast power on calm days; training now drops such hours for every farm. Forecast R² 0.88. Details: §5, §8.
 - **Nørrekær Enge II** (Denmark, 1991-93) was built by Risø to study wakes, and Risø published its own analysis of the same data, so it works as an answer key. Windward reproduced the report: wake-loss peaks at 215°, 255° and 295° against the report's 218°, 258° and 293°, the same pattern along the A1-F1 line, and a stronger coastal effect along row A. It also found a south-to-north site gradient that shows up whether the wind comes from the east or the west, the likely explanation for a row-A "recovery" the 1993 authors couldn't explain. And it corrected Windward itself: the analysis had recommended inspecting turbine F1, which turns out to be the worst-placed turbine (downstream in the prevailing wind and at the sheltered end of the site), not a faulty one. A measured wake study now gives the agent that context. Forecast R² 0.86, trained on the farm's continuous power meter because the per-turbine readings only cover windy periods. Details: §5, §18.
 - Both are added automatically on deploy (a farm without a registered model is trained then), and both carry a licence caveat: the DTU record says CC BY 4.0, the data files say CC BY-NC 4.0.
+
+**What three single-line farms added (2026-11).** Two Brazilian coastal farms and a French wake-steering experiment, each a single line of turbines, and each one tested a different part of Windward:
+
+- **Pedra do Sal and Beberibe** (north-east Brazil, 2013-14) are Windward's first farms outside Europe, in trade winds so steady that 79-85% of all records come from within 30° of one direction, at about 40% capacity factor. Their files carry no turbine positions, so the positions come from OpenStreetMap, matched to the dataset's turbine numbers by which turbines share gusts (marked as inferred everywhere). Almost every turbine read above the Betz limit; that is the nacelle anemometer of the model reading low behind the rotor, so the agent now raises one fleet-wide anomaly instead of 47 false sensor faults. Forecasts are weaker (R² 0.68 and 0.65): ERA5's 10 m wind peaks at midday while hub-height wind on this coast peaks in the evening. Details: §5, §8, §19.
+- **SMARTEOLE** (Sole du Moulin Vieux, France, 2020) yawed one turbine, SMV6, off the wind on purpose to bend its wake away from SMV5. Measured here, steering cost SMV6 about 2 points and gave SMV5 about 4 points of the reference output; the pair gained 1.7%, with a 90% interval of -0.2% to +3.3%, so the net gain is not settled. The agent no longer recommends inspecting SMV6, because its low output is the experiment. Forecast R² 0.83. Details: §5, §19.
 
 **Started as a deliberate skill demonstration** (MLflow, RAG, agentic workflows, MLOps — see §2), then pivoted toward becoming an actual product: now deployed as a persistent service on AWS, with plans to combine it with an energy-price-prediction model and commercialize both.
 
@@ -36,6 +41,7 @@
 16. [Technical Documents: PDF RAG over Datasheets and Tenders](#16-technical-documents-pdf-rag-over-datasheets-and-tenders)
 17. [RAG Evaluation: 35 Questions, Graded and Fixed](#17-rag-evaluation-35-questions-graded-and-fixed)
 18. [Nørrekær Enge: What a 1993 Wake Experiment Teaches](#18-nørrekær-enge-what-a-1993-wake-experiment-teaches)
+19. [Three Single-Line Farms: Trade Winds and Wake Steering](#19-three-single-line-farms-trade-winds-and-wake-steering)
 
 ---
 
@@ -176,7 +182,7 @@ The four techniques below (in `analysis/efficiency.py`) are standard practice in
 
 ## 5. Data Sources
 
-Farms live in `data_sources/farms.py` (`FARMS` registry). All five are real, open SCADA datasets, but not all in the same export format: Kelmarsh and Penmanshiel are Cubico Sustainable Investments' Greenbyte export (`data_sources/greenbyte_scada.py`); Hill of Towie is RES's own historian export, one CSV per signal-group table per month instead of one CSV per turbine (`data_sources/hill_of_towie_scada.py`); Delabole and Nørrekær Enge II are DTU Data NetCDF4 files (`data_sources/delabole_scada.py`, `data_sources/norrekaer_scada.py`). Callers use `data_sources.farms.loader_for(farm)` to get the right module rather than importing one directly — see `Farm.data_source`.
+Farms live in `data_sources/farms.py` (`FARMS` registry). All eight are real, open SCADA datasets, but not all in the same export format: Kelmarsh and Penmanshiel are Cubico Sustainable Investments' Greenbyte export (`data_sources/greenbyte_scada.py`); Hill of Towie is RES's own historian export, one CSV per signal-group table per month instead of one CSV per turbine (`data_sources/hill_of_towie_scada.py`); Delabole and Nørrekær Enge II are DTU Data NetCDF4 files (`data_sources/delabole_scada.py`, `data_sources/norrekaer_scada.py`); Pedra do Sal and Beberibe are a Brazilian university campaign's NetCDF4 files (`data_sources/brazil_coastal_scada.py`); SMARTEOLE is 1-minute CSVs (`data_sources/smarteole_scada.py`). Callers use `data_sources.farms.loader_for(farm)` to get the right module rather than importing one directly — see `Farm.data_source`.
 
 | Farm | Turbines | Capacity | Location | Dataset |
 |---|---|---|---|---|
@@ -185,6 +191,9 @@ Farms live in `data_sources/farms.py` (`FARMS` registry). All five are real, ope
 | `hill_of_towie` | 21x Siemens SWT-2.3-VS-82 | 48.3 MW | Aberdeenshire, Scotland, UK | [Zenodo DOI 10.5281/zenodo.14870023](https://zenodo.org/records/14870023), 2024 only so far (~1GB; the full dataset spans 2016–2024, one ~1-1.6GB zip per year) |
 | `delabole` | 10x Winddane WD34 (400 kW, stall-regulated) | 4.0 MW | North Cornwall, UK | [DTU Data DOI 10.11583/DTU.14077004](https://doi.org/10.11583/DTU.14077004), 1993-05 to 1994-04 (16.5MB NetCDF, converted once to a committed 1MB CSV) |
 | `norrekaer_enge` | 40 of 42x Nordtank NTK 300F (300 kW, stall) | 12.0 MW | Limfjord, North Jutland, Denmark | [DTU Data DOI 10.11583/DTU.19076756](https://doi.org/10.11583/DTU.19076756), 1991-12 to 1993-06 (151MB NetCDF, converted once to committed 5.0MB + 0.4MB CSVs) |
+| `pedra_do_sal` | 20x Enercon E-44 (900 kW) | 18.0 MW | Parnaíba, Piauí, Brazil | [Zenodo DOI 10.5281/zenodo.1475197](https://zenodo.org/records/1475197), 2013-08 to 2014-07, CC BY-SA 4.0 (205MB NetCDF, converted once to a committed 2.8MB CSV) |
+| `beberibe` | 32x Enercon E-48 (800 kW) | 25.6 MW | Beberibe, Ceará, Brazil | same record, same period (163MB NetCDF, committed 4.5MB CSV) |
+| `smarteole` | 7x Senvion MM82 | 14.4 MW | Picardy, France | [Zenodo DOI 10.5281/zenodo.7342466](https://zenodo.org/records/7342466), 2020-02-17 to 2020-05-24, Etalab Open Licence 2.0 (150MB zip of 1-minute CSVs, aggregated once to a committed 0.8MB 10-minute CSV) |
 
 **Delabole, the odd one out.** The UK's first commercial wind farm (commissioned December 1991), measured for an ETSU/DTI performance study 30 years before the other three. It is in the registry because it tests the pipeline on a genuinely different farm, not because it is like the others:
 - **No nacelle anemometers.** Every turbine is paired with met mast 1's 33 m cup (hub height 32 m). Power curves therefore share one free-stream wind reading, so a peak Cp above Betz here means the turbine sees stronger wind than the mast, a site-calibration effect, and the agent reports it as `mast_wind_not_representative` instead of a nacelle anemometer fault (`Farm.wind_speed_source`).
@@ -200,7 +209,19 @@ Farms live in `data_sources/farms.py` (`FARMS` registry). All five are real, ope
 - **Per-turbine capacity factors** in the analysis still come from the turbine channels, so they read high (about 32% against the farm's real 17%): compare them with each other, not with other farms.
 - No alarm/status log (`has_status_log=False`). Same licence caveat as Delabole: CC BY 4.0 on the DTU record, CC BY NC 4.0 in the NetCDF.
 
-Datasets considered from the same open-SCADA research and excluded, with why: **EDP open dataset** (Mendeley `zjxjnjp3xs`, onshore Portugal — the earlier research pass had mislabeled it as Spain) — real and CC BY 4.0, but discloses no turbine/farm coordinates and no rated power/rotor diameter, which `Farm` requires. **SMARTEOLE** — a wake-steering experiment, not steady farm production. **Aventa AV-7** — a single research turbine, not a farm. **Pedra do Sal / Beberibe** — real coastal farms, but published as SCADA+LiDAR+turbulent-flux NetCDF, a different data model entirely. **Altahullion** — couldn't independently verify this dataset exists under a citable DOI; not added without that.
+**Pedra do Sal and Beberibe, the trade-wind pair.** A Federal University of Santa Catarina micrometeorological campaign on two operating farms on Brazil's north-east coast: a 100 m IEC met mast at each (cups at five or six heights, a sonic, a LiDAR at Pedra do Sal) plus 10-minute SCADA for every turbine. An earlier pass excluded them as "a different data model"; the SCADA part turned out to be ordinary per-turbine power and nacelle wind, which is all the pipeline needs. Specifics:
+- **The files' metadata is copied between the two farms.** Both are titled "UEBB Dataset", both say "Enercon E-48 at 75 m", and power is labelled "rpm". The Zenodo record is right (E-44 at 55 m for Pedra do Sal), and power is kW (maxima 930 and 840).
+- **No turbine coordinates.** Positions come from OpenStreetMap (© OpenStreetMap contributors, ODbL): the 20- and 32-turbine clusters at the two sites (`data/brazil_coastal/*_osm_turbines.csv`). OSM doesn't number them, so `infer_layout()` matches numbers to positions from the data: neighbouring turbines share gusts (median correlation of high-passed 10-minute power 0.71 between consecutive numbers vs 0.50 for any pair at Pedra do Sal), a spectral ordering of that correlation gives the order along the line, and in south-east wind along the line the high numbers produce most, so numbering runs north-west to south-east. Mostly sequential, with a few local swaps (Pedra do Sal 1, 2 and 20 sit mid-line). Good for nearest-neighbour comparisons, not survey grade; every per-turbine value says so.
+- **Commissioning dates** aren't in the dataset, and the agent says so.
+- No alarm/status log. Licence CC BY-SA 4.0: derived data shared further must keep the same licence.
+
+**SMARTEOLE, the wake-steering experiment.** Sole du Moulin Vieux, seven Senvion MM82 in one north-south line about 350 m apart; February to May 2020, the French SMARTEOLE project's last campaign. SMV6's controller yawed it off the wind on purpose, toggling the offset on and off, to steer its wake away from SMV5. An earlier pass excluded it as "not steady farm production"; that is exactly what makes it worth having (§19). Specifics:
+- **1-minute data, pre-cleaned by the owners**: every minute with any turbine stopped was removed, and nacelle directions were corrected for north alignment. So there's no downtime to find, and hourly output is "all seven running". Aggregated to 10 minutes (a row needs 8 of its 10 minutes): 13,464 rows, 2,245 hours.
+- **The control log** (applied yaw offset, whether it was active) comes along, and so does a per-turbine derating flag.
+- **The steered turbine has a note** (`turbine_notes` in the operational payload): the recommendation passes over SMV6 and says why, and every SMV6 neighbour flag quotes it.
+- No alarm/status log. Licence: Etalab Open Licence 2.0 (France's open licence, attribution, commercial use allowed).
+
+Datasets considered and excluded, with why: **EDP open dataset** (Mendeley `zjxjnjp3xs`, onshore Portugal): real and CC BY 4.0, but discloses no turbine/farm coordinates and no rated power/rotor diameter, which `Farm` requires (it's used as a diagnosis tab instead, below). **Aventa AV-7**: a single research turbine, not a farm. **Fuhrländer FL2500** (five turbines, 5-minute, 2012-14, alarms): no location, so no weather to forecast from. **Carbon Trust OWA wake benchmark** (Zenodo 3715198): only mesoscale inputs and binned results, no turbine SCADA; Anholt and Westermost Rough need an operator NDA. **Altahullion**: couldn't independently verify this dataset exists under a citable DOI; not added without that.
 
 **CARE to Compare** (Zenodo 10958775) was excluded for the same reason on an earlier pass — 2 of its 3 farms are anonymized with no public coordinates, and its third (Wind Farm A) is the same underlying EDP data. That objection still holds for the *forecasting* pipeline, but doesn't block a diagnosis/RAG-only addition — see below.
 
@@ -404,8 +425,13 @@ Neither is used blind: `demo_notebook/`'s own case study (§4-5 there) shows R²
 | Hill of Towie | 4.29 MW | 0.74 |
 | Delabole | 0.33 MW | 0.88 |
 | Nørrekær Enge II | 0.71 MW | 0.86 |
+| Pedra do Sal | 2.09 MW | 0.68 |
+| Beberibe | 3.10 MW | 0.65 |
+| SMARTEOLE | 1.15 MW | 0.83 |
 
 Delabole's MAE is 8% of its 4 MW capacity (Kelmarsh: 9%, Hill of Towie: 9%). Training drops hours where the reanalysis wind is below 2 m/s yet the farm made more than half its capacity (`forecasting/train.py`, `drop_reanalysis_misses`): the weather product missed a local wind event. Delabole had exactly one, 1993-12-25 02:00 (ERA5 0.4 m/s, 3.7 MW), and it alone made the model forecast 1.6-1.9 MW for any calm hour. A farm added to the registry is trained on its next deploy (`python -m forecasting.train --missing-only` in `infra/deploy_host.sh`).
+
+**Why the Brazilian farms forecast worse.** Both MAEs are 12% of capacity (Kelmarsh: 9%). Time zones are not the cause: SCADA and ERA5 are both UTC, and shifting one against the other doesn't produce a sharp peak. The wind does. At Beberibe the ERA5 10 m wind peaks at 13-16 UTC (late morning, local), while the farm's own 80 m mast peaks at 22-01 UTC (evening): the sea breeze and the night-time jet live above 10 m, so 10 m reanalysis wind correlates only 0.47 with Beberibe's output against 0.94 for the mast. ERA5's 100 m wind does better there (0.59) but not elsewhere (Pedra do Sal 0.71 vs 0.72, Kelmarsh 0.76 either way), so it's on the roadmap rather than in the feature set. `hour_of_day` lets the model learn part of the cycle.
 
 **A note on the dashboard's "Mean abs. error" figure.** That KPI is the mean of |actual - predicted| / predicted over every analysed hour (`api/main.py`). Dividing by the prediction makes it explode on calm hours: a 0.02 MW forecast against a 0.12 MW actual counts as a 500% error, although it is off by only 0.1 MW. Nørrekær Enge II's live figure reads about 530% for that reason. Its 12,352 analysed hours come from the continuous park meter and include many calm ones, where both actual and predicted output sit near zero. The model's MAE and R² in the table above are the measures to trust, and the same card's means agree (2.09 MW actual, 2.08 MW predicted). The metric has always been computed this way for every farm; it is a display quirk, not a broken model.
 
@@ -496,7 +522,7 @@ Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACK
 - [x] Baseline forecasting model, MLflow experiment tracking, per-farm registered models (§8)
 - [x] Batch inference + FastAPI `/forecast` endpoint
 - [x] LangGraph agent, all 9 nodes real (§4), including a real conditional-routing node (`investigate` → `recommend` or `recommend_retrain`)
-- [x] Multi-farm support — farm registry + per-farm loader dispatch (`data_sources.farms.loader_for`), now spanning three different SCADA export formats (Greenbyte, RES historian, DTU NetCDF); five farms live (Kelmarsh, Penmanshiel, Hill of Towie, Delabole, Nørrekær Enge II), each trained, registered, and served through the full agent
+- [x] Multi-farm support — farm registry + per-farm loader dispatch (`data_sources.farms.loader_for`), now spanning five different SCADA export formats (Greenbyte, RES historian, DTU NetCDF, a Brazilian campaign's NetCDF, SMARTEOLE's 1-minute CSVs); eight farms live (Kelmarsh, Penmanshiel, Hill of Towie, Delabole, Nørrekær Enge II, Pedra do Sal, Beberibe, SMARTEOLE), each trained, registered, and served through the full agent
 - [x] RAG corpus — real turbine fault/status events + reference notes, Bedrock Titan embeddings, FAISS per farm
 - [x] Semantic search — same FAISS index, direct similarity search
 - [x] MCP server — `get_forecast`, `get_recommendation`, `query_maintenance_docs` all implemented
@@ -521,6 +547,7 @@ Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACK
 - [x] **OpenOA operational assessment** (§15) - NREL/NLR's OpenOA run offline in its own venv on the full multi-year data: electrical losses for all three farms (turbines vs the substation PMU / grid station; the datasets' "Grid Meter" channel rejected as non-physical), Monte Carlo long-term AEP for Kelmarsh/Penmanshiel by both the benchmark's monthly linear method and Bodini et al. 2021's daily GAM with temperature, a one-component-at-a-time uncertainty breakdown against the root-sum-of-squares shortcut (Bodini & Optis 2020), wake losses, and static yaw misalignment with a consistency gate that marks unstable estimates inconclusive. Wake results feed `diagnose` (neighbor-underperformance flags now say whether wake explains the gap) and `recommend` (the lowest-capacity-factor turbine's rationale notes its wake loss). OpenOA's SCADA filters ported into the live diagnosis (`analysis/qc.py`), verified identical to OpenOA's own output
 - [x] **Technical-document PDF RAG** (§16) - real turbine manufacturer documents and public offshore-wind tender/leasing PDFs, page-cited answers, verified datasheet spec extraction cross-checked against the farm registry; `search_technical_documents` in "Ask the agent", `query_technical_documents` on the MCP server
 - [x] **RAG evaluation** (§17) - 35 test questions in two sets across every tool, graded before and after; fixes for every failure found (farm facts from the dataset metadata and full SCADA history, whole-page PDF reading, citation re-checking, ranking notes, answer cleaning). Own dashboard tab. Set 1: 5/15 -> 13/15 correct on the review; set 2 (20 new questions, written after set 1's fixes): 12/20 -> 20/20. Nova Lite kept after a model comparison
+- [ ] ERA5 100 m wind as a forecast feature: lifts Beberibe's wind-output correlation from 0.47 to 0.59 (§8) but changes nothing at Pedra do Sal or Kelmarsh; worth it only with a retrain-and-compare of all eight farms
 - [ ] Two answers the fixes didn't reach (§17.3): the EnergyUp answer drops the sheet's Bachmann-controller scope note, and the ScotWind answer sometimes pads its list with explanations the PDF doesn't give
 - [ ] Senvion MM82/MM92 original datasheets and the Kelmarsh/Penmanshiel planning Environmental Statements: not publicly hosted (§16.4)
 - [x] **Per-turbine questions in "Ask the agent"** and on the **MCP server** (§15.6) - `get_turbine_details` and `rank_turbines` tools: best/worst turbine by any of seven metrics, last maintenance stop and forced-outage history from the real status logs, wake loss and yaw per turbine
@@ -534,13 +561,14 @@ Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACK
 |---|---|---|
 | **Compute** | FastAPI + agent service (Docker, host networking, 512MB memory limit) on the existing EC2 | $0 marginal — the box is already running. Its fair share of the shared host is by RAM: ~21% (≈$2.50 of ~$11.60 EC2 compute, Oct 1–13 2026) at the old ~560MB footprint; see *Memory footprint* below |
 | **Compute** | MLflow tracking server (on-demand container, `infra/mlflow/`; up only during training/model export, 0MB the rest of the time, was a ~180MB always-on systemd service until 2026-10-17) on the same EC2 | $0 marginal |
-| **Compute** | Training a newly registered farm on deploy (`forecasting.train --missing-only`, `infra/deploy_host.sh`) | $0 marginal - seconds of CPU for Delabole's 5.6K hourly rows, plus one free Open-Meteo archive call; farms that already have a model are skipped |
+| **Compute** | Training a newly registered farm on deploy (`forecasting.train --missing-only`, `infra/deploy_host.sh`) | $0 marginal - seconds of CPU per farm (2.2K to 12.4K hourly rows), plus one free Open-Meteo archive call; farms that already have a model are skipped. The three 2026-11 farms trained on their first deploy |
 | **Storage** | S3 bucket `windward-mlflow-artifacts-ff` (model artifacts, versioned) | Within the AWS always-free tier (5GB/12mo) at this scale; a few cents/month after |
-| **Storage** | Raw SCADA data, FAISS/LlamaIndex indexes | $0 — local disk on the EC2, not cloud storage. Hill of Towie's one-year sample (~1GB) is ~5x the size of both Greenbyte farms combined, still trivial on disk. Delabole's converted CSV is 1MB and Nørrekær Enge's 5.4MB, both committed to the repo |
+| **Storage** | Raw SCADA data, FAISS/LlamaIndex indexes | $0 — local disk on the EC2, not cloud storage. Hill of Towie's one-year sample (~1GB) is ~5x the size of both Greenbyte farms combined, still trivial on disk. Delabole's converted CSV is 1MB, Nørrekær Enge's 5.4MB, Pedra do Sal's 2.8MB, Beberibe's 4.5MB and SMARTEOLE's 0.8MB, all committed to the repo (the raw NetCDFs and zip, 520MB together, stay local and gitignored) |
 | **Connectivity** | nginx + Let's Encrypt SSL for `windward.forwardforecasting.eu` | $0 — reuses the existing domain/cert infrastructure |
 | **AI services** | Amazon Nova Lite (`explain_node` narration + multimodal vision) | <$0.01/mo at current call volume ($0.06/$0.24 per MTok in/out) |
 | **AI services** | Amazon Titan Embeddings v2 (RAG index build, one-time per farm unless the corpus changes) | <$0.001 one-time per farm |
 | **Compute** | Nørrekær Enge measured wake study (§18) | $0 - about 2 seconds offline over the committed CSV; writes a few KB into the operational payload |
+| **Compute** | Line-farm wake studies and the SMARTEOLE steering comparison (§19) | $0 - about a minute offline (most of it the 300-sample bootstrap); writes ~70KB into the operational payload |
 | **Compute** | OpenOA operational assessment (§15) | $0 - run offline on a laptop, roughly an hour for all three farms; the service only serves the resulting static JSON (~tens of KB) |
 | **Data** | Open-Meteo ERA5/CERRA reanalysis for OpenOA | $0 - free archive API, fetched once and cached locally |
 | **AI services** | `/ask` per-turbine tools (§15.6) | No new model calls: the same Nova Lite tool-calling loop, two more tools whose results are computed locally; at most one or two extra round trips per question, well under a cent a month at current volume |
@@ -577,6 +605,9 @@ Every SCADA dataset this project uses is a frozen, donated historical snapshot -
 | Penmanshiel SCADA | 2016 (Jun 2 – Dec 31) | No - frozen historical donation |
 | Hill of Towie SCADA | 2024 (Jan 1 – Sep 1) | No - frozen historical donation |
 | Delabole SCADA | 1993-05 – 1994-04 | No - frozen historical campaign |
+| Nørrekær Enge II SCADA | 1991-12 – 1993-06 | No - frozen historical campaign |
+| Pedra do Sal / Beberibe SCADA | 2013-08 – 2014-07 | No - frozen historical campaign |
+| SMARTEOLE SCADA | 2020-02-17 – 2020-05-24 | No - frozen historical campaign |
 | EDP Wind Farm A | 2022-08 – 2023-08 (22 anonymized windows) | No - frozen historical donation |
 | **ERA5 / Open-Meteo weather** | Historical archive back to 1940, **plus a live forecast API** | **Yes - genuinely live** |
 
@@ -988,3 +1019,41 @@ The report's own site description has the cause: terrain up to 40 m and villages
 18 months of Risø-selected runs, not a long-term record; direction from one vane (M1), which is itself waked from the north (M2 reads 150% of M1 in the 330-360° sector); positions from a 1993 ED50 UTM table. The `*_ym` yaw misalignment channel is stored but not used for flags: the farm median is -1.5°, with E5 the largest at 7.3°, but it's measured against the mast's direction, which isn't the direction at each turbine.
 
     python -m operational_assessment.norrekaer_wake_study   # recompute, writes into dashboard/data/operational_payload.json
+
+## 19. Three Single-Line Farms: Trade Winds and Wake Steering
+
+Pedra do Sal, Beberibe and SMARTEOLE's Sole du Moulin Vieux each stand in one line of turbines. None has a substation meter, so OpenOA (§15) doesn't apply; they get the same measured wake study as Nørrekær Enge (§18), generalised to any layout (`operational_assessment/line_wake_study.py`): wind direction per 10-minute record (the 100 m mast vane in Brazil; at SMARTEOLE the vector mean of SMV1, 2, 3 and 7's corrected nacelle directions), freestream turbines with nothing upstream within ±20° and 20 rotor diameters, and each turbine's energy against theirs while the freestream mean is 5-90% of rated.
+
+### 19.1 Trade winds: a line laid out across the wind
+
+| | Pedra do Sal | Beberibe |
+|---|---|---|
+| Records within 30° of the prevailing direction | 85% (of 74°) | 79% (of 97°) |
+| Line orientation | 133°/313° | 142°/322° |
+| Mean capacity factor | 41% | 40% |
+| Farm wake loss | 0.3% | 6.5% |
+| Worst directions (along the line) | 110-120°, 22-47% loss, under 0.5% of the energy | 130-140°, 37-44% loss, about 2% of the energy |
+
+The wind is so steady that a single line set across it leaves almost every turbine freestream almost all the time: Pedra do Sal loses 0.3% to its own wakes. Beberibe loses more because its north-west end bends into a short double row; its most-waked turbines (Beberibe 04, 13, 05) are all there, and Beberibe 05, the agent's lowest capacity factor (28.7% vs 39.8%), carries a 33.6% wake loss: placement, not a fault.
+
+**What it changed in Windward: one fleet-wide anomaly instead of 47.** The diagnosis flags a turbine whose peak power coefficient beats the Betz limit as a suspect nacelle anemometer. Here that fired for 20 of 20 Pedra do Sal turbines and 27 of 32 at Beberibe. A shared cause is far likelier: an Enercon nacelle anemometer sits behind the rotor and reads less than the free wind, which the manufacturer's nacelle transfer function corrects and these files don't. When at least 75% of a farm's turbines read over Betz, `agents/graph.py` now raises one `nacelle_anemometer_fleetwide_bias` anomaly, and keeps a per-turbine flag only for a curve displaced at least 0.3 m/s from the farm mean. None of the five earlier farms reaches that share, so their diagnoses are unchanged.
+
+### 19.2 Wake steering at SMARTEOLE
+
+SMV5 stands 302 m (3.7 rotor diameters) from SMV6 at 207.5°, the closest pair on the line. With the wind from there and steering off, SMV5 makes 56% of what the reference turbines make. The campaign yawed SMV6 off the wind (median 12° when active, up to 20°) in alternating periods, so the two can be compared directly: 10-minute records with the offset fully on vs fully off, 195-225° and 4-12 m/s reference wind, each (2°, 1 m/s) bin weighted by the smaller of its on/off counts so both sides see the same wind.
+
+| % of the reference turbines (SMV1, 2, 3, 7) | Steering off | Steering on |
+|---|---|---|
+| SMV6 (yawed) | 94.1% | 92.3% |
+| SMV5 (behind it) | 56.0% | 60.3% |
+| The pair | | +1.7% (90% interval -0.2% to +3.3%, resampling 35 days) |
+
+Steering moved energy from SMV6 to SMV5, as designed. Whether the pair came out ahead is not settled by this record: three months, one steered turbine, stopped minutes removed by the owners. The campaign's own analysis is Simley et al. 2021, *Wind Energ. Sci.* 6, 1427.
+
+**What it changed in Windward: a turbine can be low on purpose.** The live analysis recommended inspecting SMV6, the lowest capacity factor. A measured study can now attach a note to a turbine (`turbine_notes`); the recommendation passes over a noted turbine to the next one (SMV5) and says why, and neighbour-underperformance flags quote the note.
+
+### 19.3 Limits
+
+One year in Brazil and three months in France, period of record only. The Brazilian turbine positions are inferred, so per-turbine wake losses there are indicative. The wind direction at SMARTEOLE comes from nacelles, not a mast.
+
+    python -m operational_assessment.line_wake_study   # recompute all three, writes into dashboard/data/operational_payload.json

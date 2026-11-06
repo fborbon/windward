@@ -374,7 +374,206 @@
     "note": "energy is from turbine SCADA, before the few-% electrical losses to the export meter; a year with scada_coverage well below 1 is partial (data gaps or the export starting/ending mid-year)"
    },
    "decommissioning": "No decommissioning or end-of-consent date appears in any source Windward holds for this farm (dataset metadata, SCADA, the indexed PDFs)."
+  },
+  "pedra_do_sal": {
+   "turbines": {
+    "source": "Zenodo 1475197 record (20 Enercon E-44, 55 m hub); positions from OpenStreetMap, matched to the dataset's turbine numbers by power correlation (inferred, see data_sources/brazil_coastal_scada.py)",
+    "count": 20,
+    "manufacturer": "Enercon",
+    "model": "E-44",
+    "rated_power_kw": 900.0,
+    "rotor_diameter_m_in_metadata": 44.0,
+    "hub_heights_m": {
+     "55": [
+      "Pedra do Sal 01",
+      "Pedra do Sal 02",
+      "Pedra do Sal 03",
+      "Pedra do Sal 04",
+      "Pedra do Sal 05",
+      "Pedra do Sal 06",
+      "Pedra do Sal 07",
+      "Pedra do Sal 08",
+      "Pedra do Sal 09",
+      "Pedra do Sal 10",
+      "Pedra do Sal 11",
+      "Pedra do Sal 12",
+      "Pedra do Sal 13",
+      "Pedra do Sal 14",
+      "Pedra do Sal 15",
+      "Pedra do Sal 16",
+      "Pedra do Sal 17",
+      "Pedra do Sal 18",
+      "Pedra do Sal 19",
+      "Pedra do Sal 20"
+     ]
+    },
+    "commercial_operations_date": [
+     "not stated in the dataset"
+    ]
+   },
+   "production_records": {
+    "source": "10-minute turbine SCADA (Zenodo 1475197, 2013-14 Federal University of Santa Catarina campaign), farm output = sum of turbine active power",
+    "period": "2013-08-01 to 2014-07-31",
+    "max_10min_farm_output_mw": 18.48,
+    "max_10min_farm_output_at": "2013-11-19 21:10",
+    "turbines_reporting_then": 20,
+    "installed_capacity_mw": 18.0,
+    "max_10min_single_turbine_kw": 930.0,
+    "max_10min_single_turbine": "PedraDoSal_02 at 2013-08-17 03:30",
+    "best_day": {
+     "period": "2013-11-18",
+     "energy_mwh": 405.5
+    },
+    "best_month": {
+     "period": "2013-10",
+     "energy_mwh": 8818.6
+    },
+    "best_full_calendar_year": "no calendar year with at least 95% SCADA coverage",
+    "energy_by_calendar_year": {
+     "2013": {
+      "energy_gwh": 40.03,
+      "scada_coverage": 0.418
+     },
+     "2014": {
+      "energy_gwh": 23.96,
+      "scada_coverage": 0.575
+     }
+    },
+    "note": "energy is from turbine SCADA, before the few-% electrical losses to the export meter; a year with scada_coverage well below 1 is partial (data gaps or the export starting/ending mid-year)"
+   },
+   "decommissioning": "No decommissioning or end-of-consent date appears in any source Windward holds for this farm (dataset metadata, SCADA, the indexed PDFs)."
+  },
+  "beberibe": {
+   "turbines": {
+    "source": "Zenodo 1475197 record (32 Enercon E-48, 75 m hub); positions from OpenStreetMap, matched to the dataset's turbine numbers by power correlation (inferred, see data_sources/brazil_coastal_scada.py)",
+    "count": 32,
+    "manufacturer": "Enercon",
+    "model": "E-48",
+    "rated_power_kw": 800.0,
+    "rotor_diameter_m_in_metadata": 48.0,
+    "hub_heights_m": {
+     "75": [
+      "Beberibe 01",
+      "Beberibe 02",
+      "Beberibe 03",
+      "Beberibe 04",
+      "Beberibe 05",
+      "Beberibe 06",
+      "Beberibe 07",
+      "Beberibe 08",
+      "Beberibe 09",
+      "Beberibe 10",
+      "Beberibe 11",
+      "Beberibe 12",
+      "Beberibe 13",
+      "Beberibe 14",
+      "Beberibe 15",
+      "Beberibe 16",
+      "Beberibe 17",
+      "Beberibe 18",
+      "Beberibe 19",
+      "Beberibe 20",
+      "Beberibe 21",
+      "Beberibe 22",
+      "Beberibe 23",
+      "Beberibe 24",
+      "Beberibe 25",
+      "Beberibe 26",
+      "Beberibe 27",
+      "Beberibe 28",
+      "Beberibe 29",
+      "Beberibe 30",
+      "Beberibe 31",
+      "Beberibe 32"
+     ]
+    },
+    "commercial_operations_date": [
+     "not stated in the dataset"
+    ]
+   },
+   "production_records": {
+    "source": "10-minute turbine SCADA (Zenodo 1475197, 2013-14 Federal University of Santa Catarina campaign), farm output = sum of turbine active power",
+    "period": "2013-08-01 to 2014-07-31",
+    "max_10min_farm_output_mw": 26.49,
+    "max_10min_farm_output_at": "2014-07-23 19:30",
+    "turbines_reporting_then": 32,
+    "installed_capacity_mw": 25.6,
+    "max_10min_single_turbine_kw": 840.0,
+    "max_10min_single_turbine": "Beberibe_01 at 2014-03-13 17:30",
+    "best_day": {
+     "period": "2013-09-22",
+     "energy_mwh": 508.4
+    },
+    "best_month": {
+     "period": "2013-10",
+     "energy_mwh": 11606.3
+    },
+    "best_full_calendar_year": "no calendar year with at least 95% SCADA coverage",
+    "energy_by_calendar_year": {
+     "2013": {
+      "energy_gwh": 50.35,
+      "scada_coverage": 0.419
+     },
+     "2014": {
+      "energy_gwh": 38.64,
+      "scada_coverage": 0.578
+     }
+    },
+    "note": "energy is from turbine SCADA, before the few-% electrical losses to the export meter; a year with scada_coverage well below 1 is partial (data gaps or the export starting/ending mid-year)"
+   },
+   "decommissioning": "No decommissioning or end-of-consent date appears in any source Windward holds for this farm (dataset metadata, SCADA, the indexed PDFs)."
+  },
+  "smarteole": {
+   "turbines": {
+    "source": "SMARTEOLE dataset coordinates file and README (7 Senvion MM82, 82 m rotor, 80 m hub)",
+    "count": 7,
+    "manufacturer": "Senvion",
+    "model": "MM82",
+    "rated_power_kw": 2050.0,
+    "rotor_diameter_m_in_metadata": 82.0,
+    "hub_heights_m": {
+     "80": [
+      "Sole du Moulin Vieux SMV1",
+      "Sole du Moulin Vieux SMV2",
+      "Sole du Moulin Vieux SMV3",
+      "Sole du Moulin Vieux SMV4",
+      "Sole du Moulin Vieux SMV5",
+      "Sole du Moulin Vieux SMV6",
+      "Sole du Moulin Vieux SMV7"
+     ]
+    },
+    "commercial_operations_date": [
+     "not stated in the dataset"
+    ]
+   },
+   "production_records": {
+    "source": "10-minute means of 1-minute turbine SCADA (SMARTEOLE, 2020; the data owners removed every minute in which any turbine was stopped, so totals undercount and coverage reads low by design), farm output = sum of turbine active power",
+    "period": "2020-02-17 to 2020-05-24",
+    "max_10min_farm_output_mw": 14.33,
+    "max_10min_farm_output_at": "2020-02-27 13:10",
+    "turbines_reporting_then": 7,
+    "installed_capacity_mw": 14.35,
+    "max_10min_single_turbine_kw": 2061.2,
+    "max_10min_single_turbine": "SMV7 at 2020-03-29 19:10",
+    "best_day": {
+     "period": "2020-03-11",
+     "energy_mwh": 303.1
+    },
+    "best_month": {
+     "period": "2020-03",
+     "energy_mwh": 4121.1
+    },
+    "best_full_calendar_year": "no calendar year with at least 95% SCADA coverage",
+    "energy_by_calendar_year": {
+     "2020": {
+      "energy_gwh": 9.34,
+      "scada_coverage": 0.245
+     }
+    },
+    "note": "energy is from turbine SCADA, before the few-% electrical losses to the export meter; a year with scada_coverage well below 1 is partial (data gaps or the export starting/ending mid-year)"
+   },
+   "decommissioning": "No decommissioning or end-of-consent date appears in any source Windward holds for this farm (dataset metadata, SCADA, the indexed PDFs)."
   }
  },
- "generated_at": "2026-11-06T13:27:21+00:00"
+ "generated_at": "2026-11-06T17:17:29+00:00"
 }

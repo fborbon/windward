@@ -2586,6 +2586,1763 @@
      }
     }
    }
+  },
+  "pedra_do_sal": {
+   "method": "measured_wake_study",
+   "study": "line_farm",
+   "title": "Measured wake study: Pedra do Sal",
+   "description": "Wake losses measured directly: for every 10-minute record the wind direction comes from the site's 100 m met mast, the turbines with no other turbine upstream (\u00b120\u00b0, 20 rotor diameters) are the freestream reference, and every turbine's energy is compared with theirs. 45,006 records, 2013-08 to 2014-07 (Federal University of Santa Catarina campaign, Zenodo 1475197).",
+   "kpis": [
+    {
+     "label": "Farm wake loss (5-90% of rated)",
+     "value": "0.3%"
+    },
+    {
+     "label": "Records within 30\u00b0 of 74\u00b0",
+     "value": "85%"
+    },
+    {
+     "label": "Mean capacity factor",
+     "value": "41%"
+    }
+   ],
+   "findings": [
+    "The trade wind is unusually steady: 85% of 10-minute records come from within 30 degrees of 74 degrees (mast vane, 100 m). The mean turbine capacity factor over the year is 41%, high by European standards.",
+    "The turbines stand in one line along 133/313 degrees, so the prevailing wind crosses it at an angle and most turbines are freestream most of the time: the farm loses 0.3% to its own wakes (freestream mean 5-90% of rated).",
+    "The worst directions are the ones closest to the line, where each turbine stands in its neighbour's wake: 120 degrees (46.7%, 0.0% of the energy), 115 degrees (36.3%, 0.1% of the energy), 110 degrees (21.5%, 0.3% of the energy).",
+    "Least waked: PedraDoSal_04, PedraDoSal_07, PedraDoSal_05; most waked: PedraDoSal_01, PedraDoSal_10, PedraDoSal_08. Turbine positions are inferred (OpenStreetMap positions matched to the dataset's numbers by power correlation, see data_sources/brazil_coastal_scada.py), so treat single-turbine values as indicative."
+   ],
+   "method_note": "Not OpenOA: no substation meter, curtailment or availability channels. Period of record only, so lt_pct equals por_pct. Turbine positions are inferred, see data_sources/brazil_coastal_scada.py.",
+   "aep": {
+    "skipped": "one year of turbine SCADA with no substation meter; the wake study below is measured directly instead"
+   },
+   "wake_losses": {
+    "plant_por_pct": 0.32,
+    "plant_lt_pct": 0.32,
+    "turbines": {
+     "PedraDoSal_01": {
+      "por_pct": 2.76,
+      "lt_pct": 2.76
+     },
+     "PedraDoSal_02": {
+      "por_pct": 1.77,
+      "lt_pct": 1.77
+     },
+     "PedraDoSal_03": {
+      "por_pct": -1.52,
+      "lt_pct": -1.52
+     },
+     "PedraDoSal_04": {
+      "por_pct": -2.92,
+      "lt_pct": -2.92
+     },
+     "PedraDoSal_05": {
+      "por_pct": -2.58,
+      "lt_pct": -2.58
+     },
+     "PedraDoSal_06": {
+      "por_pct": -2.29,
+      "lt_pct": -2.29
+     },
+     "PedraDoSal_07": {
+      "por_pct": -2.9,
+      "lt_pct": -2.9
+     },
+     "PedraDoSal_08": {
+      "por_pct": 3.85,
+      "lt_pct": 3.85
+     },
+     "PedraDoSal_09": {
+      "por_pct": 2.64,
+      "lt_pct": 2.64
+     },
+     "PedraDoSal_10": {
+      "por_pct": 2.93,
+      "lt_pct": 2.93
+     },
+     "PedraDoSal_11": {
+      "por_pct": -0.08,
+      "lt_pct": -0.08
+     },
+     "PedraDoSal_12": {
+      "por_pct": 1.02,
+      "lt_pct": 1.02
+     },
+     "PedraDoSal_13": {
+      "por_pct": 0.57,
+      "lt_pct": 0.57
+     },
+     "PedraDoSal_14": {
+      "por_pct": 0.99,
+      "lt_pct": 0.99
+     },
+     "PedraDoSal_15": {
+      "por_pct": 0.54,
+      "lt_pct": 0.54
+     },
+     "PedraDoSal_16": {
+      "por_pct": -0.07,
+      "lt_pct": -0.07
+     },
+     "PedraDoSal_17": {
+      "por_pct": -0.8,
+      "lt_pct": -0.8
+     },
+     "PedraDoSal_18": {
+      "por_pct": 0.09,
+      "lt_pct": 0.09
+     },
+     "PedraDoSal_19": {
+      "por_pct": -0.1,
+      "lt_pct": -0.1
+     },
+     "PedraDoSal_20": {
+      "por_pct": 2.53,
+      "lt_pct": 2.53
+     }
+    },
+    "by_direction": [
+     {
+      "wd_deg": 0.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 7
+     },
+     {
+      "wd_deg": 5.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 14
+     },
+     {
+      "wd_deg": 10.0,
+      "plant_por_pct": 1.77,
+      "energy_share_pct": 0.03,
+      "n_records": 44
+     },
+     {
+      "wd_deg": 15.0,
+      "plant_por_pct": 0.7,
+      "energy_share_pct": 0.07,
+      "n_records": 89
+     },
+     {
+      "wd_deg": 20.0,
+      "plant_por_pct": 0.17,
+      "energy_share_pct": 0.13,
+      "n_records": 165
+     },
+     {
+      "wd_deg": 25.0,
+      "plant_por_pct": 0.01,
+      "energy_share_pct": 0.26,
+      "n_records": 290
+     },
+     {
+      "wd_deg": 30.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.55,
+      "n_records": 558
+     },
+     {
+      "wd_deg": 35.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 1.15,
+      "n_records": 984
+     },
+     {
+      "wd_deg": 40.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 2.24,
+      "n_records": 1531
+     },
+     {
+      "wd_deg": 45.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 4.25,
+      "n_records": 2318
+     },
+     {
+      "wd_deg": 50.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 8.25,
+      "n_records": 3691
+     },
+     {
+      "wd_deg": 55.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 9.49,
+      "n_records": 3956
+     },
+     {
+      "wd_deg": 60.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 9.25,
+      "n_records": 3874
+     },
+     {
+      "wd_deg": 65.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 8.09,
+      "n_records": 3439
+     },
+     {
+      "wd_deg": 70.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 8.19,
+      "n_records": 3302
+     },
+     {
+      "wd_deg": 75.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 7.97,
+      "n_records": 3052
+     },
+     {
+      "wd_deg": 80.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 6.61,
+      "n_records": 2590
+     },
+     {
+      "wd_deg": 85.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 8.42,
+      "n_records": 3194
+     },
+     {
+      "wd_deg": 90.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 12.14,
+      "n_records": 4573
+     },
+     {
+      "wd_deg": 95.0,
+      "plant_por_pct": -0.0,
+      "energy_share_pct": 8.6,
+      "n_records": 3653
+     },
+     {
+      "wd_deg": 100.0,
+      "plant_por_pct": 0.6,
+      "energy_share_pct": 2.79,
+      "n_records": 1672
+     },
+     {
+      "wd_deg": 105.0,
+      "plant_por_pct": 8.49,
+      "energy_share_pct": 0.95,
+      "n_records": 942
+     },
+     {
+      "wd_deg": 110.0,
+      "plant_por_pct": 21.47,
+      "energy_share_pct": 0.33,
+      "n_records": 537
+     },
+     {
+      "wd_deg": 115.0,
+      "plant_por_pct": 36.32,
+      "energy_share_pct": 0.12,
+      "n_records": 294
+     },
+     {
+      "wd_deg": 120.0,
+      "plant_por_pct": 46.74,
+      "energy_share_pct": 0.04,
+      "n_records": 122
+     },
+     {
+      "wd_deg": 125.0,
+      "plant_por_pct": 35.76,
+      "energy_share_pct": 0.02,
+      "n_records": 46
+     },
+     {
+      "wd_deg": 130.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 15
+     },
+     {
+      "wd_deg": 135.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 11
+     },
+     {
+      "wd_deg": 140.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 4
+     },
+     {
+      "wd_deg": 145.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 150.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 1
+     },
+     {
+      "wd_deg": 155.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 1
+     },
+     {
+      "wd_deg": 160.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 6
+     },
+     {
+      "wd_deg": 165.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 3
+     },
+     {
+      "wd_deg": 170.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 1
+     },
+     {
+      "wd_deg": 175.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 4
+     },
+     {
+      "wd_deg": 180.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 1
+     },
+     {
+      "wd_deg": 185.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 2
+     },
+     {
+      "wd_deg": 190.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 3
+     },
+     {
+      "wd_deg": 195.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 1
+     },
+     {
+      "wd_deg": 200.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 205.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 210.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 1
+     },
+     {
+      "wd_deg": 215.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 220.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 225.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 230.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 235.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 2
+     },
+     {
+      "wd_deg": 240.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 245.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 250.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 255.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 260.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 265.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 270.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 275.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 280.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 285.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 290.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 295.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 300.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 305.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 310.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 1
+     },
+     {
+      "wd_deg": 315.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 1
+     },
+     {
+      "wd_deg": 320.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 325.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 330.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 1
+     },
+     {
+      "wd_deg": 335.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 340.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 345.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 350.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 5
+     },
+     {
+      "wd_deg": 355.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 5
+     }
+    ],
+    "n_records": 45006
+   },
+   "wake_study": {
+    "direction": {
+     "prevailing_deg": 74.0,
+     "share_within_30_deg_pct": 84.6
+    },
+    "line_bearing_deg": 133.0,
+    "worst_bins": [
+     {
+      "wd_deg": 120.0,
+      "plant_por_pct": 46.74,
+      "energy_share_pct": 0.04,
+      "n_records": 122
+     },
+     {
+      "wd_deg": 115.0,
+      "plant_por_pct": 36.32,
+      "energy_share_pct": 0.12,
+      "n_records": 294
+     },
+     {
+      "wd_deg": 110.0,
+      "plant_por_pct": 21.47,
+      "energy_share_pct": 0.33,
+      "n_records": 537
+     }
+    ],
+    "capacity_factor": 0.409
+   }
+  },
+  "beberibe": {
+   "method": "measured_wake_study",
+   "study": "line_farm",
+   "title": "Measured wake study: Beberibe",
+   "description": "Wake losses measured directly: for every 10-minute record the wind direction comes from the site's 100 m met mast, the turbines with no other turbine upstream (\u00b120\u00b0, 20 rotor diameters) are the freestream reference, and every turbine's energy is compared with theirs. 45,924 records, 2013-08 to 2014-07 (Federal University of Santa Catarina campaign, Zenodo 1475197).",
+   "kpis": [
+    {
+     "label": "Farm wake loss (5-90% of rated)",
+     "value": "6.5%"
+    },
+    {
+     "label": "Records within 30\u00b0 of 97\u00b0",
+     "value": "79%"
+    },
+    {
+     "label": "Mean capacity factor",
+     "value": "40%"
+    }
+   ],
+   "findings": [
+    "The trade wind is unusually steady: 79% of 10-minute records come from within 30 degrees of 97 degrees (mast vane, 100 m). The mean turbine capacity factor over the year is 40%, high by European standards.",
+    "The turbines stand in one line along 142/322 degrees, so the prevailing wind crosses it at an angle and most turbines are freestream most of the time: the farm loses 6.5% to its own wakes (freestream mean 5-90% of rated).",
+    "The worst directions are the ones closest to the line, where each turbine stands in its neighbour's wake: 135 degrees (44.4%, 0.7% of the energy), 140 degrees (42.5%, 0.6% of the energy), 130 degrees (37.3%, 0.6% of the energy).",
+    "Least waked: Beberibe_23, Beberibe_24, Beberibe_22; most waked: Beberibe_04, Beberibe_13, Beberibe_05. Turbine positions are inferred (OpenStreetMap positions matched to the dataset's numbers by power correlation, see data_sources/brazil_coastal_scada.py), so treat single-turbine values as indicative."
+   ],
+   "method_note": "Not OpenOA: no substation meter, curtailment or availability channels. Period of record only, so lt_pct equals por_pct. Turbine positions are inferred, see data_sources/brazil_coastal_scada.py.",
+   "aep": {
+    "skipped": "one year of turbine SCADA with no substation meter; the wake study below is measured directly instead"
+   },
+   "wake_losses": {
+    "plant_por_pct": 6.5,
+    "plant_lt_pct": 6.5,
+    "turbines": {
+     "Beberibe_01": {
+      "por_pct": 3.34,
+      "lt_pct": 3.34
+     },
+     "Beberibe_02": {
+      "por_pct": 0.16,
+      "lt_pct": 0.16
+     },
+     "Beberibe_03": {
+      "por_pct": 24.59,
+      "lt_pct": 24.59
+     },
+     "Beberibe_04": {
+      "por_pct": 29.53,
+      "lt_pct": 29.53
+     },
+     "Beberibe_05": {
+      "por_pct": 33.59,
+      "lt_pct": 33.59
+     },
+     "Beberibe_06": {
+      "por_pct": 22.65,
+      "lt_pct": 22.65
+     },
+     "Beberibe_07": {
+      "por_pct": 3.49,
+      "lt_pct": 3.49
+     },
+     "Beberibe_08": {
+      "por_pct": 22.09,
+      "lt_pct": 22.09
+     },
+     "Beberibe_09": {
+      "por_pct": 0.97,
+      "lt_pct": 0.97
+     },
+     "Beberibe_10": {
+      "por_pct": 5.14,
+      "lt_pct": 5.14
+     },
+     "Beberibe_11": {
+      "por_pct": 5.46,
+      "lt_pct": 5.46
+     },
+     "Beberibe_12": {
+      "por_pct": 13.16,
+      "lt_pct": 13.16
+     },
+     "Beberibe_13": {
+      "por_pct": 33.45,
+      "lt_pct": 33.45
+     },
+     "Beberibe_14": {
+      "por_pct": 3.73,
+      "lt_pct": 3.73
+     },
+     "Beberibe_15": {
+      "por_pct": -0.31,
+      "lt_pct": -0.31
+     },
+     "Beberibe_16": {
+      "por_pct": -4.16,
+      "lt_pct": -4.16
+     },
+     "Beberibe_17": {
+      "por_pct": -5.46,
+      "lt_pct": -5.46
+     },
+     "Beberibe_18": {
+      "por_pct": -1.35,
+      "lt_pct": -1.35
+     },
+     "Beberibe_19": {
+      "por_pct": 1.99,
+      "lt_pct": 1.99
+     },
+     "Beberibe_20": {
+      "por_pct": 1.54,
+      "lt_pct": 1.54
+     },
+     "Beberibe_21": {
+      "por_pct": 10.1,
+      "lt_pct": 10.1
+     },
+     "Beberibe_22": {
+      "por_pct": -7.82,
+      "lt_pct": -7.82
+     },
+     "Beberibe_23": {
+      "por_pct": -9.47,
+      "lt_pct": -9.47
+     },
+     "Beberibe_24": {
+      "por_pct": -8.41,
+      "lt_pct": -8.41
+     },
+     "Beberibe_25": {
+      "por_pct": 2.26,
+      "lt_pct": 2.26
+     },
+     "Beberibe_26": {
+      "por_pct": -0.03,
+      "lt_pct": -0.03
+     },
+     "Beberibe_27": {
+      "por_pct": -5.25,
+      "lt_pct": -5.25
+     },
+     "Beberibe_28": {
+      "por_pct": -5.88,
+      "lt_pct": -5.88
+     },
+     "Beberibe_29": {
+      "por_pct": 11.08,
+      "lt_pct": 11.08
+     },
+     "Beberibe_30": {
+      "por_pct": -2.36,
+      "lt_pct": -2.36
+     },
+     "Beberibe_31": {
+      "por_pct": 4.92,
+      "lt_pct": 4.92
+     },
+     "Beberibe_32": {
+      "por_pct": 25.22,
+      "lt_pct": 25.22
+     }
+    },
+    "by_direction": [
+     {
+      "wd_deg": 0.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 5
+     },
+     {
+      "wd_deg": 5.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 2
+     },
+     {
+      "wd_deg": 10.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 8
+     },
+     {
+      "wd_deg": 15.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 9
+     },
+     {
+      "wd_deg": 20.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 7
+     },
+     {
+      "wd_deg": 25.0,
+      "plant_por_pct": 2.34,
+      "energy_share_pct": 0.03,
+      "n_records": 24
+     },
+     {
+      "wd_deg": 30.0,
+      "plant_por_pct": 1.17,
+      "energy_share_pct": 0.05,
+      "n_records": 48
+     },
+     {
+      "wd_deg": 35.0,
+      "plant_por_pct": 0.92,
+      "energy_share_pct": 0.09,
+      "n_records": 103
+     },
+     {
+      "wd_deg": 40.0,
+      "plant_por_pct": 1.02,
+      "energy_share_pct": 0.2,
+      "n_records": 191
+     },
+     {
+      "wd_deg": 45.0,
+      "plant_por_pct": 1.0,
+      "energy_share_pct": 0.32,
+      "n_records": 270
+     },
+     {
+      "wd_deg": 50.0,
+      "plant_por_pct": 1.4,
+      "energy_share_pct": 0.6,
+      "n_records": 463
+     },
+     {
+      "wd_deg": 55.0,
+      "plant_por_pct": 2.57,
+      "energy_share_pct": 1.1,
+      "n_records": 796
+     },
+     {
+      "wd_deg": 60.0,
+      "plant_por_pct": 2.79,
+      "energy_share_pct": 2.09,
+      "n_records": 1375
+     },
+     {
+      "wd_deg": 65.0,
+      "plant_por_pct": 3.59,
+      "energy_share_pct": 3.57,
+      "n_records": 1998
+     },
+     {
+      "wd_deg": 70.0,
+      "plant_por_pct": 4.05,
+      "energy_share_pct": 5.96,
+      "n_records": 2902
+     },
+     {
+      "wd_deg": 75.0,
+      "plant_por_pct": 2.72,
+      "energy_share_pct": 9.41,
+      "n_records": 4101
+     },
+     {
+      "wd_deg": 80.0,
+      "plant_por_pct": 3.23,
+      "energy_share_pct": 10.94,
+      "n_records": 4435
+     },
+     {
+      "wd_deg": 85.0,
+      "plant_por_pct": 5.18,
+      "energy_share_pct": 11.07,
+      "n_records": 4494
+     },
+     {
+      "wd_deg": 90.0,
+      "plant_por_pct": 5.91,
+      "energy_share_pct": 9.51,
+      "n_records": 3980
+     },
+     {
+      "wd_deg": 95.0,
+      "plant_por_pct": 5.81,
+      "energy_share_pct": 7.67,
+      "n_records": 3173
+     },
+     {
+      "wd_deg": 100.0,
+      "plant_por_pct": 6.08,
+      "energy_share_pct": 6.65,
+      "n_records": 2572
+     },
+     {
+      "wd_deg": 105.0,
+      "plant_por_pct": 6.76,
+      "energy_share_pct": 6.59,
+      "n_records": 2524
+     },
+     {
+      "wd_deg": 110.0,
+      "plant_por_pct": 6.48,
+      "energy_share_pct": 7.35,
+      "n_records": 2513
+     },
+     {
+      "wd_deg": 115.0,
+      "plant_por_pct": 3.86,
+      "energy_share_pct": 7.24,
+      "n_records": 2455
+     },
+     {
+      "wd_deg": 120.0,
+      "plant_por_pct": 6.28,
+      "energy_share_pct": 4.74,
+      "n_records": 1907
+     },
+     {
+      "wd_deg": 125.0,
+      "plant_por_pct": 19.34,
+      "energy_share_pct": 1.33,
+      "n_records": 876
+     },
+     {
+      "wd_deg": 130.0,
+      "plant_por_pct": 37.33,
+      "energy_share_pct": 0.64,
+      "n_records": 698
+     },
+     {
+      "wd_deg": 135.0,
+      "plant_por_pct": 44.43,
+      "energy_share_pct": 0.66,
+      "n_records": 844
+     },
+     {
+      "wd_deg": 140.0,
+      "plant_por_pct": 42.51,
+      "energy_share_pct": 0.56,
+      "n_records": 852
+     },
+     {
+      "wd_deg": 145.0,
+      "plant_por_pct": 37.18,
+      "energy_share_pct": 0.5,
+      "n_records": 726
+     },
+     {
+      "wd_deg": 150.0,
+      "plant_por_pct": 22.88,
+      "energy_share_pct": 0.34,
+      "n_records": 485
+     },
+     {
+      "wd_deg": 155.0,
+      "plant_por_pct": 20.26,
+      "energy_share_pct": 0.28,
+      "n_records": 386
+     },
+     {
+      "wd_deg": 160.0,
+      "plant_por_pct": 9.66,
+      "energy_share_pct": 0.16,
+      "n_records": 242
+     },
+     {
+      "wd_deg": 165.0,
+      "plant_por_pct": 0.98,
+      "energy_share_pct": 0.1,
+      "n_records": 134
+     },
+     {
+      "wd_deg": 170.0,
+      "plant_por_pct": 0.58,
+      "energy_share_pct": 0.08,
+      "n_records": 114
+     },
+     {
+      "wd_deg": 175.0,
+      "plant_por_pct": 2.03,
+      "energy_share_pct": 0.05,
+      "n_records": 78
+     },
+     {
+      "wd_deg": 180.0,
+      "plant_por_pct": 3.54,
+      "energy_share_pct": 0.03,
+      "n_records": 53
+     },
+     {
+      "wd_deg": 185.0,
+      "plant_por_pct": 2.21,
+      "energy_share_pct": 0.02,
+      "n_records": 31
+     },
+     {
+      "wd_deg": 190.0,
+      "plant_por_pct": 2.57,
+      "energy_share_pct": 0.01,
+      "n_records": 21
+     },
+     {
+      "wd_deg": 195.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 9
+     },
+     {
+      "wd_deg": 200.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 5
+     },
+     {
+      "wd_deg": 205.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 7
+     },
+     {
+      "wd_deg": 210.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 3
+     },
+     {
+      "wd_deg": 215.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 1
+     },
+     {
+      "wd_deg": 220.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 225.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 230.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 235.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 2
+     },
+     {
+      "wd_deg": 240.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 245.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 250.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 255.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 260.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 265.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 270.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 275.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 280.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 285.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 290.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 295.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 300.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 305.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 310.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 315.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 320.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 325.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 330.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 335.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 340.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 1
+     },
+     {
+      "wd_deg": 345.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 350.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 0
+     },
+     {
+      "wd_deg": 355.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 1
+     }
+    ],
+    "n_records": 45924
+   },
+   "wake_study": {
+    "direction": {
+     "prevailing_deg": 97.0,
+     "share_within_30_deg_pct": 79.4
+    },
+    "line_bearing_deg": 142.0,
+    "worst_bins": [
+     {
+      "wd_deg": 135.0,
+      "plant_por_pct": 44.43,
+      "energy_share_pct": 0.66,
+      "n_records": 844
+     },
+     {
+      "wd_deg": 140.0,
+      "plant_por_pct": 42.51,
+      "energy_share_pct": 0.56,
+      "n_records": 852
+     },
+     {
+      "wd_deg": 130.0,
+      "plant_por_pct": 37.33,
+      "energy_share_pct": 0.64,
+      "n_records": 698
+     }
+    ],
+    "capacity_factor": 0.398
+   }
+  },
+  "smarteole": {
+   "method": "measured_wake_study",
+   "study": "line_farm",
+   "title": "Measured wake study and wake steering: Sole du Moulin Vieux (SMARTEOLE)",
+   "description": "Wake losses measured directly: for every 10-minute record the wind direction is the mean nacelle direction of SMV1, 2, 3 and 7 (corrected for north alignment by the data owners), the turbines with no other turbine upstream (\u00b120\u00b0, 20 rotor diameters) are the freestream reference. 8,245 records, 2020-02-17 to 2020-05-24.",
+   "kpis": [
+    {
+     "label": "Farm wake loss (5-90% of rated)",
+     "value": "4.3%"
+    },
+    {
+     "label": "SMV5 + SMV6 with wake steering (90% CI -0.2 to +3.3)",
+     "value": "+1.7%"
+    },
+    {
+     "label": "SMV5 behind SMV6 (steering off)",
+     "value": "56% of ref"
+    }
+   ],
+   "findings": [
+    "The line runs north-south with turbines about 350 m (4.3 rotor diameters) apart, so wind along it is costly: the worst bins 10 degrees (37.9%), 185 degrees (31.5%), 180 degrees (24.1%); 4.3% over the campaign.",
+    "SMV5 stands 302 m (3.7 rotor diameters) from SMV6 at 207.5 degrees, the closest pair on the line. In that wind, with steering off, it makes only 56% of what the reference turbines (SMV1, 2, 3, 7) make; the farm loses 6.1% in the 205-degree bin.",
+    "With SMV6 yawed off the wind (median offset 12 degrees), SMV6 goes from 94.1% to 92.3% of the reference and SMV5 from 56.0% to 60.3%: the pair changes by +1.7% (90% interval -0.2% to +3.3%, resampling 35 days) in 195-225 degrees and 4-12 m/s.",
+    "So steering moved energy from SMV6 to SMV5, but whether the pair came out ahead is not settled: the interval includes zero, and the record is three months with one steered turbine, and the owners removed every minute a turbine was stopped. The campaign's own analysis is Simley et al. 2021 (Wind Energ. Sci. 6, 1427)."
+   ],
+   "method_note": "Not OpenOA: no substation meter and three months only. Period of record, so lt_pct equals por_pct. Wake-steering comparison: 10-minute records with the offset fully on vs fully off, weighted by (2\u00b0, 1 m/s) reference bins.",
+   "aep": {
+    "skipped": "three months of SCADA with stopped minutes removed by the data owners; no substation meter"
+   },
+   "wake_losses": {
+    "plant_por_pct": 4.26,
+    "plant_lt_pct": 4.26,
+    "turbines": {
+     "SMV1": {
+      "por_pct": -2.6,
+      "lt_pct": -2.6
+     },
+     "SMV2": {
+      "por_pct": -1.23,
+      "lt_pct": -1.23
+     },
+     "SMV3": {
+      "por_pct": 2.68,
+      "lt_pct": 2.68
+     },
+     "SMV4": {
+      "por_pct": 4.64,
+      "lt_pct": 4.64
+     },
+     "SMV5": {
+      "por_pct": 7.55,
+      "lt_pct": 7.55
+     },
+     "SMV6": {
+      "por_pct": 11.27,
+      "lt_pct": 11.27
+     },
+     "SMV7": {
+      "por_pct": 7.53,
+      "lt_pct": 7.53
+     }
+    },
+    "by_direction": [
+     {
+      "wd_deg": 0.0,
+      "plant_por_pct": 40.8,
+      "energy_share_pct": 0.17,
+      "n_records": 26
+     },
+     {
+      "wd_deg": 5.0,
+      "plant_por_pct": 42.98,
+      "energy_share_pct": 0.29,
+      "n_records": 40
+     },
+     {
+      "wd_deg": 10.0,
+      "plant_por_pct": 37.94,
+      "energy_share_pct": 0.66,
+      "n_records": 86
+     },
+     {
+      "wd_deg": 15.0,
+      "plant_por_pct": 14.64,
+      "energy_share_pct": 2.93,
+      "n_records": 281
+     },
+     {
+      "wd_deg": 20.0,
+      "plant_por_pct": 13.36,
+      "energy_share_pct": 3.33,
+      "n_records": 311
+     },
+     {
+      "wd_deg": 25.0,
+      "plant_por_pct": 11.29,
+      "energy_share_pct": 3.69,
+      "n_records": 341
+     },
+     {
+      "wd_deg": 30.0,
+      "plant_por_pct": 6.72,
+      "energy_share_pct": 2.9,
+      "n_records": 277
+     },
+     {
+      "wd_deg": 35.0,
+      "plant_por_pct": 3.97,
+      "energy_share_pct": 2.75,
+      "n_records": 274
+     },
+     {
+      "wd_deg": 40.0,
+      "plant_por_pct": 0.71,
+      "energy_share_pct": 3.88,
+      "n_records": 340
+     },
+     {
+      "wd_deg": 45.0,
+      "plant_por_pct": -0.14,
+      "energy_share_pct": 5.27,
+      "n_records": 421
+     },
+     {
+      "wd_deg": 50.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 4.12,
+      "n_records": 309
+     },
+     {
+      "wd_deg": 55.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 3.62,
+      "n_records": 271
+     },
+     {
+      "wd_deg": 60.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 3.95,
+      "n_records": 305
+     },
+     {
+      "wd_deg": 65.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 2.03,
+      "n_records": 195
+     },
+     {
+      "wd_deg": 70.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.67,
+      "n_records": 83
+     },
+     {
+      "wd_deg": 75.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.74,
+      "n_records": 74
+     },
+     {
+      "wd_deg": 80.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.27,
+      "n_records": 46
+     },
+     {
+      "wd_deg": 85.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.2,
+      "n_records": 32
+     },
+     {
+      "wd_deg": 90.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.24,
+      "n_records": 36
+     },
+     {
+      "wd_deg": 95.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.71,
+      "n_records": 67
+     },
+     {
+      "wd_deg": 100.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 1.69,
+      "n_records": 126
+     },
+     {
+      "wd_deg": 105.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 1.55,
+      "n_records": 123
+     },
+     {
+      "wd_deg": 110.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 1.35,
+      "n_records": 120
+     },
+     {
+      "wd_deg": 115.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.85,
+      "n_records": 100
+     },
+     {
+      "wd_deg": 120.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.61,
+      "n_records": 66
+     },
+     {
+      "wd_deg": 125.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.27,
+      "n_records": 31
+     },
+     {
+      "wd_deg": 130.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.21,
+      "n_records": 31
+     },
+     {
+      "wd_deg": 135.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.29,
+      "n_records": 37
+     },
+     {
+      "wd_deg": 140.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.23,
+      "n_records": 35
+     },
+     {
+      "wd_deg": 145.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.15,
+      "n_records": 24
+     },
+     {
+      "wd_deg": 150.0,
+      "plant_por_pct": 0.26,
+      "energy_share_pct": 0.3,
+      "n_records": 38
+     },
+     {
+      "wd_deg": 155.0,
+      "plant_por_pct": 2.79,
+      "energy_share_pct": 0.16,
+      "n_records": 29
+     },
+     {
+      "wd_deg": 160.0,
+      "plant_por_pct": 4.48,
+      "energy_share_pct": 0.34,
+      "n_records": 44
+     },
+     {
+      "wd_deg": 165.0,
+      "plant_por_pct": 14.45,
+      "energy_share_pct": 0.52,
+      "n_records": 54
+     },
+     {
+      "wd_deg": 170.0,
+      "plant_por_pct": 9.08,
+      "energy_share_pct": 0.44,
+      "n_records": 47
+     },
+     {
+      "wd_deg": 175.0,
+      "plant_por_pct": 17.05,
+      "energy_share_pct": 0.51,
+      "n_records": 50
+     },
+     {
+      "wd_deg": 180.0,
+      "plant_por_pct": 24.07,
+      "energy_share_pct": 0.86,
+      "n_records": 81
+     },
+     {
+      "wd_deg": 185.0,
+      "plant_por_pct": 31.54,
+      "energy_share_pct": 0.85,
+      "n_records": 101
+     },
+     {
+      "wd_deg": 190.0,
+      "plant_por_pct": 22.24,
+      "energy_share_pct": 1.29,
+      "n_records": 150
+     },
+     {
+      "wd_deg": 195.0,
+      "plant_por_pct": 3.31,
+      "energy_share_pct": 2.04,
+      "n_records": 151
+     },
+     {
+      "wd_deg": 200.0,
+      "plant_por_pct": -1.34,
+      "energy_share_pct": 2.65,
+      "n_records": 166
+     },
+     {
+      "wd_deg": 205.0,
+      "plant_por_pct": 6.13,
+      "energy_share_pct": 3.62,
+      "n_records": 210
+     },
+     {
+      "wd_deg": 210.0,
+      "plant_por_pct": 7.46,
+      "energy_share_pct": 2.97,
+      "n_records": 189
+     },
+     {
+      "wd_deg": 215.0,
+      "plant_por_pct": 2.83,
+      "energy_share_pct": 1.8,
+      "n_records": 127
+     },
+     {
+      "wd_deg": 220.0,
+      "plant_por_pct": 0.1,
+      "energy_share_pct": 2.57,
+      "n_records": 176
+     },
+     {
+      "wd_deg": 225.0,
+      "plant_por_pct": -0.32,
+      "energy_share_pct": 3.47,
+      "n_records": 198
+     },
+     {
+      "wd_deg": 230.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 2.76,
+      "n_records": 158
+     },
+     {
+      "wd_deg": 235.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 2.78,
+      "n_records": 162
+     },
+     {
+      "wd_deg": 240.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 2.45,
+      "n_records": 137
+     },
+     {
+      "wd_deg": 245.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 2.43,
+      "n_records": 151
+     },
+     {
+      "wd_deg": 250.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 2.03,
+      "n_records": 140
+     },
+     {
+      "wd_deg": 255.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 1.6,
+      "n_records": 108
+     },
+     {
+      "wd_deg": 260.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 1.76,
+      "n_records": 118
+     },
+     {
+      "wd_deg": 265.0,
+      "plant_por_pct": -0.0,
+      "energy_share_pct": 0.78,
+      "n_records": 69
+     },
+     {
+      "wd_deg": 270.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.83,
+      "n_records": 74
+     },
+     {
+      "wd_deg": 275.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 1.05,
+      "n_records": 79
+     },
+     {
+      "wd_deg": 280.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 1.31,
+      "n_records": 88
+     },
+     {
+      "wd_deg": 285.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 1.15,
+      "n_records": 108
+     },
+     {
+      "wd_deg": 290.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.94,
+      "n_records": 89
+     },
+     {
+      "wd_deg": 295.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 1.07,
+      "n_records": 89
+     },
+     {
+      "wd_deg": 300.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.92,
+      "n_records": 74
+     },
+     {
+      "wd_deg": 305.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.77,
+      "n_records": 75
+     },
+     {
+      "wd_deg": 310.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.68,
+      "n_records": 79
+     },
+     {
+      "wd_deg": 315.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.25,
+      "n_records": 50
+     },
+     {
+      "wd_deg": 320.0,
+      "plant_por_pct": 0.0,
+      "energy_share_pct": 0.15,
+      "n_records": 24
+     },
+     {
+      "wd_deg": 325.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 18
+     },
+     {
+      "wd_deg": 330.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 7
+     },
+     {
+      "wd_deg": 335.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 4
+     },
+     {
+      "wd_deg": 340.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 8
+     },
+     {
+      "wd_deg": 345.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 2
+     },
+     {
+      "wd_deg": 350.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 2
+     },
+     {
+      "wd_deg": 355.0,
+      "plant_por_pct": null,
+      "energy_share_pct": 0.0,
+      "n_records": 13
+     }
+    ],
+    "n_records": 8245
+   },
+   "turbine_notes": {
+    "SMV6": "SMV6 was the wake-steering test turbine: in this campaign it was yawed off the wind on purpose (up to 20 degrees) to bend its wake away from SMV5, which costs it some output by design. A low SMV6 output here is the experiment, not a fault."
+   },
+   "wake_study": {
+    "wake_steering": {
+     "sector_deg": [
+      195.0,
+      225.0
+     ],
+     "ref_wind_ms": [
+      4.0,
+      12.0
+     ],
+     "n_records_off": 628,
+     "n_records_on": 567,
+     "n_days": 35,
+     "median_offset_deg_when_on": 11.9,
+     "smv6_pct_of_ref": {
+      "off": 94.1,
+      "on": 92.3
+     },
+     "smv5_pct_of_ref": {
+      "off": 56.0,
+      "on": 60.3
+     },
+     "pair_gain_pct": 1.7,
+     "pair_gain_90ci_pct": [
+      -0.2,
+      3.3
+     ]
+    },
+    "worst_bins": [
+     {
+      "wd_deg": 10.0,
+      "plant_por_pct": 37.94,
+      "energy_share_pct": 0.66,
+      "n_records": 86
+     },
+     {
+      "wd_deg": 185.0,
+      "plant_por_pct": 31.54,
+      "energy_share_pct": 0.85,
+      "n_records": 101
+     },
+     {
+      "wd_deg": 180.0,
+      "plant_por_pct": 24.07,
+      "energy_share_pct": 0.86,
+      "n_records": 81
+     }
+    ]
+   }
   }
  },
  "generated_at": "2026-10-05T07:32:19+00:00",

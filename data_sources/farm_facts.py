@@ -25,11 +25,25 @@ _STATIC = {
     "hill_of_towie": DATA_DIR / "hill_of_towie" / "Hill_of_Towie_turbine_metadata.csv",
     "delabole": DATA_DIR / "delabole" / "Delabole_WT_static.csv",
     "norrekaer_enge": None,  # built from the report's specs and UTM table, see data_sources/norrekaer_scada.py
+    "pedra_do_sal": None,  # Zenodo record specs + OpenStreetMap positions, see data_sources/brazil_coastal_scada.py
+    "beberibe": None,
+    "smarteole": None,  # the dataset's coordinates file + its README's turbine model
 }
 # The DTU site documentation gives Delabole's commissioning as "December 1991", no day; the
 # static CSV carries the 1st only because the column needs a date.
 _COMMISSIONING_MONTH_ONLY = {"delabole": "1991-12 (month only in the source)",
-                             "norrekaer_enge": "1991 (year only: commissioning ran through summer 1991, Risø report section 5)"}
+                             "norrekaer_enge": "1991 (year only: commissioning ran through summer 1991, Risø report section 5)",
+                             "pedra_do_sal": "not stated in the dataset",
+                             "beberibe": "not stated in the dataset",
+                             "smarteole": "not stated in the dataset"}
+_STATIC_SOURCE = {
+    "norrekaer_enge": "Risø report Risø-I-684(EN) Appendix 1 (specs) and 5 (UTM positions); 40 of 42 turbines log power",
+    "pedra_do_sal": ("Zenodo 1475197 record (20 Enercon E-44, 55 m hub); positions from OpenStreetMap, matched to the dataset's "
+                     "turbine numbers by power correlation (inferred, see data_sources/brazil_coastal_scada.py)"),
+    "beberibe": ("Zenodo 1475197 record (32 Enercon E-48, 75 m hub); positions from OpenStreetMap, matched to the dataset's "
+                 "turbine numbers by power correlation (inferred, see data_sources/brazil_coastal_scada.py)"),
+    "smarteole": "SMARTEOLE dataset coordinates file and README (7 Senvion MM82, 82 m rotor, 80 m hub)",
+}
 _AEROUP = DATA_DIR / "hill_of_towie" / "Hill_of_Towie_AeroUp_install_dates.csv"
 
 # A day/month/year only counts toward a record when the SCADA covers it almost fully, so a
@@ -48,8 +62,7 @@ def _turbines(farm_id: str) -> dict:
     cod = pd.to_datetime(df["Commercial Operations Date"], dayfirst=farm_id != "hill_of_towie")
     hub = df.groupby("Hub Height (m)")[name_col].apply(list)
     return {
-        "source": ("Risø report Risø-I-684(EN) Appendix 1 (specs) and 5 (UTM positions); 40 of 42 turbines log power"
-                   if _STATIC[farm_id] is None else
+        "source": (_STATIC_SOURCE[farm_id] if _STATIC[farm_id] is None else
                    f"{_STATIC[farm_id].name} (" + ("built from the DTU site documentation's turbine list and layout"
                                                    if farm_id == "delabole" else "the dataset's turbine metadata") + ")"),
         "count": int(len(df)),
@@ -64,10 +77,13 @@ def _turbines(farm_id: str) -> dict:
 
 
 def _records(farm_id: str) -> dict:
-    if FARMS[farm_id].data_source in ("delabole", "norrekaer"):
+    if FARMS[farm_id].data_source in ("delabole", "norrekaer", "smarteole"):
         # Small enough to read straight from the committed CSV; it never went through OpenOA.
         from data_sources.farms import loader_for
         scada = loader_for(FARMS[farm_id]).scada_10min_for_records()
+    elif FARMS[farm_id].data_source == "brazil_coastal":
+        from data_sources import brazil_coastal_scada
+        scada = brazil_coastal_scada.scada_10min_for_records(farm_id)
     else:
         scada = pd.read_pickle(CACHE_DIR / f"{farm_id}_scada.pkl")
         if isinstance(scada, tuple):
@@ -102,7 +118,11 @@ def _records(farm_id: str) -> dict:
     full_years = {y: a for y, a in annual.items() if a["scada_coverage"] >= MIN_COVERAGE}
     best_year = max(full_years, key=lambda y: full_years[y]["energy_gwh"]) if full_years else None
     return {
-        "source": ("10-minute turbine SCADA (DTU Data NetCDF, 1991-93 Risø campaign; only runs with hub wind above "
+        "source": ("10-minute means of 1-minute turbine SCADA (SMARTEOLE, 2020; the data owners removed every minute in which "
+                   "any turbine was stopped, so totals undercount and coverage reads low by design)" if FARMS[farm_id].data_source == "smarteole"
+                   else "10-minute turbine SCADA (Zenodo 1475197, 2013-14 Federal University of Santa Catarina campaign)"
+                   if FARMS[farm_id].data_source == "brazil_coastal"
+                   else "10-minute turbine SCADA (DTU Data NetCDF, 1991-93 Risø campaign; only runs with hub wind above "
                    "~2.5 m/s were logged, so totals and coverage undercount by design)" if FARMS[farm_id].data_source == "norrekaer"
                    else "10-minute turbine SCADA (DTU Data NetCDF, 1993-94 ETSU campaign)" if FARMS[farm_id].data_source == "delabole"
                    else "10-minute turbine SCADA (the OpenOA input, README §15)") + ", farm output = sum of turbine active power",

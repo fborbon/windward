@@ -50,6 +50,8 @@ RETRAIN_AGE_DAYS_THRESHOLD = 90
 # Demo-scale thresholds for the two per-turbine/per-hour anomaly checks added alongside the
 # original farm-forecast-deviation and over-Betz checks — see analysis/efficiency.py.
 NEIGHBOR_UNDERPERFORMANCE_PCT_THRESHOLD = 0.05  # flag a turbine if >5% of its hours are low vs neighbors
+FLEETWIDE_BETZ_SHARE = 0.75  # this share of turbines over Betz -> one shared-cause anomaly
+FLEETWIDE_OUTLIER_MS = 0.3  # ...and per-turbine flags only for curves displaced this far from the farm mean
 REANALYSIS_MISMATCH_PCT_THRESHOLD = 0.02  # flag if >2% of hours diverge >5 m/s from Open-Meteo
 
 
@@ -128,9 +130,30 @@ def diagnose_node(state: WindwardState) -> dict:
     ]
 
     over_betz = efficiency_summary[efficiency_summary["peak_cp"] > efficiency_summary["betz_limit"]]
+    # When (almost) the whole fleet reads over Betz, the cause is shared: the nacelle anemometer of
+    # that turbine model reads low behind the rotor (the manufacturer's nacelle transfer function
+    # corrects for it), not one faulty sensor per turbine. Pedra do Sal (Enercon E-44) and Beberibe
+    # (E-48) flagged 20 of 20 and 27 of 32 turbines this way. Then one farm-level anomaly, and a
+    # per-turbine flag only where a curve stands out from the rest of the fleet.
+    fleetwide = (farm.wind_speed_source == "nacelle" and len(efficiency_summary) >= 4
+                 and len(over_betz) >= FLEETWIDE_BETZ_SHARE * len(efficiency_summary))
+    if fleetwide:
+        anomalies.append({
+            "type": "nacelle_anemometer_fleetwide_bias", "count": int(len(over_betz)),
+            "of_turbines": int(len(efficiency_summary)),
+            "detail": (
+                f"{len(over_betz)} of {len(efficiency_summary)} turbines show peak Cp above the Betz limit even after "
+                f"correcting for real air density. A shared cause is far likelier than that many faulty sensors: the "
+                f"nacelle anemometer sits behind the rotor and reads less than the free wind, which the manufacturer's "
+                f"nacelle transfer function corrects and this dataset doesn't. Per-turbine flags are kept only for "
+                f"curves displaced at least {FLEETWIDE_OUTLIER_MS:.1f} m/s from the farm-mean curve"
+            ),
+        })
     for turbine_id in over_betz.index:
         t = clean[clean["turbine_id"] == turbine_id]
         displacement_ms = fit_power_curve_displacement(farm_mean_curve, t["wind_speed_ms"], t["power_kw"])
+        if fleetwide and abs(displacement_ms) < FLEETWIDE_OUTLIER_MS:
+            continue
         if farm.wind_speed_source == "met_mast":
             # One mast reading stands in for every turbine (Delabole): the turbine sees different
             # wind than the mast, which is what an IEC 61400-12-1 site calibration corrects for.
@@ -182,6 +205,9 @@ def diagnose_node(state: WindwardState) -> dict:
                     f"; {_wake_source(operational)} puts this turbine's wake loss at {wake:.1f}% vs {farm_wake:.1f}% farm-wide"
                     + (", so part of the gap is likely wake, not a fault" if wake > farm_wake else ", so wake doesn't explain the gap")
                 )
+            note = turbine_note(operational, turbine_id)
+            if note:
+                anomaly["detail"] += f"; note: {note}"
             anomalies.append(anomaly)
 
     for flag in yaw_flags(operational):
@@ -278,16 +304,31 @@ def _wake_source(operational: dict | None) -> str:
     return "the measured wake study" if (operational or {}).get("method") == "measured_wake_study" else "OpenOA (long-term)"
 
 
+def turbine_note(operational: dict | None, turbine_id: str) -> str | None:
+    """Context a measured study attaches to one turbine, e.g. SMARTEOLE's SMV6 being yawed off the
+    wind on purpose (operational_assessment/line_wake_study.py)."""
+    return ((operational or {}).get("turbine_notes") or {}).get(turbine_id)
+
+
 def recommend_node(state: WindwardState) -> dict:
     eff = state["efficiency_summary"]
-    worst = eff["capacity_factor"].idxmin()
+    operational = state.get("operational")
+    # A turbine whose low output is by design (SMARTEOLE's steered SMV6) is not the one to inspect:
+    # pick the lowest of the rest and say why the other was passed over.
+    noted = [t for t in eff.index if turbine_note(operational, t)]
+    candidates = eff.drop(index=noted) if len(noted) < len(eff) else eff
+    worst = candidates["capacity_factor"].idxmin()
+    lowest = eff["capacity_factor"].idxmin()
     rationale = (
         f"{worst} has the lowest capacity factor in the fleet "
         f"({eff.loc[worst, 'capacity_factor']:.1%} vs fleet mean {eff['capacity_factor'].mean():.1%})."
+        if worst == lowest else
+        f"{worst} has the lowest capacity factor ({eff.loc[worst, 'capacity_factor']:.1%} vs fleet mean "
+        f"{eff['capacity_factor'].mean():.1%}) apart from {lowest} ({eff.loc[lowest, 'capacity_factor']:.1%}), which is "
+        f"passed over: {turbine_note(operational, lowest)}"
     )
     # A turbine deep in its neighbors' wakes is the lowest producer without anything being
     # broken; say so, so the inspection starts from its fault log rather than assuming damage.
-    operational = state.get("operational")
     wake = turbine_wake_loss_pct(operational, worst)
     farm_wake = ((operational or {}).get("wake_losses") or {}).get("plant_lt_pct")
     if wake is not None and farm_wake is not None and wake > farm_wake:
