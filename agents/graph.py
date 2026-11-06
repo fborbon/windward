@@ -291,9 +291,12 @@ def recommend_node(state: WindwardState) -> dict:
     wake = turbine_wake_loss_pct(operational, worst)
     farm_wake = ((operational or {}).get("wake_losses") or {}).get("plant_lt_pct")
     if wake is not None and farm_wake is not None and wake > farm_wake:
+        source = _wake_source(operational)
+        next_step = ("check its forced-outage history before assuming damage" if FARMS[state["farm_id"]].has_status_log
+                     else "this dataset has no fault log, so rule out a fault on site before assuming damage")
         rationale += (
-            f" {_wake_source(operational)} attributes {wake:.1f}% wake loss to it vs {farm_wake:.1f}% farm-wide, so part of the "
-            f"shortfall is its position in the layout; check its forced-outage history before assuming damage."
+            f" {source[0].upper() + source[1:]} attributes {wake:.1f}% wake loss to it vs {farm_wake:.1f}% farm-wide, so part of the "
+            f"shortfall is its position in the layout; {next_step}."
         )
     return {
         "recommendation": {
