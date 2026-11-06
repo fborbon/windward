@@ -310,9 +310,32 @@ def edp_events(farm: str | None = None):
             "duration_hours": round(row["duration_hours"], 1),
             "detected": bool(row["detected"]),
             "lead_hours": _clean(row["lead_hours"]),
+            "watch_alarm": None if row["watch_alarm"] is None or pd.isna(row["watch_alarm"]) else bool(row["watch_alarm"]),
+            "watch_lead_days": _clean(row["watch_lead_days"]),
         }
         for event_id, row in events.iterrows()
     ]
+
+
+@app.get("/edp/sensor-watch")
+def edp_sensor_watch():
+    """The per-sensor monitor: alert rules, scores, time to failure (analysis/care_sensor_watch.py)."""
+    from data_sources.edp_scada import watch_summary
+
+    summary = watch_summary()
+    if summary is None:
+        raise HTTPException(404, "sensor watch not exported yet")
+    return summary
+
+
+@app.get("/edp/sensor-watch/{event_id}")
+def edp_sensor_watch_case(event_id: int):
+    from data_sources.edp_scada import watch_case
+
+    case = watch_case(event_id)
+    if case is None:
+        raise HTTPException(404, f"no sensor watch result for event_id {event_id}")
+    return case
 
 
 @app.get("/edp/detector")

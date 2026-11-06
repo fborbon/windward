@@ -25,6 +25,8 @@ from pathlib import Path
 import pandas as pd
 
 PAYLOAD_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "data" / "care_payload.json"
+# The per-sensor monitor with alert rules and time to failure (analysis/care_sensor_watch.py).
+WATCH_PATH = PAYLOAD_PATH.with_name("care_sensor_watch.json")
 
 # From the dataset's README ("Event Data"): status 0 and 2 are normal operation.
 STATUS_LABELS = {
@@ -46,6 +48,25 @@ def load_payload() -> dict:
     if not PAYLOAD_PATH.exists():
         raise FileNotFoundError(f"{PAYLOAD_PATH} missing - run `python -m analysis.care_nbm` (needs the CARE archive)")
     return _payload(PAYLOAD_PATH.stat().st_mtime)
+
+
+@lru_cache(maxsize=1)
+def _watch(mtime: float) -> dict:
+    return json.loads(WATCH_PATH.read_text())
+
+
+def load_watch() -> dict | None:
+    return _watch(WATCH_PATH.stat().st_mtime) if WATCH_PATH.exists() else None
+
+
+def watch_summary() -> dict | None:
+    w = load_watch()
+    return None if w is None else {k: v for k, v in w.items() if k != "cases"}
+
+
+def watch_case(event_id: int) -> dict | None:
+    w = load_watch()
+    return None if w is None else w["cases"].get(str(event_id))
 
 
 # Keyword rules from the operators' own wording, first match wins; a grouping aid for the agent,
@@ -76,6 +97,7 @@ def load_events(farm: str | None = None) -> pd.DataFrame:
     """One row per case: farm, turbine (anonymised asset id), label, operator's root cause where
     given, event-window duration, and whether the detector caught it."""
     rows = []
+    watch = (load_watch() or {}).get("cases", {})
     for c in load_payload()["cases"]:
         if farm and c["farm"] != farm:
             continue
@@ -83,7 +105,9 @@ def load_events(farm: str | None = None) -> pd.DataFrame:
         rows.append({"event_id": c["event_id"], "farm": c["farm"], "asset": c["turbine_id"], "event_label": c["label"],
                      "event_description": c["description"], "subsystem": subsystem(c["description"]),
                      "duration_hours": c["duration_hours"],
-                     "detected": d["detected"], "lead_hours": d["lead_hours"]})
+                     "detected": d["detected"], "lead_hours": d["lead_hours"],
+                     "watch_alarm": watch[str(c["event_id"])]["first_alarm_day"] is not None if str(c["event_id"]) in watch else None,
+                     "watch_lead_days": watch.get(str(c["event_id"]), {}).get("lead_days")})
     return pd.DataFrame(rows).set_index("event_id")
 
 

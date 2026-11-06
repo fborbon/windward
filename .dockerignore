@@ -13,3 +13,4 @@ dashboard/data/
 !dashboard/data/rag_eval_payload.json
 !dashboard/data/care_payload.json
 .env
+!dashboard/data/care_sensor_watch.json

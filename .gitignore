@@ -28,3 +28,4 @@ data/brazil_coastal/*.nc
 data/brazil_coastal/*.png
 data/smarteole/*.zip
 data/smarteole/SMARTEOLE-WFC-open-dataset/
+data/care_cache/

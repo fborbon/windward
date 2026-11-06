@@ -203,7 +203,7 @@ const API = "";
 let FARMS = [];
 let ACTIVE_FARM = null;
 
-const GOLD = "#e1c340", GOOD = "#4caf82", DIM = "#5c5c6c", GRID = "#2a2a38", TEXT="#9a9aa8";
+const GOLD = "#e1c340", GOOD = "#4caf82", BAD = "#e2574c", DIM = "#5c5c6c", GRID = "#2a2a38", TEXT="#9a9aa8";
 
 function fmt(n, d=1){ return (n===null||n===undefined||Number.isNaN(n)) ? "—" : Number(n).toFixed(d); }
 function pct(n, d=1){ return (n===null||n===undefined||Number.isNaN(n)) ? "—" : (Number(n)*100).toFixed(d)+"%"; }
@@ -245,7 +245,7 @@ function drawLineChart(canvas, series, opts={}){
   }
 
   series.forEach((s,si)=>{
-    ctx.strokeStyle = s.color; ctx.lineWidth=2; ctx.beginPath();
+    ctx.strokeStyle = s.color; ctx.lineWidth = s.width || 2; ctx.setLineDash(s.dash || []); ctx.beginPath();
     let started=false;
     s.data.forEach((v,i)=>{
       if(v===null){started=false; return;}
@@ -253,6 +253,7 @@ function drawLineChart(canvas, series, opts={}){
       if(!started){ctx.moveTo(xx,yy); started=true;} else {ctx.lineTo(xx,yy);}
     });
     ctx.stroke();
+    ctx.setLineDash([]);
   });
 
   if(hasTicks){
@@ -652,17 +653,24 @@ function renderOperational(card, o){
 let EDP_FILTER = "all";
 async function selectEdp(panel){
   panel.innerHTML = `<div class="skeleton"><span class="spinner"></span> Loading real fault case studies…</div>`;
-  const [res, det] = await Promise.all([fetch(`${API}/edp/events`), fetch(`${API}/edp/detector`)]);
+  const [res, det, wat] = await Promise.all([fetch(`${API}/edp/events`), fetch(`${API}/edp/detector`), fetch(`${API}/edp/sensor-watch`)]);
   if(!res.ok){ panel.innerHTML = `<div class="card">Failed to load: ${res.status}</div>`; return; }
   const events = await res.json();
   const detector = det.ok ? await det.json() : null;
+  const watch = wat.ok ? await wat.json() : null;
   if(ACTIVE_FARM !== EDP_FARM_ID) return;
-  renderEdp(panel, events, detector);
+  renderEdp(panel, events, detector, watch);
 }
 
 function edpOutcome(e){
   if(e.label === "anomaly") return e.detected ? `<span class="pill ok">caught${e.lead_hours!=null ? ", "+fmt(e.lead_hours,0)+" h early" : ""}</span>` : `<span class="pill">missed</span>`;
   return e.detected ? `<span class="pill flag">false alarm</span>` : `<span class="pill ok">quiet</span>`;
+}
+
+function watchOutcome(e){
+  if(e.watch_alarm == null) return "—";
+  if(e.label === "anomaly") return e.watch_alarm ? `<span class="pill ok">alarm, ${fmt(e.watch_lead_days,0)} days early</span>` : `<span class="pill">no alarm</span>`;
+  return e.watch_alarm ? `<span class="pill flag">false alarm</span>` : `<span class="pill ok">quiet</span>`;
 }
 
 function renderEdpRows(events){
@@ -675,6 +683,7 @@ function renderEdpRows(events){
       <td>${e.label==="anomaly" ? '<span class="pill flag">anomaly</span>' : '<span class="pill ok">normal</span>'}</td>
       <td>${esc(e.description || "—")}</td>
       <td>${edpOutcome(e)}</td>
+      <td>${watchOutcome(e)}</td>
     </tr>`).join("");
   document.querySelectorAll(".edp-event-row").forEach(row => {
     row.addEventListener("click", () => loadEdpEvent(parseInt(row.dataset.event, 10)));
@@ -697,7 +706,91 @@ function renderEdpDetector(d){
     <div class="desc">CARE = (Coverage + 2 × Accuracy + Reliability + Earliness) / 5, as defined by the benchmark (Gück et al. 2024). Accuracy is on normal cases, so false alarms cost twice. Reference scores: ${esc(ref.note)}.</div>`;
 }
 
-function renderEdp(panel, events, detector){
+// Papers behind the sensor watch (analysis/care_sensor_watch.py). Hosted copies only where the
+// licence allows redistribution; otherwise the publisher's or arXiv's own PDF.
+const WATCH_PAPERS = [
+  {cite:"Gross, Singer, Wegerich, Herzog, VanAlstine, Bockhorst (1997)", title:"Application of a Model-based Fault Detection System to Nuclear Plant Signals", venue:"ISAP'97, Argonne National Laboratory (MSET)",
+   used:"Each signal estimated from its most correlated signals; residuals tested with a sequential probability ratio test; a sensor that leaves redundant peers is the sensor, not the process.",
+   pdf:"papers/gross-1997-mset-nuclear-plant-signals.pdf", licence:"US DOE report, distribution unlimited", source:"https://www.osti.gov/biblio/481606"},
+  {cite:"Felgueira, Rodrigues, Perone, Castro (2019)", title:"The Impact of Feature Causality on Normal Behaviour Models for SCADA-based Wind Turbine Fault Detection", venue:"arXiv 1906.12329",
+   used:"Inputs that heat up with the fault (neighbouring temperatures) improve the fit but hide the fault: the cause model uses operating conditions only.",
+   pdf:"papers/felgueira-2019-feature-causality-nbm.pdf", licence:"CC BY-NC-SA 4.0", source:"https://arxiv.org/abs/1906.12329"},
+  {cite:"Peter, Zappalá, Schamboeck, Watson (2022)", title:"Wind turbine generator prognostics using field SCADA data", venue:"Journal of Physics: Conference Series 2265, 032111 (TORQUE 2022)",
+   used:"At least a year of training for the seasons; stoppages filtered out; a daily anomaly index forecast to a failure level, 21 days of lead time on generator failures.",
+   pdf:"papers/peter-2022-generator-prognostics.pdf", licence:"CC BY 3.0", source:"https://doi.org/10.1088/1742-6596/2265/3/032111"},
+  {cite:"Murgia, Verbeke, Tsiporkova, Terzi, Astolfi (2023)", title:"Discussion on the Suitability of SCADA-Based Condition Monitoring for Wind Turbine Fault Diagnosis through Temperature Data Analysis", venue:"Energies 16(2), 620",
+   used:"Eight turbines over 11 years: temperature alarms caught every drivetrain failure, but weeks to years ahead, so diagnosis rather than a countdown to failure.",
+   pdf:"papers/murgia-2023-scada-condition-monitoring.pdf", licence:"CC BY 4.0", source:"https://doi.org/10.3390/en16020620"},
+  {cite:"Martinez, Viles, Cabrejas (2018)", title:"Labelling Drifts in a Fault Detection System for Wind Turbine Maintenance", venue:"Intelligent Distributed Computing XII (Springer); arXiv 2106.09951",
+   used:"Models drift after recalibration, part replacement and wear; retraining on recent data learns the fault, so it is not done automatically here.",
+   pdf:"https://arxiv.org/pdf/2106.09951", licence:"arXiv licence, not re-hosted: opens arXiv's copy", source:"https://arxiv.org/abs/2106.09951"},
+  {cite:"Tautz-Weinert, Watson (2017)", title:"Using SCADA data for wind turbine condition monitoring: a review", venue:"IET Renewable Power Generation 11(4), 382-394 (author postprint)",
+   used:"Normal-behaviour models do detect failures, but hand-set thresholds miss changes or raise false alarms; studies should report detection rate, false alarms and lead time together, as the table above does. Persistence rules like 'three days over the threshold within a week' are common.",
+   pdf:"papers/tautz-weinert-2017-scada-condition-monitoring-review.pdf", licence:"CC BY-NC-ND 4.0", source:"https://doi.org/10.1049/iet-rpg.2016.0248"},
+  {cite:"Leahy, Gallagher, O'Donovan, O'Sullivan (2019)", title:"Issues with Data Quality for Wind Turbine Condition Monitoring and Reliability Analyses", venue:"Energies 12(2), 201",
+   used:"Status and alarm logs miss some abnormal operation, so training data also needs statistical filtering; turbine anemometers are unreliable; a temperature model ties an anomaly to its component, hence the grouping by component.",
+   pdf:"papers/leahy-2019-scada-data-quality.pdf", licence:"CC BY 4.0", source:"https://doi.org/10.3390/en12020201"},
+];
+function renderWatchPapers(){
+  return `
+    <div class="desc">The sensor watch follows these papers; each line says what was taken from it. PDFs open directly; the ones hosted here are redistributed under their licence.</div>
+    <table><tbody>${WATCH_PAPERS.map(p => `<tr><td>
+      <b>${esc(p.title)}</b><br>
+      <span style="opacity:.8">${esc(p.cite)}, ${esc(p.venue)}</span><br>
+      <span>${esc(p.used)}</span><br>
+      <a href="${p.pdf}" target="_blank" rel="noopener">PDF</a> · <a href="${p.source}" target="_blank" rel="noopener">source</a> <span class="mono" style="opacity:.6">${esc(p.licence)}</span>
+    </td></tr>`).join("")}</tbody></table>
+`;
+}
+
+function renderWatchSummary(w){
+  if(!w) return `<div class="desc">Sensor watch not exported yet.</div>`;
+  const s = w.summary.all, t = w.time_to_failure, sc = w.care_scores, dg = w.diagnosis;
+  const fa = f => w.summary[f];
+  return `
+    <div class="kpis">
+      <div class="kpi"><div class="v">${s.faults_alarmed} / ${s.faults}</div><div class="l">Faults with an alarm before the failure</div></div>
+      <div class="kpi"><div class="v">${s.normal_with_alarm} / ${s.normal_cases}</div><div class="l">Healthy turbines with a false alarm</div></div>
+      <div class="kpi"><div class="v">${t.median_lead_days!=null ? fmt(t.median_lead_days,0)+" days" : "—"}</div><div class="l">Median time from alarm to failure (see the result below)</div></div>
+      <div class="kpi"><div class="v">${dg.judged ? dg.matches+" / "+dg.judged : "—"}</div><div class="l">Alarms naming the part the operator replaced</div></div>
+    </div>
+    <div class="desc"><b>Result: on this benchmark the alarm does not tell failing turbines from healthy ones.</b> It fired before ${s.faults_alarmed} of ${s.faults} faults (${fmt(100*s.faults_alarmed/s.faults,0)}%) but also on ${s.normal_with_alarm} of ${s.normal_cases} healthy turbines (${fmt(100*s.normal_with_alarm/s.normal_cases,0)}%), and every one of the ${w.sensitivity.length} rule settings tried gives about the same two shares. The chart further down shows why: failing turbines start the watched window with ${fmt(100*escFirst(w,"faults"),1)}% of their sensors in warning against ${fmt(100*escFirst(w,"normal"),1)}% on healthy ones, so the fault signal is there, but healthy turbines drift up to ${fmt(100*escLast(w,"normal"),1)}% within two weeks as their behaviour moves away from the period the thresholds were set on. That is the false-alarm problem the SCADA monitoring review below names as the main obstacle. What holds up is the per-sensor view of a single case: click a fault in the table.</div>
+    <div class="desc">${esc(w.method.text)}</div>
+    <table><thead><tr><th>Farm</th><th class="num">Faults alarmed</th><th class="num">False alarms</th><th class="num">False-alarm days / turbine-month</th><th class="num">CARE</th></tr></thead>
+      <tbody>${["A","B","C","all"].map(f => `<tr><td>${f==="all" ? "All" : "Farm "+f}</td><td class="num">${fa(f).faults_alarmed} / ${fa(f).faults}</td><td class="num">${fa(f).normal_with_alarm} / ${fa(f).normal_cases}</td><td class="num">${fmt(30*fa(f).normal_alarm_days/Math.max(fa(f).normal_monitored_days,1),1)}</td><td class="num">${fmt(sc[f].care,2)}</td></tr>`).join("")}</tbody></table>
+    <div class="desc">CARE score on the benchmark's own rules for comparison: ${fmt(sc.all.care,2)} here, ${fmt(w.pca_reference.care_all,2)} for the whole-turbine PCA detector below, 0.66 for the paper's autoencoder, 0.5 for random guessing.</div>
+    ${t.alarmed_faults.length ? `
+    <h3 style="margin-top:14px;">Time to failure after the first alarm</h3>
+    <div class="chart-wrap"><canvas id="chart-watch-survival"></canvas></div>
+    <div class="legend"><span><span class="swatch" style="background:${GOLD}"></span>Share of alarmed faults that had not yet failed, by days since the alarm</span></div>
+    <div class="desc">Of the ${t.alarmed_faults.length} faults alarmed in time, half failed within ${fmt(t.median_lead_days,0)} days of the first alarm; a quarter within ${fmt(t.p25_lead_days,0)} days, a quarter took more than ${fmt(t.p75_lead_days,0)}. The watched window in this dataset is short (median about 2 weeks before the fault), so longer lead times cannot show here. The spread is the planning tool, not a countdown for one turbine: on 11 years of data, Murgia et al. 2023 found alarm-to-failure times from weeks to years. Read it with the false-alarm rate above.</div>
+    <table><thead><tr><th>Failed part (operator's words)</th><th class="num">Alarmed</th><th class="num">Median days alarm to failure</th><th class="num">Shortest</th></tr></thead>
+      <tbody>${t.by_subsystem.map(b => `<tr><td>${esc(b.subsystem)}</td><td class="num">${b.faults_alarmed}</td><td class="num">${fmt(b.median_lead_days,0)}</td><td class="num">${b.min_lead_days}</td></tr>`).join("")}</tbody></table>` : ""}
+    <h3 style="margin-top:14px;">Does it get worse before the failure?</h3>
+    <div class="chart-wrap"><canvas id="chart-watch-escalation"></canvas></div>
+    <div class="legend">
+      <span><span class="swatch" style="background:${BAD}"></span>Turbines heading for a fault</span>
+      <span><span class="swatch" style="background:${GOOD}"></span>Healthy turbines (same alignment)</span>
+    </div>
+    <div class="desc">Average share of a turbine's watched sensors in warning, day by day over the 30 days before the logged event end. Few cases reach back past 2 weeks, so the left part is noisier.</div>`;
+}
+
+function escFirst(w, k){ const v = w.time_to_failure.escalation[k].slice(-14).find(x => x!=null); return v==null ? NaN : v; }
+function escLast(w, k){ const a = w.time_to_failure.escalation[k].filter(x => x!=null); return a.length ? a.at(-1) : NaN; }
+
+function drawWatchSummary(w){
+  if(!w) return;
+  const t = w.time_to_failure;
+  if(t.survival.length) drawLineChart(document.getElementById("chart-watch-survival"), [{data: t.survival.map(p=>100*p.share_still_ahead), color: GOLD}],
+    {labelFmt:v=>v.toFixed(0)+"%", yUnit:"Not yet failed", xUnit:`Days since the first alarm (0 to ${t.survival.length-1})`});
+  const e = t.escalation;
+  drawLineChart(document.getElementById("chart-watch-escalation"), [
+    {data: e.faults.map(v => v==null ? null : 100*v), color: BAD},
+    {data: e.normal.map(v => v==null ? null : 100*v), color: GOOD},
+  ], {labelFmt:v=>v.toFixed(1)+"%", yUnit:"Sensors in warning", xUnit:"Days before the event end (-30 to -1)"});
+}
+
+function renderEdp(panel, events, detector, watch){
   const counts = f => events.filter(e => f === "all" || e.farm === f).length;
   panel.innerHTML = `
   <div class="grid">
@@ -716,7 +809,7 @@ function renderEdp(panel, events, detector){
           ${["all","A","B","C"].map(f => `<button class="edp-filter" data-f="${f}" style="${f===EDP_FILTER?"":"opacity:.55"}">${f==="all"?"All":"Farm "+f} (${counts(f)})</button>`).join("")}
         </div>
         <table>
-          <thead><tr><th>Case</th><th>Farm</th><th>Turbine</th><th>Label</th><th>Operator's cause</th><th>Detector</th></tr></thead>
+          <thead><tr><th>Case</th><th>Farm</th><th>Turbine</th><th>Label</th><th>Operator's cause</th><th>PCA detector</th><th>Sensor watch</th></tr></thead>
           <tbody id="edp-event-rows"></tbody>
         </table>
       </div>
@@ -740,11 +833,43 @@ function renderEdp(panel, events, detector){
         </div>
         <div class="desc" style="margin-top:8px;">Power (y-axis) is rescaled by the anonymisation, not real kW.</div>
       </div>
+
+      <div class="card" id="edp-watch-card" style="display:none;">
+        <h2>Sensor watch for this turbine</h2>
+        <div class="desc" id="edp-watch-desc"></div>
+        <div class="chart-wrap"><canvas id="chart-watch-daily"></canvas></div>
+        <div class="legend">
+          <span><span class="swatch" style="background:${GOLD}"></span>Sensors in warning per day (machine health)</span>
+          <span><span class="swatch" style="background:${DIM}"></span>Sensor faults per day</span>
+          <span><span class="swatch" style="background:${BAD}"></span>Turbine alarm on (drawn at the top)</span>
+        </div>
+        <table id="edp-watch-sensors"></table>
+        <h3 style="margin-top:14px;" id="edp-watch-chart-title">Measured vs predicted</h3>
+        <div class="ask" id="edp-watch-sensor-buttons" style="margin:6px 0;"></div>
+        <div class="chart-wrap"><canvas id="chart-watch-sensor"></canvas></div>
+        <div class="legend">
+          <span><span class="swatch" style="background:${BAD}"></span>Measured</span>
+          <span><span class="swatch" style="background:${GOOD}"></span>Predicted from the operating conditions</span>
+          <span><span class="swatch" style="background:${DIM}"></span>Predicted ± threshold</span>
+        </div>
+        <div class="desc" id="edp-watch-chart-desc"></div>
+        <h3 style="margin-top:14px;">Sensor faults and data quality</h3>
+        <div class="desc" id="edp-watch-quality-desc"></div>
+        <table id="edp-watch-quality"></table>
+      </div>
     </div>
 
     <div>
       <div class="card">
-        <h2>Normal-behaviour detector</h2>
+        <h2>Sensor watch: two models per sensor, alarms and time to failure</h2>
+        ${renderWatchSummary(watch)}
+      </div>
+      <div class="card">
+        <h2>Bibliography: the method behind the sensor watch</h2>
+        ${renderWatchPapers()}
+      </div>
+      <div class="card">
+        <h2>Whole-turbine PCA detector</h2>
         ${renderEdpDetector(detector)}
       </div>
       <div class="card">
@@ -761,6 +886,7 @@ function renderEdp(panel, events, detector){
   </div>`;
 
   renderEdpRows(events);
+  drawWatchSummary(watch);
   panel.querySelectorAll(".edp-filter").forEach(b => b.addEventListener("click", () => {
     EDP_FILTER = b.dataset.f;
     panel.querySelectorAll(".edp-filter").forEach(x => x.style.opacity = x.dataset.f === EDP_FILTER ? "" : ".55");
@@ -824,6 +950,63 @@ async function loadEdpEvent(eventId){
     {data: d.power_curve.map(p=>p.mean_power_frac), color: GOLD},
     {data: d.power_curve_smooth.map(p=>p.mean_power_frac), color: GOOD},
   ], {labelFmt:v=>v.toFixed(2), yUnit:"Power (rescaled)", xUnit:"Wind speed (m/s)"});
+  loadWatchCase(eventId);
+}
+
+const QUALITY_LABELS = {gap:"gaps", stale:"stale", out_of_range:"out of range", step:"steps", erratic:"erratic"};
+async function loadWatchCase(eventId){
+  const card = document.getElementById("edp-watch-card");
+  const res = await fetch(`${API}/edp/sensor-watch/${eventId}`);
+  if(!res.ok){ card.style.display = "none"; return; }
+  const w = await res.json();
+  card.style.display = "block";
+  const comps = w.components.map(c => `${c.component} from day ${c.first_day}`).join(", ");
+  const verdict = w.label === "anomaly"
+    ? (w.lead_days!=null ? `Turbine alarm ${w.lead_days} days before the logged fault. Components in warning: ${comps}. ` +
+        (w.diagnosis_matches===true ? `The main one (${w.diagnosis}) matches the operator's cause.` : w.diagnosis_matches===false ? `The main one (${w.diagnosis}) is not the part the operator named (${w.operator_subsystem}).` : "")
+       : `No turbine alarm before the logged fault.`)
+    : (w.first_alarm_day!=null ? `False alarm on a healthy turbine (${comps}).` : `Quiet: no alarm on this healthy turbine.`);
+  document.getElementById("edp-watch-desc").textContent =
+    `${verdict} ${w.sensors_watched} of ${w.sensors_total} sensors watched for machine health (${w.sensors_modelled} modelled; operating conditions, sensors failing the quality checks and those the operating conditions explain poorly are left out). ` +
+    `Thresholds set over the ${fmt((w.monitor_start_hours-w.threshold_start_hours)/24,0)} days before the watched window, which starts ${fmt(-w.monitor_start_hours/24,0)} days before the event end.`;
+  const top = Math.max(1, ...w.daily.sensors_in_warning, ...w.daily.sensor_faults);
+  drawLineChart(document.getElementById("chart-watch-daily"), [
+    {data: w.daily.sensors_in_warning, color: GOLD},
+    {data: w.daily.sensor_faults, color: DIM, dash: [4,4]},
+    {data: w.daily.turbine_alarm.map(a => a ? top : null), color: BAD, width: 4},
+  ], {labelFmt:v=>v.toFixed(0), yUnit:"Sensors", xUnit:`Days ${w.daily.day[0]} to ${w.daily.day.at(-1)} (0 = event end)`});
+  document.getElementById("edp-watch-sensors").innerHTML = w.warned_sensors.length ? `<thead><tr><th>Sensors in warning before the fault date</th><th>Component</th><th class="num">First</th><th class="num">Days</th></tr></thead><tbody>` +
+    w.warned_sensors.map(s => `<tr><td>${esc(s.description || s.sensor)} <span class="mono" style="opacity:.6">${esc(s.sensor)}</span></td><td>${esc(s.component)}</td><td class="num">day ${s.first_warning_day}</td><td class="num">${s.warning_days}</td></tr>`).join("") + "</tbody>" : "";
+  const buttons = document.getElementById("edp-watch-sensor-buttons");
+  buttons.innerHTML = w.charts.map((c,i) => `<button class="watch-sensor" data-i="${i}" style="${i?"opacity:.55":""}">${esc(c.description || c.sensor)}</button>`).join("");
+  const draw = i => {
+    const c = w.charts[i];
+    if(!c) return;
+    buttons.querySelectorAll(".watch-sensor").forEach(b => b.style.opacity = +b.dataset.i === i ? "" : ".55");
+    document.getElementById("edp-watch-chart-title").textContent = `Measured vs predicted: ${c.description || c.sensor}`;
+    drawLineChart(document.getElementById("chart-watch-sensor"), [
+      {data: c.predicted.map(v => v==null ? null : v + c.threshold), color: DIM, width: 1, dash: [4,4]},
+      {data: c.predicted.map(v => v==null ? null : v - c.threshold), color: DIM, width: 1, dash: [4,4]},
+      {data: c.predicted, color: GOOD},
+      {data: c.actual, color: BAD},
+    ], {labelFmt:v=>v.toFixed(1), yUnit:c.unit || "", xUnit:`Days ${fmt(w.chart_hours[0]/24,0)} to ${fmt(w.chart_hours.at(-1)/24,0)} (0 = event end), 6-hour means`});
+    document.getElementById("edp-watch-chart-desc").textContent =
+      `Predicted from the operating conditions only: ${w.cause_inputs.join(", ")}. The threshold applies to each 10-minute reading; the 6-hour means drawn here smooth it, so short excursions are not visible.`;
+  };
+  buttons.querySelectorAll(".watch-sensor").forEach(b => b.addEventListener("click", () => draw(+b.dataset.i)));
+  if(w.charts.length){ draw(0); } else {
+    document.getElementById("edp-watch-chart-title").textContent = "Measured vs predicted";
+    const cv = document.getElementById("chart-watch-sensor"); cv.getContext("2d").clearRect(0,0,cv.width,cv.height);
+    document.getElementById("edp-watch-chart-desc").textContent = "No sensor warned before the fault date, so there is nothing to compare.";
+  }
+  const sf = w.sensor_faults, ch = w.sensor_checks;
+  document.getElementById("edp-watch-quality-desc").textContent =
+    (w.suspect_sensors.length ? `Not watched (over 20% of readings failed the checks): ${w.suspect_sensors.map(s => s.description || s.sensor).join(", ")}. ` : "") +
+    (sf.length ? `Sensor faults, not counted for the machine: ${sf.map(x => `${x.description || x.sensor} (${x.days} days)`).join(", ")}. ` : "") +
+    (ch.length ? `Left their peer sensors alone, check the sensor first: ${ch.map(x => `${x.description || x.sensor} (${x.days} days${x.also_machine_warning ? ", also a machine warning" : ""})`).join(", ")}. ` : "") +
+    (w.quality_issues.length ? "Readings removed by the quality checks over the watched window:" : "No sensor lost more than 1% of its readings to the quality checks.");
+  document.getElementById("edp-watch-quality").innerHTML = w.quality_issues.length ? `<thead><tr><th>Sensor</th>${Object.values(QUALITY_LABELS).map(l => `<th class="num">${l}</th>`).join("")}<th class="num">Removed</th></tr></thead><tbody>` +
+    w.quality_issues.map(q => `<tr><td>${esc(q.description || q.sensor)}</td>${Object.keys(QUALITY_LABELS).map(k => `<td class="num">${q[k]}</td>`).join("")}<td class="num">${fmt(100*q.bad_share,1)}%</td></tr>`).join("") + "</tbody>" : "";
 }
 
 // ---------- DSWE Inland-Offshore: real turbine+met-mast data, Measure-Correlate-Predict ----------

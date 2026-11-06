@@ -43,6 +43,7 @@
 18. [Nørrekær Enge: What a 1993 Wake Experiment Teaches](#18-nørrekær-enge-what-a-1993-wake-experiment-teaches)
 19. [Three Single-Line Farms: Trade Winds and Wake Steering](#19-three-single-line-farms-trade-winds-and-wake-steering)
 20. [CARE to Compare: Early Fault Detection, Scored](#20-care-to-compare-early-fault-detection-scored)
+21. [Sensor Watch: One Model per Sensor, Alarms and Time to Failure](#21-sensor-watch-one-model-per-sensor-alarms-and-time-to-failure)
 
 ---
 
@@ -557,6 +558,7 @@ Training and model export run against a self-hosted MLflow server (`MLFLOW_TRACK
 - [x] **Technical-document PDF RAG** (§16) - real turbine manufacturer documents and public offshore-wind tender/leasing PDFs, page-cited answers, verified datasheet spec extraction cross-checked against the farm registry; `search_technical_documents` in "Ask the agent", `query_technical_documents` on the MCP server
 - [x] **RAG evaluation** (§17) - 35 test questions in two sets across every tool, graded before and after; fixes for every failure found (farm facts from the dataset metadata and full SCADA history, whole-page PDF reading, citation re-checking, ranking notes, answer cleaning). Own dashboard tab. Set 1: 5/15 -> 13/15 correct on the review; set 2 (20 new questions, written after set 1's fixes): 12/20 -> 20/20. Nova Lite kept after a model comparison
 - [ ] CARE to Compare: a nonlinear normal-behaviour model (the paper's autoencoder scores 0.66 against this PCA baseline's 0.58, §20), and farm B's six faults, none of which any setting tried here detected
+- [ ] Sensor watch (§21): an alarm that separates failing from healthy turbines needs more than one year of training per turbine and thresholds tuned on separate turbines; the CARE format gives neither
 - [ ] ERA5 100 m wind as a forecast feature: lifts Beberibe's wind-output correlation from 0.47 to 0.59 (§8) but changes nothing at Pedra do Sal or Kelmarsh; worth it only with a retrain-and-compare of all eight farms
 - [ ] Two answers the fixes didn't reach (§17.3): the EnergyUp answer drops the sheet's Bachmann-controller scope note, and the ScotWind answer sometimes pads its list with explanations the PDF doesn't give
 - [ ] Senvion MM82/MM92 original datasheets and the Kelmarsh/Penmanshiel planning Environmental Statements: not publicly hosted (§16.4)
@@ -1109,3 +1111,55 @@ So even where the alarm stays quiet, the model's error points an engineer at the
 ### 20.4 Limits
 
 One model per case means one model per turbine-year, not the paper's one per farm. Farm A's status labels come from the failure log, so they filter training data but not scoring. The CARE score here is a reimplementation; small differences from the reference code are possible (the earliness weights are continuous rather than sampled).
+
+## 21. Sensor Watch: One Model per Sensor, Alarms and Time to Failure
+
+The detector in §20 gives one score per turbine. Condition-monitoring teams usually work sensor by sensor instead: learn each sensor's normal behaviour, compare the prediction with the measurement, raise an alert when the gap stays too large for too long, and estimate how long the machine has before the part breaks. `analysis/care_sensor_watch.py` builds that on the same 95 CARE to Compare cases, following the papers in §21.4.
+
+### 21.1 The pipeline
+
+1. **Sensor data quality first** (`analysis/sensor_quality.py`): five checks per reading, each tuned on the sensor's own reference period: gaps; stale values (a repeat longer than the sensor ever normally repeats, so whole-degree sensors are not flagged); out of range (impossible temperatures, or more than twice the reference spread beyond it); extreme steps; erratic, noisy stretches. Failed readings are removed; a sensor losing over 20% of its readings is reported as suspect and not watched.
+2. **Two linear models per sensor.**
+   - *Cause model, for machine health*: the sensor predicted from the operating conditions only (wind speed, power, rotor speed, outside temperature; current values, 3- and 12-hour averages for thermal lag, power and speed squared). Not from other temperatures: Felgueira et al. 2019 showed that neighbouring sensors heat up with the fault and hide it; their causal-only model predicted worst and detected best.
+   - *Peer model, for sensor validation*: the sensor predicted from its 5 best-correlated sensors, as MSET does (Gross et al. 1997). If a sensor leaves its peer model while a near-duplicate twin (|r| > 0.98, e.g. another winding phase) stays quiet, that is a sensor fault and does not count against the machine. Without a twin it is only flagged "check the sensor first": in 10-minute SCADA a drifting sensor and a single overheating part look the same.
+3. **Reference period**: the benchmark's split. Fit on the first 85% of the training year, threshold = 99th percentile of the absolute residual on the remaining ~8 weeks, then watch the case's prediction window (9 to 93 days, median about 2 weeks). Both wind papers ask for at least a year of training for the seasons, and a first version that fitted on 60% of the year and watched the last four months confirmed why: healthy turbines warned as often as failing ones and warnings grew with time since the fit.
+4. **Alert rule**: an *episode* is a residual above the threshold for at least 30 minutes. Faults showed up as a steady trickle of 1 to 3 episodes a day, which a fixed "N episodes per day" rule misses, so a sensor warns when Page's CUSUM on its daily episode count, against its own normal rate, reaches Wald's SPRT boundary ln((1-β)/α) with α = 0.1%, β = 10% and a 4-fold rate (the SPRT is MSET's test). The fixed daily-count rule is in the comparison grid too.
+5. **From sensors to a maintenance ticket**: sensors are grouped into components (gearbox, generator, transformer, pitch system, ...) by keyword rules on their descriptions, named like the operators' root causes. The turbine alarm is the first component warning; the component with most warning sensor-days is the diagnosis, compared with the operator's cause.
+6. **Time to failure**: days from the first alarm to the logged fault (the end of the event window), as a distribution over faults, with the same rule run on the 50 healthy cases as the false-alarm base rate.
+
+Two stages: `compute` reads each case from the 5.5 GB archive once (about 40 minutes) and caches residual summaries in `data/care_cache/` (gitignored); `build` applies the rules and writes `dashboard/data/care_sensor_watch.json` (1.5 MB) in seconds.
+
+### 21.2 Result: the alarm does not separate failing from healthy turbines here
+
+| | Faults alarmed | Healthy turbines alarmed | False-alarm days per turbine-month | CARE |
+|---|---|---|---|---|
+| Farm A | 6 of 12 | 6 of 10 | 6.2 | 0.56 |
+| Farm B | 6 of 6 | 8 of 9 | 19.2 | 0.65 |
+| Farm C | 20 of 27 | 28 of 31 | 16.5 | 0.51 |
+| **All 95** | **32 of 45 (71%)** | **42 of 50 (84%)** | **15.2** | **0.53** |
+
+All 40 rule settings in the grid (two thresholds, CUSUM rate and false-alarm level, the daily-count rule, one or two sensors per component) give about the same share for faults as for healthy turbines, from 5 of 45 vs 5 of 50 at the strict end to 43 vs 48 at the loose end. The CARE score, 0.53, is below the whole-turbine PCA detector's 0.58 (§20).
+
+Why, from the daily view: failing turbines start their watched window with about 6% of their watched sensors in warning against under 2% on healthy turbines, so there is a fault signal; but healthy turbines drift up to the same level (about 8%) within two weeks, as their behaviour moves away from the eight weeks the thresholds were set on. With 50 to 250 sensors per turbine, small per-sensor false-alarm rates add up. This is the problem the Tautz-Weinert & Watson review names: "manually set thresholds can result in undetected changes or frequent false alarms".
+
+The diagnosis matches the operator's root cause in 8 of the 32 alarmed faults; with about ten components, chance would give roughly three. Lead times (median 14.5 days, quartiles 5 and 22) are reported in the tab, but with an alarm that fires as often on healthy turbines they are not evidence of prediction, and the short watched windows cap them anyway. Murgia et al. 2023, on 11 years of data, found alarm-to-failure times from weeks to years and concluded such alarms suit diagnosis more than prognosis.
+
+What holds up is the single-case view: for each case the tab shows which sensors left their normal behaviour and when, the measured-vs-predicted chart, the sensor faults and the quality-check removals.
+
+### 21.3 What would need to change
+
+A training period covering more than one year per turbine (CARE gives one), retraining only after known maintenance rather than continuously (Martinez et al. 2018), thresholds per component tuned on a separate set of turbines with known outcomes, and fewer, physically chosen target sensors per component instead of every sensor. None of these fit this benchmark's one-year, one-event-per-case format, so they are noted rather than tried.
+
+### 21.4 Bibliography
+
+PDFs are linked in the tab; the ones hosted with the app (`web/papers/`) are redistributed under their licences.
+
+| Paper | Used for | PDF |
+|---|---|---|
+| Gross, Singer, Wegerich, Herzog, VanAlstine, Bockhorst (1997), *Application of a Model-based Fault Detection System to Nuclear Plant Signals*, ISAP'97 (Argonne, MSET) | Estimating each signal from its most correlated signals; the SPRT; telling a sensor fault from a process fault with redundant sensors | hosted (US DOE report, distribution unlimited) |
+| Felgueira, Rodrigues, Perone, Castro (2019), *The Impact of Feature Causality on Normal Behaviour Models for SCADA-based Wind Turbine Fault Detection*, arXiv 1906.12329 | Cause model with operating conditions only | hosted (CC BY-NC-SA 4.0) |
+| Peter, Zappalá, Schamboeck, Watson (2022), *Wind turbine generator prognostics using field SCADA data*, J. Phys. Conf. Ser. 2265, 032111 | At least a year of training; daily anomaly index and time to failure | hosted (CC BY 3.0) |
+| Murgia, Verbeke, Tsiporkova, Terzi, Astolfi (2023), *Discussion on the Suitability of SCADA-Based Condition Monitoring for Wind Turbine Fault Diagnosis through Temperature Data Analysis*, Energies 16(2), 620 | Diagnosis yes, prognosis no; lead times weeks to years | hosted (CC BY 4.0) |
+| Martinez, Viles, Cabrejas (2018), *Labelling Drifts in a Fault Detection System for Wind Turbine Maintenance*, Intelligent Distributed Computing XII; arXiv 2106.09951 | Drift after recalibration and replacement; no automatic retraining | arXiv's copy (arXiv licence, not re-hosted) |
+| Tautz-Weinert, Watson (2017), *Using SCADA data for wind turbine condition monitoring: a review*, IET Renewable Power Generation 11(4), 382-394 | Thresholds and false alarms as the main obstacle; report detection rate, false alarms and lead time together | hosted (author postprint, CC BY-NC-ND 4.0) |
+| Leahy, Gallagher, O'Donovan, O'Sullivan (2019), *Issues with Data Quality for Wind Turbine Condition Monitoring and Reliability Analyses*, Energies 12(2), 201 | Status logs miss abnormal operation; anemometers unreliable; temperature models tie anomalies to components | hosted (CC BY 4.0) |
